@@ -15,10 +15,8 @@ jobs:
 
       - name: Build backend image
         run: |
-          cd lakodi-auto-studio
           docker compose build
 
       - name: Run tests in Docker
         run: |
-          cd lakodi-auto-studio
           docker compose run --rm lakodi-backend-test
