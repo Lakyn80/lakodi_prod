@@ -1,0 +1,16 @@
+services:
+  lakodi-backend:
+    image: lakodi-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8016:8016"
+    volumes:
+      - ./backend:/app/backend
+
+  lakodi-backend-test:
+    image: lakodi-backend:latest
+    command: ["pytest", "backend"]
+    volumes:
+      - ./backend:/app/backend

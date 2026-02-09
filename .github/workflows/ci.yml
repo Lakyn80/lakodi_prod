@@ -1,4 +1,4 @@
-name: Backend CI
+name: Backend CI (Docker)
 
 on:
   push:
@@ -7,22 +7,18 @@ on:
   pull_request:
 
 jobs:
-  test-backend:
+  docker-tests:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
+      - name: Build backend image
         run: |
-          cd backend
-          pip install -r requirements-test.txt
+          cd lakodi-auto-studio
+          docker compose build
 
-      - name: Run pytest
+      - name: Run tests in Docker
         run: |
-          pytest backend
+          cd lakodi-auto-studio
+          docker compose run --rm lakodi-backend-test
