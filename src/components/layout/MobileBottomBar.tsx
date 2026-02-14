@@ -1,9 +1,11 @@
-import { Phone, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { CONTACT } from '@/data/contact';
-import { useIsMobile } from '@/hooks/use-mobile';
+"use client";
+
+import { Phone, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { CONTACT } from "@/data/contact";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function MobileBottomBar() {
   const isMobile = useIsMobile();

@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+"use client";
+
+import Link from "next/link";
 import {
   Settings2,
   Gauge,
@@ -9,12 +11,12 @@ import {
   Snowflake,
   Paintbrush,
   MessageCircle,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { services } from '@/data/services';
-import { CONTACT } from '@/data/contact';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { services } from "@/data/services";
+import { CONTACT } from "@/data/contact";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings2,
@@ -67,11 +69,9 @@ export default function ServicesGrid() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Link to={`/sluzby/${service.slug}`} className="flex-1">
-                    <Button variant="outline" size="sm" className="w-full text-xs">
-                      {t.services.detail}
-                    </Button>
-                  </Link>
+                  <Button asChild variant="outline" size="sm" className="flex-1 w-full text-xs">
+                    <Link href={`/sluzby/${service.slug}`}>{t.services.detail}</Link>
+                  </Button>
                   <a
                     href={CONTACT.getWhatsAppUrl(service.title[language])}
                     target="_blank"

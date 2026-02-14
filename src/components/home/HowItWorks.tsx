@@ -1,6 +1,8 @@
-import { MessageCircle, Camera, CalendarCheck } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
+"use client";
+
+import { MessageCircle, Camera, CalendarCheck } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
 
 const stepIcons = [MessageCircle, Camera, CalendarCheck];
 

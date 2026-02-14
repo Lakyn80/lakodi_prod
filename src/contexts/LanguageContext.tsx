@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+"use client";
+
+import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type Language = 'cs' | 'ua';
 
@@ -15,6 +17,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem('lakodi-lang');
       return saved === 'ua' ? 'ua' : 'cs';
     } catch {
+      // ignore storage errors
       return 'cs';
     }
   });
@@ -23,7 +26,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
     try {
       localStorage.setItem('lakodi-lang', lang);
-    } catch {}
+    } catch {
+      // ignore storage errors
+    }
   };
 
   return (

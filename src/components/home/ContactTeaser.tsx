@@ -1,8 +1,10 @@
-import { MapPin, Phone, MessageCircle, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { CONTACT } from '@/data/contact';
+"use client";
+
+import { MapPin, Phone, MessageCircle, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { CONTACT } from "@/data/contact";
 
 export default function ContactTeaser() {
   const { language } = useLanguage();

@@ -1,7 +1,9 @@
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+"use client";
+
+import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { Button } from "@/components/ui/button";
 
 const galleryGradients = [
   'from-sky-900/30 to-card',
@@ -52,15 +54,14 @@ export default function Gallery() {
         </div>
 
         <div className="mt-8 text-center">
-          <Link to="/sluzby">
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-primary/50 text-primary hover:bg-primary/10"
-            >
-              {t.gallery.showMore}
-            </Button>
-          </Link>
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="border-primary/50 text-primary hover:bg-primary/10"
+          >
+            <Link href="/sluzby">{t.gallery.showMore}</Link>
+          </Button>
         </div>
       </div>
     </section>

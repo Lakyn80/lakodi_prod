@@ -1,9 +1,12 @@
-import { Phone, MessageCircle, CalendarDays, Shield, Settings2, Target, Snowflake } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { CONTACT } from '@/data/contact';
-import heroImage from '@/assets/hero-automotive.jpg';
+"use client";
+
+import Image from "next/image";
+import { Phone, MessageCircle, CalendarDays, Shield, Settings2, Target, Snowflake } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { CONTACT } from "@/data/contact";
+import heroImage from "@/assets/hero-automotive.jpg";
 
 export default function Hero() {
   const { language } = useLanguage();
@@ -19,10 +22,13 @@ export default function Hero() {
     <section className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
-        <img
+        <Image
           src={heroImage}
           alt="Autoservis Lakodi – profesionální autoservis Praha Uhříněves"
-          className="h-full w-full object-cover"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
       </div>

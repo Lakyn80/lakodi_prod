@@ -1,16 +1,19 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, Phone, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { CONTACT } from '@/data/contact';
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, Phone, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { CONTACT } from "@/data/contact";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
   const t = translations[language];
-  const location = useLocation();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const navItems = [
@@ -20,13 +23,13 @@ export default function Header() {
     { label: t.nav.contact, href: '/kontakt' },
   ];
 
-  const isActive = (href: string) => location.pathname === href;
+  const isActive = (href: string) => pathname === href;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:h-20">
         {/* Logo */}
-        <Link to="/" className="flex flex-col">
+        <Link href="/" className="flex flex-col">
           <span className="text-lg font-bold tracking-tight text-foreground lg:text-xl">
             Lakodi autoslužby
           </span>
@@ -38,7 +41,7 @@ export default function Header() {
           {navItems.map((item) => (
             <Link
               key={item.href}
-              to={item.href}
+              href={item.href}
               className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                 isActive(item.href)
                   ? 'text-primary'
@@ -104,7 +107,7 @@ export default function Header() {
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
-                    to={item.href}
+                    href={item.href}
                     onClick={() => setOpen(false)}
                     className={`rounded-md px-4 py-3 text-base font-medium transition-colors ${
                       isActive(item.href)

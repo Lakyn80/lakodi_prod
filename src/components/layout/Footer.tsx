@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
-import { MapPin, Phone, MessageCircle, Clock } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/data/translations';
-import { CONTACT } from '@/data/contact';
+"use client";
+
+import Link from "next/link";
+import { MapPin, Phone, MessageCircle, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/data/translations";
+import { CONTACT } from "@/data/contact";
 
 export default function Footer() {
   const { language } = useLanguage();
@@ -34,7 +36,7 @@ export default function Footer() {
               {navItems.map((item) => (
                 <Link
                   key={item.href}
-                  to={item.href}
+                  href={item.href}
                   className="text-sm text-muted-foreground transition-colors hover:text-primary"
                 >
                   {item.label}
