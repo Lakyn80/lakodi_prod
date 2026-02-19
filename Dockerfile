@@ -2,10 +2,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
-COPY frontend/ ./
+COPY . .
 
 EXPOSE 8080
 

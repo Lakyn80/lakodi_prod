@@ -47,9 +47,7 @@ async function resolveSourceRoot() {
     }
   }
 
-  throw new Error(
-    `Source folder not found. Expected one of: ${candidates.join(", ")}`
-  );
+  return null;
 }
 
 const sortByName = (a, b) =>
@@ -116,6 +114,16 @@ async function convertCategory(sourceRoot, { sourceDir, targetDir, prefix }) {
 async function run() {
   const sourceRoot = await resolveSourceRoot();
   await ensureDir(targetRoot);
+
+  if (!sourceRoot) {
+    console.warn(
+      `[media:sync] source folder not found. Expected one of: ${["img_dílna", "img_dilna"]
+        .map((name) => path.resolve(frontendRoot, "..", name))
+        .join(", ")}`
+    );
+    console.warn("[media:sync] keeping already generated files in public/services.");
+    return;
+  }
 
   const summary = [];
   for (const mapping of mappings) {
