@@ -1,28 +1,20 @@
-# Fotky ke službám
+# Fotky ke sluzbam
 
-Do této složky můžeš ukládat vlastní fotky pro jednotlivé sekce služeb.
+Nahravej zdrojove fotky do `../img_dilna` nebo `../img_dílna` (mimo `frontend`).
 
-## Doporučená struktura
+Pri `npm run dev` a `npm run build` se automaticky spusti konverze do WebP:
+- skript: `frontend/scripts/sync-service-images.mjs`
+- vystup: `frontend/public/services/...`
 
-- `frontend/public/services/motory/`
-- `frontend/public/services/prevodovky/`
-- `frontend/public/services/autoelektrika-diagnostika/`
-- `frontend/public/services/kodovani/`
-- `frontend/public/services/podvozky/`
-- `frontend/public/services/geometrie/`
-- `frontend/public/services/klimatizace/`
-- `frontend/public/services/karoserie-lakovani/`
+## Zdrojove slozky (aktualni mapovani)
 
-## Jak je zobrazit na webu
+- `img_dilna/go_motoru_landrover_2017` -> `public/services/motory/go-motoru-XX.webp`
+- `img_dilna/repas_turbo` -> `public/services/motory/repas-motoru-XX.webp`
+- `img_dilna/repas_automat_b6` -> `public/services/prevodovky/repas-automat-XX.webp`
+- `img_dilna/renovace_mercedes_coupe` -> `public/services/karoserie-lakovani/renovace-mercedes-XX.webp`
 
-Uprav pole `gallery` v `frontend/src/data/services.ts`.
+## Rucni spusteni konverze
 
-Příklad:
-
-```ts
-gallery: [
-  "/services/motory/go-1.jpg",
-  "/services/motory/go-2.jpg",
-  "/services/motory/go-3.jpg",
-]
+```bash
+npm run media:sync
 ```

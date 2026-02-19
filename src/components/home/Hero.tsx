@@ -97,6 +97,22 @@ export default function Hero() {
             );
           })}
         </div>
+
+        <div className="mx-auto mt-8 w-full max-w-xl">
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm">
+            <video
+              className="h-auto w-full"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label="Lakodi prezentační video"
+            >
+              <source src="/video/logo_video_A.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
       </div>
     </section>
   );

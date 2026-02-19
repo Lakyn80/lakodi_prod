@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, Phone, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ export default function Header() {
   const navItems = [
     { label: t.nav.home, href: '/' },
     { label: t.nav.services, href: '/sluzby' },
-    { label: t.nav.converter, href: '/converter' },
     { label: t.nav.contact, href: '/kontakt' },
   ];
 
@@ -29,11 +29,15 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:h-20">
         {/* Logo */}
-        <Link href="/" className="flex flex-col">
-          <span className="text-lg font-bold tracking-tight text-foreground lg:text-xl">
-            Lakodi autoslužby
-          </span>
-          <span className="text-xs text-muted-foreground">{CONTACT.address[language]}</span>
+        <Link href="/" className="block">
+          <Image
+            src="/logo/logo_lakodi_3d_black.png"
+            alt="Lakodi"
+            width={320}
+            height={98}
+            priority
+            className="h-14 w-auto lg:h-16"
+          />
         </Link>
 
         {/* Desktop Nav */}

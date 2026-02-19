@@ -1,17 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/data/translations";
 import { Button } from "@/components/ui/button";
 
-const galleryGradients = [
-  'from-sky-900/30 to-card',
-  'from-amber-900/30 to-card',
-  'from-emerald-900/30 to-card',
-  'from-violet-900/30 to-card',
-  'from-rose-900/30 to-card',
-  'from-cyan-900/30 to-card',
+const galleryItems = [
+  { src: "/services/prevodovky/repas-automat-01.webp", categoryIndex: 0 },
+  { src: "/services/motory/go-motoru-01.webp", categoryIndex: 1 },
+  { src: "/services/motory/go-motoru-02.webp", categoryIndex: 2 },
+  { src: "/services/karoserie-lakovani/renovace-mercedes-01.webp", categoryIndex: 3 },
+  { src: "/services/motory/go-motoru-03.webp", categoryIndex: 4 },
+  { src: "/services/karoserie-lakovani/renovace-mercedes-02.webp", categoryIndex: 5 },
+  { src: "/services/prevodovky/repas-automat-02.webp", categoryIndex: 0 },
+  { src: "/services/motory/go-motoru-04.webp", categoryIndex: 1 },
+  { src: "/services/motory/go-motoru-05.webp", categoryIndex: 2 },
+  { src: "/services/karoserie-lakovani/renovace-mercedes-03.webp", categoryIndex: 3 },
+  { src: "/services/motory/go-motoru-06.webp", categoryIndex: 4 },
+  { src: "/services/karoserie-lakovani/renovace-mercedes-04.webp", categoryIndex: 5 },
 ];
 
 export default function Gallery() {
@@ -37,16 +44,24 @@ export default function Gallery() {
           ))}
         </div>
 
-        {/* Gallery Grid – placeholder cards */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {t.gallery.categories.map((cat, i) => (
+        {/* Gallery Grid */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {galleryItems.map((item, i) => (
             <div
-              key={i}
-              className={`group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-gradient-to-br ${galleryGradients[i]} transition-all hover:border-primary/30`}
+              key={`${item.src}-${i}`}
+              className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/30"
             >
+              <Image
+                src={item.src}
+                alt={`${t.gallery.categories[item.categoryIndex]} - Lakodi autoservis`}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
               <div className="absolute inset-0 flex items-end p-4">
                 <span className="rounded-full bg-background/60 px-3 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
-                  {cat}
+                  {t.gallery.categories[item.categoryIndex]}
                 </span>
               </div>
             </div>

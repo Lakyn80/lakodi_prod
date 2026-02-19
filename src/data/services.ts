@@ -51,7 +51,11 @@ export const services: Service[] = [
           "Vhodné při prokluzování, cukání, hlučnosti nebo úplné nefunkčnosti převodovky."
         ),
         priceRange: localized("Orientačně 35 000 až 95 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/prevodovky/repas-automat-01.webp",
+          "/services/prevodovky/repas-automat-02.webp",
+          "/services/prevodovky/repas-automat-03.webp",
+        ],
       },
       {
         id: "repas-prevodovky",
@@ -62,7 +66,12 @@ export const services: Service[] = [
           "Cenově úspornější varianta oproti generální opravě."
         ),
         priceRange: localized("Orientačně 15 000 až 45 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/prevodovky/repas-automat-01.webp",
+          "/services/prevodovky/repas-automat-02.webp",
+          "/services/prevodovky/repas-automat-03.webp",
+          "/services/prevodovky/repas-automat-04.webp",
+        ],
       },
       {
         id: "automaticke-prevodovky",
@@ -72,7 +81,12 @@ export const services: Service[] = [
           "Výměna oleje, opravy hydroměniče, řešení prokluzu a chybových hlášení."
         ),
         priceRange: localized("Orientačně 4 000 až 65 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/prevodovky/repas-automat-01.webp",
+          "/services/prevodovky/repas-automat-02.webp",
+          "/services/prevodovky/repas-automat-03.webp",
+          "/services/prevodovky/repas-automat-04.webp",
+        ],
       },
       {
         id: "manualni-prevodovky",
@@ -112,7 +126,23 @@ export const services: Service[] = [
           "Určeno při vysoké spotřebě oleje, ztrátě výkonu nebo zadření motoru."
         ),
         priceRange: localized("Orientačně 45 000 až 140 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/motory/go-motoru-01.webp",
+          "/services/motory/go-motoru-02.webp",
+          "/services/motory/go-motoru-03.webp",
+          "/services/motory/go-motoru-04.webp",
+          "/services/motory/go-motoru-05.webp",
+          "/services/motory/go-motoru-06.webp",
+          "/services/motory/go-motoru-07.webp",
+          "/services/motory/go-motoru-08.webp",
+          "/services/motory/go-motoru-09.webp",
+          "/services/motory/go-motoru-10.webp",
+          "/services/motory/go-motoru-11.webp",
+          "/services/motory/go-motoru-12.webp",
+          "/services/motory/go-motoru-13.webp",
+          "/services/motory/go-motoru-14.webp",
+          "/services/motory/go-motoru-15.webp",
+        ],
       },
       {
         id: "repas-motoru",
@@ -122,7 +152,7 @@ export const services: Service[] = [
           "Nejčastěji hlava válců, rozvody nebo turbo."
         ),
         priceRange: localized("Orientačně 12 000 až 60 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: ["/services/motory/repas-motoru-01.webp", "/services/motory/repas-motoru-02.webp"],
       },
       {
         id: "benzinove-motory",
@@ -142,7 +172,7 @@ export const services: Service[] = [
           "Servis DPF filtrů a systémů EGR."
         ),
         priceRange: localized("Orientačně 3 500 až 50 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: ["/services/motory/repas-motoru-01.webp", "/services/motory/repas-motoru-02.webp"],
       },
     ],
   },
@@ -367,7 +397,12 @@ export const services: Service[] = [
           "Opravy po nehodách, rovnání deformovaných částí, svařování a výměna dílů."
         ),
         priceRange: localized("Orientačně 4 000 až 80 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/karoserie-lakovani/renovace-mercedes-01.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-02.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-03.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-04.webp",
+        ],
       },
       {
         id: "lakovani",
@@ -376,7 +411,12 @@ export const services: Service[] = [
           "Lokální i celkové lakování vozidla, opravy škrábanců a poškození laku."
         ),
         priceRange: localized("Orientačně 2 500 až 70 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/karoserie-lakovani/renovace-mercedes-05.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-06.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-07.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-08.webp",
+        ],
       },
       {
         id: "lesteni",
@@ -385,7 +425,12 @@ export const services: Service[] = [
           "Profesionální leštění laku pro obnovení lesku a odstranění drobných vad."
         ),
         priceRange: localized("Orientačně 1 500 až 8 000 Kč"),
-        gallery: ["/placeholder.svg", "/placeholder.svg", "/placeholder.svg"],
+        gallery: [
+          "/services/karoserie-lakovani/renovace-mercedes-09.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-10.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-11.webp",
+          "/services/karoserie-lakovani/renovace-mercedes-12.webp",
+        ],
       },
     ],
   },

@@ -13,7 +13,6 @@ export default function Footer() {
   const navItems = [
     { label: t.nav.home, href: '/' },
     { label: t.nav.services, href: '/sluzby' },
-    { label: t.nav.converter, href: '/converter' },
     { label: t.nav.contact, href: '/kontakt' },
   ];
 
