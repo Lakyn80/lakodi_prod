@@ -1,0 +1,6 @@
+services:
+  lakodi-backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run build
