@@ -19,6 +19,12 @@ export const translations = {
       },
       chips: ["Rychlá diagnostika", "GO / repas", "3D geometrie", "Klimatizace"],
     },
+    homeSeo: {
+      badge: "Lakodi Praha 22",
+      title: "Autoservis - Geometrie kol - Pneuservis",
+      description:
+        "Lakodi je profesionální autoservis v Praze 22 – Uhříněves na adrese K Netlukám 93. Provádíme opravy motorů, převodovek, diagnostiku, 3D geometrii kol a pneuservis. Pokud hledáte spolehlivý autoservis, pneuservis nebo geometrii kol v Uhříněvsi, jsme vám k dispozici.",
+    },
     services: {
       title: "Naše služby",
       subtitle: "Kompletní servis pro váš automobil",
@@ -102,6 +108,12 @@ export const translations = {
         call: "Зателефонувати",
       },
       chips: ["Швидка діагностика", "КР / ремонт", "3D розвал", "Кондиціонер"],
+    },
+    homeSeo: {
+      badge: "Lakodi Прага 22",
+      title: "Автосервіс, розвал-сходження та шиномонтаж Прага 22 – Угржиневес",
+      description:
+        "Lakodi — професійний автосервіс у Празі 22 – Угржиневес за адресою K Netlukám 93. Виконуємо ремонт двигунів, коробок передач, діагностику, 3D розвал-сходження та шиномонтаж. Якщо ви шукаєте надійний автосервіс, шиномонтаж або розвал-сходження в Угржиневесі, ми до ваших послуг.",
     },
     services: {
       title: "Наші послуги",
@@ -187,6 +199,12 @@ export const translations = {
       },
       chips: ["Быстрая диагностика", "Капремонт / ремонт", "3D геометрия", "Кондиционер"],
     },
+    homeSeo: {
+      badge: "Lakodi Прага 22",
+      title: "Автосервис, сход-развал и шиномонтаж Прага 22 – Угржиневес",
+      description:
+        "Lakodi — профессиональный автосервис в Праге 22 – Угржиневес по адресу K Netlukám 93. Выполняем ремонт двигателей, коробок передач, диагностику, 3D сход-развал и шиномонтаж. Если вы ищете надежный автосервис, шиномонтаж или сход-развал в Угржиневесе, мы к вашим услугам.",
+    },
     services: {
       title: "Наши услуги",
       subtitle: "Полный сервис для вашего автомобиля",
@@ -270,6 +288,12 @@ export const translations = {
         call: "Call us",
       },
       chips: ["Fast diagnostics", "Engine / gearbox rebuild", "3D alignment", "Air conditioning"],
+    },
+    homeSeo: {
+      badge: "Lakodi Prague 22",
+      title: "Auto service, wheel alignment and tire service Prague 22 – Uhříněves",
+      description:
+        "Lakodi is a professional auto service in Prague 22 – Uhříněves at K Netlukám 93. We provide engine and gearbox repairs, diagnostics, 3D wheel alignment and tire service. If you are looking for a reliable auto service, tire service or wheel alignment in Uhříněves, we are here for you.",
     },
     services: {
       title: "Our Services",

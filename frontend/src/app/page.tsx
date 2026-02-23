@@ -1,27 +1,39 @@
+import type { Metadata } from "next";
 import Hero from "@/components/home/Hero";
+import SeoIntro from "@/components/home/SeoIntro";
 import ServicesGrid from "@/components/home/ServicesGrid";
 import HowItWorks from "@/components/home/HowItWorks";
 import Gallery from "@/components/home/Gallery";
 import ContactTeaser from "@/components/home/ContactTeaser";
-import { CONTACT } from "@/data/contact";
+import { toCanonicalUrl } from "@/lib/seo";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:8080";
+export const metadata: Metadata = {
+  title: "Autoservis, geometrie kol a pneuservis Praha 22 – Uhříněves | Lakodi",
+  description:
+    "Lakodi – autoservis, geometrie kol a pneuservis v Praze 22 Uhříněves. Diagnostika, opravy motorů, převodovky, klimatizace, přezouvání pneumatik. K Netlukám 93, 104 00 Praha 22.",
+  alternates: {
+    canonical: toCanonicalUrl("/"),
+  },
+};
 
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "AutoRepair",
-  name: "Lakodi autoservis",
-  url: siteUrl,
-  telephone: CONTACT.phoneRaw,
+  name: "Lakodi Autoservis",
   address: {
     "@type": "PostalAddress",
     streetAddress: "K Netlukám 93",
-    addressLocality: "Praha 22",
-    postalCode: "14000",
+    addressLocality: "Praha 22 – Uhříněves",
+    postalCode: "104 00",
     addressCountry: "CZ",
   },
-  openingHours: "Mo-Sa 09:00-20:00",
-  sameAs: [CONTACT.mapUrl],
+  url: "https://lakodi.cz",
+  areaServed: "Praha 22 – Uhříněves",
+  makesOffer: [
+    { "@type": "Service", name: "Autoservis" },
+    { "@type": "Service", name: "Geometrie kol" },
+    { "@type": "Service", name: "Pneuservis" },
+  ],
 };
 
 export default function HomePage() {
@@ -32,6 +44,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Hero />
+      <SeoIntro />
       <ServicesGrid />
       <HowItWorks />
       <Gallery />
