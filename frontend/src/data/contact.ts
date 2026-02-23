@@ -12,10 +12,10 @@ export const CONTACT = {
     en: 'K Netlukám 93, 14000 Prague 22',
   },
   openingHours: {
-    cs: 'Po–So: 9:00–20:00',
-    ua: 'Пн–Сб: 9:00–20:00',
-    ru: 'Пн–Сб: 9:00–20:00',
-    en: 'Mon–Sat: 9:00–20:00',
+    cs: 'Po–So: 9:00–20:00 | Ne - po telefonické domluvě',
+    ua: 'Пн–Сб: 9:00–20:00 | Нд - за попередньою домовленістю телефоном',
+    ru: 'Пн–Сб: 9:00–20:00 | Вс - по предварительной договоренности по телефону',
+    en: 'Mon–Sat: 9:00–20:00 | Sun - by prior phone agreement',
   },
   mapUrl: 'https://maps.app.goo.gl/Ree3ZTPLj9pi6zhq9',
   getWhatsAppUrl: (message?: string) =>
