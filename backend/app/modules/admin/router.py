@@ -59,9 +59,15 @@ def _seed_admin():
         email = ADMIN_EMAIL.strip().lower()
         u = db.query(User).filter(User.email == email).first()
         if u:
-            u.password_hash = pwd_context.hash(ADMIN_PASSWORD)
-            u.role = "admin"
-            db.commit()
+            changed = False
+            if u.role != "admin":
+                u.role = "admin"
+                changed = True
+            if not u.password_hash:
+                u.password_hash = pwd_context.hash(ADMIN_PASSWORD)
+                changed = True
+            if changed:
+                db.commit()
         elif db.query(User).count() == 0:
             u = User(
                 email=email,
@@ -91,6 +97,11 @@ class RequestRecoveryRequest(BaseModel):
     email: str
 
 
+class ResetRecoveryPasswordRequest(BaseModel):
+    token: str
+    password: str
+
+
 def _prune_expired():
     now = time.time()
     expired = [t for t, (_, ex) in _pending_recovery.items() if ex < now]
@@ -100,6 +111,17 @@ def _prune_expired():
 
 def _get_admin_user(db: Session):
     return db.query(User).filter(User.role == "admin").first()
+
+
+def _consume_recovery_email(token: str, db: Session) -> str | None:
+    _prune_expired()
+    if ADMIN_RECOVERY_TOKEN and hmac.compare_digest(token, ADMIN_RECOVERY_TOKEN):
+        admin = _get_admin_user(db)
+        return admin.email if admin else None
+    data = _pending_recovery.pop(token, None)
+    if data:
+        return data[0]
+    return None
 
 
 def _is_secure_request(request: Request) -> bool:
@@ -173,22 +195,37 @@ def admin_request_recovery(body: RequestRecoveryRequest):
 @router.get("/recover")
 def admin_recover(token: str, response: Response, request: Request, db: Session = Depends(get_db)):
     _seed_admin()
-    _prune_expired()
-    if ADMIN_RECOVERY_TOKEN and hmac.compare_digest(token, ADMIN_RECOVERY_TOKEN):
-        admin = _get_admin_user(db)
-        if admin:
-            sess = create_session(admin.id, admin.role)
-            _set_auth_cookie(response, sess, request)
-            return {"ok": True, "message": "Přihlášení přes recovery úspěšné"}
-    if token in _pending_recovery:
-        email = _pending_recovery[token][0]
-        del _pending_recovery[token]
+    email = _consume_recovery_email(token, db)
+    if email:
         u = db.query(User).filter(User.email == email).first()
         if u and u.role == "admin":
             sess = create_session(u.id, u.role)
             _set_auth_cookie(response, sess, request)
             return {"ok": True, "message": "Přihlášení přes recovery úspěšné"}
     raise HTTPException(status_code=401, detail="Neplatný nebo expirovaný recovery token")
+
+
+@router.post("/recover/reset")
+def admin_recover_reset(body: ResetRecoveryPasswordRequest, db: Session = Depends(get_db)):
+    _seed_admin()
+    token = body.token.strip()
+    password = body.password.strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Neplatný token")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Heslo musí mít alespoň 8 znaků")
+
+    email = _consume_recovery_email(token, db)
+    if not email:
+        raise HTTPException(status_code=401, detail="Neplatný nebo expirovaný recovery token")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.role != "admin":
+        raise HTTPException(status_code=401, detail="Neplatný nebo expirovaný recovery token")
+
+    user.password_hash = pwd_context.hash(password)
+    db.commit()
+    return {"ok": True, "message": "Heslo bylo úspěšně změněno"}
 
 
 @router.post("/logout")

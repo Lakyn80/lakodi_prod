@@ -51,7 +51,7 @@ export default function AdminLayout({
         if (isAdmin && pathname === "/admin/login") {
           router.replace("/admin");
         }
-        if (!isAdmin && pathname !== "/admin/login") {
+        if (!isAdmin && pathname !== "/admin/login" && pathname !== "/admin/recover") {
           router.replace("/admin/login");
         }
       })
@@ -133,6 +133,9 @@ export default function AdminLayout({
   }
 
   if (auth === "no") {
+    if (pathname === "/admin/recover") {
+      return <>{children}</>;
+    }
     return (
       <div className="container mx-auto px-4 py-24">
         <div className="mx-auto max-w-sm rounded-2xl border border-border bg-card p-8">

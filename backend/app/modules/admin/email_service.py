@@ -32,11 +32,11 @@ def send_recovery_email(to_email: str, token: str) -> bool:
     Odešle recovery email s odkazem na přihlášení.
     Vrací True při úspěchu, False při chybě.
     """
-    recovery_url = f"{RECOVERY_BASE_URL.rstrip('/')}/admin/login?recovery={token}"
+    recovery_url = f"{RECOVERY_BASE_URL.rstrip('/')}/admin/recover?token={token}"
     html = f"""
     <p>Dobrý den,</p>
     <p>Požádali jste o odkaz pro přihlášení do administrace Lakodi autoservis.</p>
-    <p><a href="{recovery_url}">Přihlásit se přes tento odkaz</a></p>
+    <p><a href="{recovery_url}">Obnovit heslo přes tento odkaz</a></p>
     <p>Odkaz je platný 1 hodinu. Pokud jste o něj nepožádali, tento email ignorujte.</p>
     <p>— Lakodi</p>
     """
