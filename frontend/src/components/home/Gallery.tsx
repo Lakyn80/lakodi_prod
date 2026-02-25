@@ -266,8 +266,8 @@ export default function Gallery() {
                     {labels.noPhoto}
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                <div className="absolute inset-0 flex items-end p-4">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 flex items-end p-4">
                   <span className="rounded-full bg-background/60 px-3 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
                     {categoryText(slot.category)}
                   </span>
