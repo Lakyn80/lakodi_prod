@@ -1,0 +1,20 @@
+{
+  "prevodovky::go-prevodovky": [],
+  "motory::go-motoru": [
+    "/services/motory/go-motoru-01.webp",
+    "/services/motory/go-motoru-02.webp",
+    "/services/motory/go-motoru-03.webp",
+    "/services/motory/go-motoru-04.webp",
+    "/services/motory/go-motoru-05.webp",
+    "/services/motory/go-motoru-06.webp",
+    "/services/motory/go-motoru-07.webp",
+    "/services/motory/go-motoru-08.webp",
+    "/services/motory/go-motoru-09.webp",
+    "/services/motory/go-motoru-10.webp",
+    "/services/motory/go-motoru-11.webp",
+    "/services/motory/go-motoru-12.webp",
+    "/services/motory/go-motoru-13.webp",
+    "/services/motory/go-motoru-14.webp",
+    "/services/motory/go-motoru-15.webp"
+  ]
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ServiceDetailPage from "@/components/services/ServiceDetailPage";
 import { getServiceBySlug, services } from "@/data/services";
+import { toCanonicalUrl } from "@/lib/seo";
 
 type DetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -16,16 +17,14 @@ export async function generateMetadata({ params }: DetailPageProps): Promise<Met
   const service = getServiceBySlug(slug);
 
   if (!service) {
-    return {
-      title: "Služba nenalezena",
-    };
+    notFound();
   }
 
   return {
     title: service.title.cs,
     description: service.shortDesc.cs,
     alternates: {
-      canonical: `/sluzby/${service.slug}`,
+      canonical: toCanonicalUrl(`/sluzby/${service.slug}`),
     },
   };
 }

@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/manifest.webmanifest/route": "/manifest.webmanifest",
+  "/sitemap.xml/route": "/sitemap.xml",
+  "/robots.txt/route": "/robots.txt",
+  "/icon.png/route": "/icon.png",
+  "/sluzby/[slug]/page": "/sluzby/[slug]",
+  "/page": "/",
+  "/sluzby/page": "/sluzby",
+  "/admin/kalendar/page": "/admin/kalendar",
+  "/admin/page": "/admin",
+  "/admin/login/page": "/admin/login",
+  "/admin/recover/page": "/admin/recover",
+  "/admin/zakazky/[id]/page": "/admin/zakazky/[id]",
+  "/kontakt/page": "/kontakt",
+  "/galerie/page": "/galerie"
+}

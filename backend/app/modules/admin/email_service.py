@@ -1,30 +1,71 @@
 """Odesílání recovery emailů přes Resend API."""
 import os
+import smtplib
+import ssl
+from email.message import EmailMessage
+from email.utils import parseaddr
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 FROM_EMAIL = os.getenv("ADMIN_FROM_EMAIL", "Lakodi <onboarding@resend.dev>")
 RECOVERY_BASE_URL = os.getenv("ADMIN_RECOVERY_BASE_URL", "http://localhost:8080")
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "0") or "0")
+SMTP_USER = os.getenv("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "true").strip().lower() in {"1", "true", "yes", "on"}
+SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_smtp_configured() -> bool:
+    return bool(SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD)
 
 
 def is_email_configured() -> bool:
-    return bool(RESEND_API_KEY)
+    return bool(RESEND_API_KEY) or _is_smtp_configured()
 
 
-def _send_email(to_email: str, subject: str, html: str) -> bool:
-    if not RESEND_API_KEY:
+def _send_email_smtp(to_email: str, subject: str, html: str) -> bool:
+    if not _is_smtp_configured():
         return False
     try:
-        import resend  # type: ignore
-        resend.api_key = RESEND_API_KEY
-        resend.Emails.send({
-            "from": FROM_EMAIL,
-            "to": [to_email],
-            "subject": subject,
-            "html": html,
-        })
+        from_addr = parseaddr(FROM_EMAIL)[1] or SMTP_USER
+        message = EmailMessage()
+        message["From"] = FROM_EMAIL
+        message["To"] = to_email
+        message["Subject"] = subject
+        message.set_content("Tato zpráva obsahuje HTML verzi.")
+        message.add_alternative(html, subtype="html")
+
+        if SMTP_USE_SSL:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20, context=ssl.create_default_context()) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(message, from_addr=from_addr, to_addrs=[to_email])
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+                if SMTP_USE_TLS:
+                    server.starttls(context=ssl.create_default_context())
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(message, from_addr=from_addr, to_addrs=[to_email])
         return True
     except Exception:
         return False
+
+
+def _send_email(to_email: str, subject: str, html: str) -> bool:
+    if RESEND_API_KEY:
+        try:
+            import resend  # type: ignore
+            resend.api_key = RESEND_API_KEY
+            resend.Emails.send({
+                "from": FROM_EMAIL,
+                "to": [to_email],
+                "subject": subject,
+                "html": html,
+            })
+            return True
+        except Exception:
+            pass
+    return _send_email_smtp(to_email, subject, html)
 
 
 def send_recovery_email(to_email: str, token: str) -> bool:
@@ -61,16 +102,22 @@ def send_booking_update_email(
     repair_description: str | None,
     estimated_price: int | None,
     final_price: int | None,
+    order_number: str | None = None,
+    appointment_label: str | None = None,
 ) -> bool:
+    display_number = order_number or str(zakazka_id)
     est = f"{estimated_price} Kč" if estimated_price is not None else "—"
     final = f"{final_price} Kč" if final_price is not None else "—"
+    appointment = appointment_label or "—"
     html = f"""
     <p>Dobrý den {name},</p>
-    <p>aktualizovali jsme vaši zakázku č. {zakazka_id}.</p>
+    <p>aktualizovali jsme vaši zakázku č. {display_number}.</p>
+    <p><strong>Číslo objednávky:</strong> {display_number}</p>
+    <p><strong>Termín:</strong> {appointment}</p>
     <p><strong>Status:</strong> {status}</p>
     <p><strong>Popis opravy:</strong> {repair_description or "—"}</p>
     <p><strong>Předběžná cena:</strong> {est}</p>
     <p><strong>Konečná cena:</strong> {final}</p>
     <p>— Lakodi autoservis</p>
     """
-    return _send_email(to_email, f"Aktualizace zakázky #{zakazka_id}", html)
+    return _send_email(to_email, f"Aktualizace zakázky {display_number}", html)

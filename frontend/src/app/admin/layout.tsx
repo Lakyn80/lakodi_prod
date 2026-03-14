@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+async function sha256Hex(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value);
+  const hash = await window.crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -63,10 +71,24 @@ export default function AdminLayout({
     setError("");
     setLoading(true);
     try {
+      const challengeRes = await fetch(adminApiUrl("/login-challenge"), {
+        method: "GET",
+        credentials: "include",
+      });
+      const challengeData = await challengeRes.json().catch(() => ({}));
+      if (!challengeRes.ok || !challengeData.challenge_id || !challengeData.nonce) {
+        throw new Error("Login challenge unavailable");
+      }
+
+      const passwordProof = await sha256Hex(`${password}:${challengeData.nonce}`);
       const res = await fetch(adminApiUrl("/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          challenge_id: challengeData.challenge_id,
+          password_proof: passwordProof,
+        }),
         credentials: "include",
       });
       if (res.ok) {
@@ -96,8 +118,7 @@ export default function AdminLayout({
     router.push("/admin/login");
   };
 
-  const handleRequestRecovery = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRequestRecovery = async () => {
     setRecoveryMessage(null);
     setRecoveryError("");
     setRecoveryLoading(true);
@@ -182,7 +203,7 @@ export default function AdminLayout({
                 Zapomněli jste heslo?
               </button>
               {showRecovery && (
-                <form onSubmit={handleRequestRecovery} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
                   <Label htmlFor="recovery-email">Váš email</Label>
                   {recoveryError && <p className="text-sm text-destructive">{recoveryError}</p>}
                   <Input
@@ -194,7 +215,7 @@ export default function AdminLayout({
                     className="bg-background"
                     required
                   />
-                  <Button type="submit" variant="secondary" size="sm" disabled={recoveryLoading}>
+                  <Button type="button" variant="secondary" size="sm" disabled={recoveryLoading} onClick={handleRequestRecovery}>
                     {recoveryLoading ? "Odesílám…" : "Odeslat odkaz na email"}
                   </Button>
                   {recoveryMessage === "success" && (
@@ -202,7 +223,7 @@ export default function AdminLayout({
                       Pokud je email zaregistrován, dostanete odkaz na přihlášení.
                     </p>
                   )}
-                </form>
+                </div>
               )}
             </div>
           </form>

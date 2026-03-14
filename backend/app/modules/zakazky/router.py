@@ -28,7 +28,6 @@ pillow_heif.register_heif_opener()
 router = APIRouter()
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "./data/uploads"))
-UPLOAD_PUBLIC_BASE_URL = os.getenv("UPLOAD_PUBLIC_BASE_URL", "http://localhost:8016/api/uploads")
 WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "420776053625")
 MAX_IMAGE_EDGE = 1920
 ALLOWED_STATUSES = (
@@ -37,6 +36,20 @@ ALLOWED_STATUSES = (
     "potvrzená objednávka",
     "hotovo",
 )
+
+
+def _resolve_upload_public_base_url() -> str:
+    explicit = os.getenv("UPLOAD_PUBLIC_BASE_URL", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    for key in ("NEXT_PUBLIC_API_URL", "ADMIN_RECOVERY_BASE_URL"):
+        base = os.getenv(key, "").strip()
+        if base.startswith("http://") or base.startswith("https://"):
+            return f"{base.rstrip('/')}/api/uploads"
+    return "https://lakodi.cz/api/uploads"
+
+
+UPLOAD_PUBLIC_BASE_URL = _resolve_upload_public_base_url()
 
 
 def ensure_upload_dir():
@@ -84,13 +97,15 @@ def _build_whatsapp_message(z: Zakazka) -> str:
         lines.append("")
         lines.append(f"📷 Klient přiložil {len(photos_list)} fotku/fotek:")
         base = UPLOAD_PUBLIC_BASE_URL.rstrip("/")
-        for photo in photos_list:
+        for index, photo in enumerate(photos_list, start=1):
             if isinstance(photo, str) and photo.strip():
                 rel = photo.strip()
+                photo_url = ""
                 if rel.startswith("http://") or rel.startswith("https://"):
-                    lines.append(rel)
+                    photo_url = rel
                 else:
-                    lines.append(f"{base}/{rel.lstrip('/')}")
+                    photo_url = f"{base}/{rel.lstrip('/')}"
+                lines.append(f"fotka_{index}: {photo_url}")
     if z.callback_requested:
         lines.append("")
         lines.append("⚠️ Klient žádá zpětné volání")
@@ -108,11 +123,39 @@ def _get_zakazka_or_404(db: Session, zakazka_id: int) -> Zakazka:
     return z
 
 
+def _load_answers_obj(z: Zakazka) -> dict:
+    if not z.answers:
+        return {}
+    try:
+        data = json.loads(z.answers)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _appointment_label_from_answers(answers_obj: dict) -> Optional[str]:
+    preferred_date = str(answers_obj.get("preferred_date") or "").strip()
+    preferred_time = str(answers_obj.get("preferred_time") or "").strip()
+    if not preferred_date:
+        return None
+    try:
+        if preferred_time:
+            dt = datetime.fromisoformat(f"{preferred_date}T{preferred_time}")
+            return dt.strftime("%d.%m.%Y %H:%M")
+        dt = datetime.fromisoformat(preferred_date)
+        return dt.strftime("%d.%m.%Y")
+    except ValueError:
+        return f"{preferred_date} {preferred_time}".strip()
+
+
 class ZakazkaUpdateRequest(BaseModel):
     status: Optional[str] = None
     estimated_price: Optional[int] = None
     final_price: Optional[int] = None
     repair_description: Optional[str] = None
+    admin_order_number: Optional[str] = None
+    preferred_date: Optional[str] = None
+    preferred_time: Optional[str] = None
 
 
 @router.post("")
@@ -239,6 +282,36 @@ def update_zakazka(
         z.estimated_price = body.estimated_price
     if body.final_price is not None:
         z.final_price = body.final_price
+    if (
+        body.admin_order_number is not None
+        or body.preferred_date is not None
+        or body.preferred_time is not None
+    ):
+        answers_obj = _load_answers_obj(z)
+        if body.admin_order_number is not None:
+            order_number = body.admin_order_number.strip()
+            if order_number:
+                answers_obj["admin_order_number"] = order_number
+            else:
+                answers_obj.pop("admin_order_number", None)
+
+        preferred_date_cleared = False
+        if body.preferred_date is not None:
+            preferred_date = body.preferred_date.strip()
+            if preferred_date:
+                answers_obj["preferred_date"] = preferred_date
+            else:
+                answers_obj.pop("preferred_date", None)
+                answers_obj.pop("preferred_time", None)
+                preferred_date_cleared = True
+
+        if not preferred_date_cleared and body.preferred_time is not None:
+            preferred_time = body.preferred_time.strip()
+            if preferred_time:
+                answers_obj["preferred_time"] = preferred_time
+            else:
+                answers_obj.pop("preferred_time", None)
+        z.answers = json.dumps(answers_obj)
 
     if z.status == "hotovo":
         if z.final_price is None:
@@ -255,6 +328,9 @@ def send_zakazka_email(zakazka_id: int, db: Session = Depends(get_db), _: None =
     z = _get_zakazka_or_404(db, zakazka_id)
     if not z.email:
         raise HTTPException(status_code=400, detail="Zakázka nemá email zákazníka")
+    answers_obj = _load_answers_obj(z)
+    order_number = str(answers_obj.get("admin_order_number") or "").strip() or None
+    appointment_label = _appointment_label_from_answers(answers_obj)
     sent = send_booking_update_email(
         to_email=z.email,
         name=z.name,
@@ -263,6 +339,8 @@ def send_zakazka_email(zakazka_id: int, db: Session = Depends(get_db), _: None =
         repair_description=z.repair_description,
         estimated_price=z.estimated_price,
         final_price=z.final_price,
+        order_number=order_number,
+        appointment_label=appointment_label,
     )
     if not sent:
         raise HTTPException(status_code=500, detail="Nepodařilo se odeslat email")

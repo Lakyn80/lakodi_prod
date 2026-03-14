@@ -17,12 +17,14 @@ interface Zakazka {
 
 interface ReservationItem {
   id: number;
+  orderNumber: string;
   name: string;
   repairType: string;
   startsAt: Date;
 }
 
 type CalendarViewMode = "year" | "month" | "week" | "day";
+type ManualCreateType = "poptávka" | "potvrzená objednávka";
 
 const ORDER_STATUSES = new Set(["potvrzená objednávka", "hotovo"]);
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 9);
@@ -114,6 +116,11 @@ function parseReservationDate(z: Zakazka) {
   return null;
 }
 
+function getDisplayOrderNumber(z: Zakazka) {
+  const custom = String(z.answers?.admin_order_number ?? "").trim();
+  return custom || String(z.id);
+}
+
 function formatRepairType(category?: string) {
   const key = String(category ?? "").trim().toLowerCase();
   if (!key) return "Neuvedeno";
@@ -150,38 +157,141 @@ export default function AdminCalendarPage() {
   const [items, setItems] = useState<ReservationItem[]>([]);
   const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
   const [focusDate, setFocusDate] = useState(() => startOfDay(new Date()));
+  const [createType, setCreateType] = useState<ManualCreateType>("poptávka");
+  const [createName, setCreateName] = useState("");
+  const [createPhone, setCreatePhone] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createCategory, setCreateCategory] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [createDate, setCreateDate] = useState(() => {
+    const now = new Date();
+    return now.toISOString().slice(0, 10);
+  });
+  const [createTime, setCreateTime] = useState("09:00");
+  const [createMessage, setCreateMessage] = useState("");
+  const [creating, setCreating] = useState(false);
   const pluginStatus = googleCalendarPlugin.getStatus();
 
+  const refreshItems = async () => {
+    const r = await fetch(zakazkyUrl(""), apiFetchOptions);
+    if (r.status === 401) {
+      window.location.href = "/admin/login";
+      return;
+    }
+    const data = await r.json();
+    const list = Array.isArray(data) ? data : [];
+    const mapped = list
+      .filter((z: Zakazka) => ORDER_STATUSES.has(z.status) || Boolean(z.answers?.preferred_date))
+      .map((z: Zakazka) => {
+        const startsAt = parseReservationDate(z);
+        return startsAt
+          ? {
+              id: z.id,
+              orderNumber: getDisplayOrderNumber(z),
+              name: z.name,
+              repairType: formatRepairType(z.category),
+              startsAt,
+            }
+          : null;
+      })
+      .filter((item: ReservationItem | null): item is ReservationItem => Boolean(item));
+    setItems(mapped);
+  };
+
   useEffect(() => {
-    fetch(zakazkyUrl(""), apiFetchOptions)
-      .then((r) => {
-        if (r.status === 401) {
-          window.location.href = "/admin/login";
-          return [];
-        }
-        return r.json();
-      })
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        const mapped = list
-          .filter((z: Zakazka) => ORDER_STATUSES.has(z.status) || Boolean(z.answers?.preferred_date))
-          .map((z: Zakazka) => {
-            const startsAt = parseReservationDate(z);
-                return startsAt
-              ? {
-                  id: z.id,
-                  name: z.name,
-                  repairType: formatRepairType(z.category),
-                  startsAt,
-                }
-              : null;
-          })
-          .filter((item: ReservationItem | null): item is ReservationItem => Boolean(item));
-        setItems(mapped);
-      })
+    refreshItems()
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleCreateManual = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!createName.trim() || !createPhone.trim() || !createCategory.trim() || !createDescription.trim() || !createDate.trim()) {
+      setCreateMessage("Vyplňte jméno, telefon, kategorii, popis a datum.");
+      return;
+    }
+    setCreating(true);
+    setCreateMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("category", createCategory.trim());
+      formData.append("name", createName.trim());
+      formData.append("email", createEmail.trim());
+      formData.append("phone", createPhone.trim());
+      formData.append("description", createDescription.trim());
+      formData.append(
+        "answers",
+        JSON.stringify({
+          preferred_date: createDate.trim(),
+          preferred_time: (createTime.trim() || "09:00"),
+        })
+      );
+      formData.append("callback_requested", "false");
+
+      const createRes = await fetch(zakazkyUrl(""), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (createRes.status === 401) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      if (!createRes.ok) {
+        setCreateMessage("Nepodařilo se vytvořit záznam.");
+        return;
+      }
+      const created = await createRes.json();
+      const createdId = Number(created?.id);
+      if (!Number.isFinite(createdId)) {
+        setCreateMessage("Záznam byl vytvořen, ale nepodařilo se načíst ID.");
+        await refreshItems();
+        return;
+      }
+
+      if (createType === "potvrzená objednávka") {
+        const patchRes = await fetch(zakazkyUrl(`/${createdId}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            status: "potvrzená objednávka",
+          }),
+        });
+        if (patchRes.status === 401) {
+          window.location.href = "/admin/login";
+          return;
+        }
+        if (!patchRes.ok) {
+          setCreateMessage("Poptávka byla vytvořena, ale nepodařilo se ji přepnout na objednávku.");
+          await refreshItems();
+          return;
+        }
+      }
+
+      await refreshItems();
+
+      const targetDate = new Date(`${createDate}T${createTime || "09:00"}:00`);
+      if (!Number.isNaN(targetDate.getTime())) {
+        setFocusDate(startOfDay(targetDate));
+      }
+
+      setCreateMessage(
+        createType === "potvrzená objednávka"
+          ? `Objednávka #${createdId} byla vytvořena.`
+          : `Poptávka #${createdId} byla vytvořena.`
+      );
+      setCreateName("");
+      setCreatePhone("");
+      setCreateEmail("");
+      setCreateCategory("");
+      setCreateDescription("");
+    } catch {
+      setCreateMessage("Chyba připojení.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const weekDays = useMemo(() => getWeekDays(startOfWeek(focusDate)), [focusDate]);
   const dayDate = useMemo(() => startOfDay(focusDate), [focusDate]);
@@ -326,6 +436,70 @@ export default function AdminCalendarPage() {
       </section>
 
       <section className="mb-6 rounded-xl border border-border bg-card p-4">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Vytvořit ručně</h2>
+        <form onSubmit={handleCreateManual} className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <select
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            value={createType}
+            onChange={(e) => setCreateType(e.target.value as ManualCreateType)}
+          >
+            <option value="poptávka">Poptávka</option>
+            <option value="potvrzená objednávka">Objednávka</option>
+          </select>
+          <input
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            placeholder="Jméno"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+          />
+          <input
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            placeholder="Telefon"
+            value={createPhone}
+            onChange={(e) => setCreatePhone(e.target.value)}
+          />
+          <input
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            placeholder="Email (volitelné)"
+            value={createEmail}
+            onChange={(e) => setCreateEmail(e.target.value)}
+          />
+          <input
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            placeholder="Kategorie"
+            value={createCategory}
+            onChange={(e) => setCreateCategory(e.target.value)}
+          />
+          <input
+            type="date"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            value={createDate}
+            onChange={(e) => setCreateDate(e.target.value)}
+          />
+          <input
+            type="time"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            value={createTime}
+            onChange={(e) => setCreateTime(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={creating}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:border-primary/50 disabled:opacity-60"
+          >
+            {creating ? "Vytvářím…" : "Vytvořit"}
+          </button>
+          <textarea
+            className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground md:col-span-2 lg:col-span-4"
+            placeholder="Popis"
+            value={createDescription}
+            onChange={(e) => setCreateDescription(e.target.value)}
+          />
+        </form>
+        {createMessage && <p className="mt-3 text-sm text-muted-foreground">{createMessage}</p>}
+      </section>
+
+      <section className="mb-6 rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -399,7 +573,7 @@ export default function AdminCalendarPage() {
                         href={`/admin/zakazky/${entry.id}?back=kalendar`}
                         className="block rounded-md border border-primary/30 bg-primary/10 p-2 text-xs text-foreground hover:border-primary/60"
                       >
-                        <p className="font-semibold">Objednávka #{entry.id}</p>
+                        <p className="font-semibold">Objednávka {entry.orderNumber}</p>
                         <p className="text-muted-foreground">
                           {entry.startsAt.toLocaleDateString("cs-CZ")} {entry.startsAt.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
                         </p>
@@ -448,7 +622,7 @@ export default function AdminCalendarPage() {
                         href={`/admin/zakazky/${entry.id}?back=kalendar`}
                         className="block rounded-md border border-primary/30 bg-primary/10 p-1.5 text-[11px] text-foreground hover:border-primary/60"
                       >
-                        #{entry.id} {entry.startsAt.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
+                        {entry.orderNumber} {entry.startsAt.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
                         <p className="text-muted-foreground">Typ: {entry.repairType}</p>
                       </Link>
                     ))}
@@ -500,7 +674,7 @@ export default function AdminCalendarPage() {
                             href={`/admin/zakazky/${entry.id}?back=kalendar`}
                             className="block rounded-md border border-primary/30 bg-primary/10 p-2 text-xs text-foreground hover:border-primary/60"
                           >
-                            <p className="font-semibold">Objednávka #{entry.id}</p>
+                            <p className="font-semibold">Objednávka {entry.orderNumber}</p>
                             <p className="text-muted-foreground">{entry.startsAt.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}</p>
                             <p className="text-muted-foreground">Typ: {entry.repairType}</p>
                             <p className="truncate text-muted-foreground">{entry.name}</p>

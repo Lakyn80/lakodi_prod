@@ -56,5 +56,12 @@
 
   body {
     @apply bg-background text-foreground;
+    caret-color: transparent;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"] {
+    caret-color: auto;
   }
 }

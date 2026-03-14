@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libheif-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend /app/backend
+
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    python-multipart \
+    pillow \
+    pillow-heif \
+    sqlalchemy \
+    resend \
+    passlib \
+    "bcrypt==4.0.1"
+
+EXPOSE 8016
+
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8016"]

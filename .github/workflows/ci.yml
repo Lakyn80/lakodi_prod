@@ -48,3 +48,45 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8016
         run: npm run build
+
+  seo-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Build frontend for SEO test
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8016
+        run: npm --prefix frontend run build
+
+      - name: Start frontend server
+        run: |
+          nohup npm --prefix frontend run start -- --hostname 127.0.0.1 --port 3210 > /tmp/next-seo.log 2>&1 &
+
+      - name: Wait for frontend server
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3210 >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend server did not start in time"
+          cat /tmp/next-seo.log
+          exit 1
+
+      - name: Run SEO canonical guard
+        env:
+          SEO_BASE_URL: http://127.0.0.1:3210
+          SEO_DYNAMIC_PATH: /sluzby/prevodovky
+        run: npx --yes tsx --test tests/seo.test.ts

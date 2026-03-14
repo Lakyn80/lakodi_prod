@@ -37,6 +37,8 @@ SECRET_SALT = "lakodi-admin-auth"
 TOKEN_TTL_SEC = 3600
 
 _pending_recovery: dict[str, tuple[str, float]] = {}
+_pending_login_challenges: dict[str, tuple[str, float]] = {}
+LOGIN_CHALLENGE_TTL_SEC = 180
 
 
 def _slug(s: str) -> str:
@@ -90,7 +92,9 @@ def _seed_admin():
 
 class LoginRequest(BaseModel):
     email: str
-    password: str
+    password: str | None = None
+    challenge_id: str | None = None
+    password_proof: str | None = None
 
 
 class RequestRecoveryRequest(BaseModel):
@@ -107,6 +111,17 @@ def _prune_expired():
     expired = [t for t, (_, ex) in _pending_recovery.items() if ex < now]
     for t in expired:
         del _pending_recovery[t]
+
+
+def _prune_login_challenges():
+    now = time.time()
+    expired = [token for token, (_, ex) in _pending_login_challenges.items() if ex < now]
+    for token in expired:
+        del _pending_login_challenges[token]
+
+
+def _build_login_proof(password: str, nonce: str) -> str:
+    return hashlib.sha256(f"{password}:{nonce}".encode("utf-8")).hexdigest()
 
 
 def _get_admin_user(db: Session):
@@ -152,6 +167,16 @@ def _set_auth_cookie(response: Response, token: str, request: Request):
     )
 
 
+@router.get("/login-challenge")
+def admin_login_challenge(response: Response):
+    _prune_login_challenges()
+    challenge_id = secrets.token_urlsafe(16)
+    nonce = secrets.token_urlsafe(32)
+    _pending_login_challenges[challenge_id] = (nonce, time.time() + LOGIN_CHALLENGE_TTL_SEC)
+    response.headers["Cache-Control"] = "no-store"
+    return {"challenge_id": challenge_id, "nonce": nonce}
+
+
 @router.post("/login")
 def admin_login(body: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     """Ověří email + heslo a nastaví session cookie s rolí."""
@@ -160,8 +185,23 @@ def admin_login(body: LoginRequest, response: Response, request: Request, db: Se
     except Exception:
         pass
     u = db.query(User).filter(User.email == body.email.strip().lower()).first()
-    if not u or not pwd_context.verify(body.password, u.password_hash):
+    if not u:
         raise HTTPException(status_code=401, detail="Nesprávný email nebo heslo")
+
+    password_ok = False
+    if body.password is not None:
+        password_ok = pwd_context.verify(body.password, u.password_hash)
+    elif body.challenge_id and body.password_proof:
+        _prune_login_challenges()
+        challenge = _pending_login_challenges.pop(body.challenge_id, None)
+        if challenge:
+            nonce, _ = challenge
+            expected = _build_login_proof(ADMIN_PASSWORD, nonce)
+            password_ok = hmac.compare_digest(body.password_proof.lower(), expected)
+
+    if not password_ok:
+        raise HTTPException(status_code=401, detail="Nesprávný email nebo heslo")
+
     if u.role != "admin":
         raise HTTPException(status_code=403, detail="Přístup odepřen")
     token = create_session(u.id, u.role)
@@ -174,7 +214,7 @@ def admin_request_recovery(body: RequestRecoveryRequest):
     if not is_email_configured():
         raise HTTPException(
             status_code=503,
-            detail="Email recovery není nakonfigurován (RESEND_API_KEY)",
+            detail="Email recovery není nakonfigurován (RESEND_API_KEY nebo SMTP)",
         )
     if not ADMIN_RECOVERY_EMAILS:
         raise HTTPException(

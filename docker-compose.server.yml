@@ -1,0 +1,48 @@
+services:
+  lakodi-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "127.0.0.1:6381:6379"
+
+  lakodi-backend:
+    image: ${DOCKERHUB_BE_REPO}:${DEPLOY_TAG}
+    restart: unless-stopped
+    depends_on:
+      - lakodi-redis
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/app.db}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/data/uploads}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://lakodi.cz,https://www.lakodi.cz}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_RECOVERY_TOKEN: ${ADMIN_RECOVERY_TOKEN:-}
+      ADMIN_RECOVERY_EMAILS: ${ADMIN_RECOVERY_EMAILS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      ADMIN_FROM_EMAIL: ${ADMIN_FROM_EMAIL:-Lakodi <noreply@lakodi.cz>}
+      ADMIN_RECOVERY_BASE_URL: ${ADMIN_RECOVERY_BASE_URL:-https://lakodi.cz}
+      ADMIN_COOKIE_SECURE: ${ADMIN_COOKIE_SECURE:-true}
+      REDIS_URL: ${REDIS_URL:-redis://lakodi-redis:6379/0}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-0}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-true}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:8016:8016"
+
+  lakodi-frontend:
+    image: ${DOCKERHUB_FE_REPO}:${DEPLOY_TAG}
+    restart: unless-stopped
+    depends_on:
+      - lakodi-backend
+    ports:
+      - "127.0.0.1:8090:8080"

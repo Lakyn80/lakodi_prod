@@ -33,39 +33,6 @@ export default function Header() {
     return () => window.removeEventListener("admin-auth-changed", checkAdmin);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    const timeoutMs = 5 * 60 * 1000;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const doLogout = () => {
-      fetch(adminApiUrl("/logout"), {
-        method: "POST",
-        credentials: "include",
-      }).finally(() => {
-        setIsAdmin(false);
-        window.dispatchEvent(new Event("admin-auth-changed"));
-        if (pathname.startsWith("/admin")) {
-          window.location.href = "/admin/login";
-        }
-      });
-    };
-
-    const resetTimer = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(doLogout, timeoutMs);
-    };
-
-    const events: Array<keyof WindowEventMap> = ["mousemove", "keydown", "click", "scroll", "touchstart"];
-    events.forEach((eventName) => window.addEventListener(eventName, resetTimer, { passive: true }));
-    resetTimer();
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      events.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
-    };
-  }, [isAdmin, pathname]);
-
   const navItems = [
     { label: t.nav.home, href: '/' },
     { label: t.nav.services, href: '/sluzby' },

@@ -35,6 +35,11 @@ const fallbackSlots: HomeGallerySlot[] = [
   { slot_index: 11, category: "Karoserie", image_path: "/services/karoserie-lakovani/renovace-mercedes-04.webp" },
 ];
 
+const initialSlots: HomeGallerySlot[] = fallbackSlots.map((slot) => ({
+  ...slot,
+  image_path: null,
+}));
+
 const uniqueCategories = (slots: HomeGallerySlot[]) => Array.from(new Set(slots.map((s) => s.category)));
 
 const slotImageSrc = (imagePath: string | null) =>
@@ -119,21 +124,21 @@ export default function Gallery() {
     : {};
   const categoryText = (value: string) =>
     categoryLabels[value as keyof typeof categoryLabels] ?? value;
-  const [slots, setSlots] = useState<HomeGallerySlot[]>(fallbackSlots);
+  const [slots, setSlots] = useState<HomeGallerySlot[]>(initialSlots);
   const [isAdmin, setIsAdmin] = useState(false);
   const [workingSlot, setWorkingSlot] = useState<number | null>(null);
   const [error, setError] = useState("");
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    fetch(galleryUrl("/home"), apiFetchOptions)
+    fetch(galleryUrl("/home"), { ...apiFetchOptions, cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d.slots) && d.slots.length > 0) {
           setSlots(d.slots);
         }
       })
-      .catch(() => setSlots(fallbackSlots));
+      .catch(() => setSlots(initialSlots));
 
     const checkAdmin = () => {
       fetch(adminApiUrl("/check"), apiFetchOptions)

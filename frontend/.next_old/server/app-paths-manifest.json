@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
+  "/sitemap.xml/route": "app/sitemap.xml/route.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
+  "/icon.png/route": "app/icon.png/route.js",
+  "/sluzby/[slug]/page": "app/sluzby/[slug]/page.js",
+  "/page": "app/page.js",
+  "/sluzby/page": "app/sluzby/page.js",
+  "/admin/kalendar/page": "app/admin/kalendar/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/admin/recover/page": "app/admin/recover/page.js",
+  "/admin/zakazky/[id]/page": "app/admin/zakazky/[id]/page.js",
+  "/kontakt/page": "app/kontakt/page.js",
+  "/galerie/page": "app/galerie/page.js"
+}

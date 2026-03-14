@@ -116,6 +116,11 @@ const parseDateEnd = (value: string) => {
   return Number.isFinite(time) ? time : null;
 };
 
+const getDisplayOrderNumber = (z: Zakazka) => {
+  const custom = String(z.answers?.admin_order_number ?? "").trim();
+  return custom || String(z.id);
+};
+
 function Pagination({
   currentPage,
   totalPages,
@@ -561,6 +566,7 @@ export default function AdminPage() {
                 >
                   <p className="font-medium text-foreground">{z.name}</p>
                   <p className="text-sm text-muted-foreground">{z.category}</p>
+                  <p className="text-xs text-muted-foreground">Číslo objednávky: {getDisplayOrderNumber(z)}</p>
                   <p className="text-xs text-muted-foreground">Stav: {z.status}</p>
                 </Link>
               ))
@@ -586,6 +592,7 @@ export default function AdminPage() {
                 >
                   <p className="font-medium text-foreground">{z.name}</p>
                   <p className="text-sm text-muted-foreground">{z.category}</p>
+                  <p className="text-xs text-muted-foreground">Číslo objednávky: {getDisplayOrderNumber(z)}</p>
                   <p className="text-xs text-muted-foreground">Stav: {z.status}</p>
                 </Link>
               ))

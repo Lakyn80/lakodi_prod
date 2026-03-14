@@ -1,0 +1,5 @@
+User-Agent: *
+Allow: /
+
+Host: https://lakodi.cz
+Sitemap: https://lakodi.cz/sitemap.xml

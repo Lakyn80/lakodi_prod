@@ -78,12 +78,14 @@ export default function ServiceDetailPage({ service }: { service: Service }) {
   const contentLanguage = language;
   const [isAdmin, setIsAdmin] = useState(false);
   const [itemMedia, setItemMedia] = useState<Record<string, string[]>>({});
+  const [mediaLoaded, setMediaLoaded] = useState(false);
   const [workingItem, setWorkingItem] = useState<string | null>(null);
   const [error, setError] = useState("");
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    fetch(galleryUrl(`/service/${service.slug}`), apiFetchOptions)
+    setMediaLoaded(false);
+    fetch(galleryUrl(`/service/${service.slug}`), { ...apiFetchOptions, cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.items && typeof d.items === "object") {
@@ -92,7 +94,8 @@ export default function ServiceDetailPage({ service }: { service: Service }) {
           setItemMedia({});
         }
       })
-      .catch(() => setItemMedia({}));
+      .catch(() => setItemMedia({}))
+      .finally(() => setMediaLoaded(true));
 
     const checkAdmin = () => {
       fetch(adminApiUrl("/check"), apiFetchOptions)
@@ -108,7 +111,11 @@ export default function ServiceDetailPage({ service }: { service: Service }) {
   const mediaSrc = (path: string) => (path.startsWith("/") ? path : uploadsUrl(path));
   const isVideoPath = (path: string) => /\.(mp4|webm|ogg|mov|m4v)$/i.test(path.split("?")[0] || "");
 
-  const getMediaList = (itemId: string, fallback: string[]) => itemMedia[itemId] ?? fallback;
+  const getMediaList = (itemId: string, fallback: string[]) => {
+    if (itemMedia[itemId] !== undefined) return itemMedia[itemId];
+    if (!mediaLoaded) return [];
+    return fallback;
+  };
 
   const handleUpload = async (itemId: string, fallback: string[], e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

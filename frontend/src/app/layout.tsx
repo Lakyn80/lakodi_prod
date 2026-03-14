@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import Layout from "@/components/layout/Layout";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:8080";
+import { CANONICAL_HOST, toCanonicalUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(CANONICAL_HOST),
   themeColor: "#000000",
   appleWebApp: {
     capable: true,
@@ -14,8 +13,13 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/logo/logo_lakodi_3d_A.png",
-    apple: "/logo/logo_lakodi_3d_A.png",
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   title: {
     default: "Lakodi autoservis",
@@ -28,9 +32,23 @@ export const metadata: Metadata = {
     description:
       "Rychlý a férový autoservis v Praze Uhříněvsi. Diagnostika, opravy, servis a klimatizace.",
     type: "website",
+    url: toCanonicalUrl("/"),
+    siteName: "Lakodi autoservis",
+    images: [
+      {
+        url: toCanonicalUrl("/og-image.jpg"),
+        width: 1200,
+        height: 630,
+        alt: "Lakodi autoservis logo",
+      },
+    ],
   },
-  alternates: {
-    canonical: "/",
+  twitter: {
+    card: "summary_large_image",
+    title: "Lakodi autoservis",
+    description:
+      "Rychlý a férový autoservis v Praze Uhříněvsi. Diagnostika, opravy, servis a klimatizace.",
+    images: [toCanonicalUrl("/twitter-image.jpg")],
   },
   robots: {
     index: true,

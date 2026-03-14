@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:8080";
+import { CANONICAL_HOST, toCanonicalUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -10,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    host: CANONICAL_HOST,
+    sitemap: toCanonicalUrl("/sitemap.xml"),
   };
 }

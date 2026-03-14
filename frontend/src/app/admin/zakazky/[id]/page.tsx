@@ -26,6 +26,8 @@ interface Zakazka {
 }
 
 const STATUS_OPTIONS = ["poptávka", "odeslaná nabídka", "potvrzená objednávka", "hotovo"] as const;
+const getAnswerValue = (answers: Record<string, string> | undefined, key: string) =>
+  String(answers?.[key] ?? "");
 
 export default function ZakazkaDetailPage() {
   const params = useParams();
@@ -42,6 +44,9 @@ export default function ZakazkaDetailPage() {
   const [repairDescription, setRepairDescription] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [preferredDate, setPreferredDate] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [message, setMessage] = useState("");
 
@@ -64,6 +69,9 @@ export default function ZakazkaDetailPage() {
         setRepairDescription(d.repair_description || "");
         setEstimatedPrice(d.estimated_price != null ? String(d.estimated_price) : "");
         setFinalPrice(d.final_price != null ? String(d.final_price) : "");
+        setOrderNumber(getAnswerValue(d.answers, "admin_order_number"));
+        setPreferredDate(getAnswerValue(d.answers, "preferred_date"));
+        setPreferredTime(getAnswerValue(d.answers, "preferred_time"));
       })
       .catch(() => setZakazka(null))
       .finally(() => setLoading(false));
@@ -94,6 +102,9 @@ export default function ZakazkaDetailPage() {
           repair_description: repairDescription,
           estimated_price: estimatedPrice.trim() ? Number(estimatedPrice) : null,
           final_price: finalPrice.trim() ? Number(finalPrice) : null,
+          admin_order_number: orderNumber,
+          preferred_date: preferredDate,
+          preferred_time: preferredTime,
         }),
       });
       if (!res.ok) {
@@ -107,6 +118,9 @@ export default function ZakazkaDetailPage() {
       setRepairDescription(data.repair_description || "");
       setEstimatedPrice(data.estimated_price != null ? String(data.estimated_price) : "");
       setFinalPrice(data.final_price != null ? String(data.final_price) : "");
+      setOrderNumber(getAnswerValue(data.answers, "admin_order_number"));
+      setPreferredDate(getAnswerValue(data.answers, "preferred_date"));
+      setPreferredTime(getAnswerValue(data.answers, "preferred_time"));
       setMessage("Uloženo.");
       const wa = await fetch(zakazkyUrl(`/${id}/whatsapp-link`), apiFetchOptions).then((r) =>
         r.ok ? r.json() : null
@@ -159,6 +173,7 @@ export default function ZakazkaDetailPage() {
       </div>
     );
   }
+  const displayOrderNumber = orderNumber.trim() || String(zakazka.id);
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -168,7 +183,7 @@ export default function ZakazkaDetailPage() {
       </Link>
 
       <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6">
-        <h1 className="mb-6 text-2xl font-bold text-foreground">Zakázka #{zakazka.id}</h1>
+        <h1 className="mb-6 text-2xl font-bold text-foreground">Zakázka #{displayOrderNumber}</h1>
 
         <dl className="space-y-3">
           <div>
@@ -211,6 +226,32 @@ export default function ZakazkaDetailPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">Číslo objednávky</label>
+            <input
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={orderNumber}
+              onChange={(e) => setOrderNumber(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">Datum termínu</label>
+            <input
+              type="date"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={preferredDate}
+              onChange={(e) => setPreferredDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">Čas termínu</label>
+            <input
+              type="time"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              value={preferredTime}
+              onChange={(e) => setPreferredTime(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium text-muted-foreground">Předběžná cena (Kč)</label>
