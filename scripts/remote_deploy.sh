@@ -23,7 +23,7 @@ done
 read_env_value() {
   local env_file="$1"
   local env_key="$2"
-  grep -E "^${env_key}=" "${env_file}" | tail -n 1 | cut -d'=' -f2- || true
+  grep -E "^${env_key}=" "${env_file}" | tail -n 1 | cut -d'=' -f2- | tr -d '\r' || true
 }
 
 update_env_value() {
