@@ -101,6 +101,8 @@ def _send_email(
     html: str,
     attachments: Sequence[EmailAttachment] | None = None,
 ) -> bool:
+    if _is_smtp_configured():
+        return _send_email_smtp(to_email, subject, html, attachments)
     if RESEND_API_KEY:
         try:
             import resend  # type: ignore
