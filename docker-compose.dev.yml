@@ -43,6 +43,7 @@ services:
       - lakodi-redis
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8016}
+      API_INTERNAL_URL: http://lakodi-backend-dev:8016
     ports:
       - "8090:8080"
     volumes:

@@ -1,6 +1,9 @@
 import path from "node:path";
 
-const apiTarget = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8016";
+const apiTarget =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:8016";
 let apiRemotePattern = null;
 try {
   const parsedApiTarget = new URL(apiTarget);

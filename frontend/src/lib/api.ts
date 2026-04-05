@@ -1,4 +1,4 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8016";
+export const API_BASE = "";
 
 export function zakazkyUrl(path = "") {
   return `${API_BASE}/api/zakazky${path}`;
