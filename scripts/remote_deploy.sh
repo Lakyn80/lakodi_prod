@@ -5,6 +5,7 @@ APP_DIR="${1:?Zadejte cílový adresář aplikace.}"
 ENV_FILE="${2:-.env}"
 COMPOSE_FILES="${3:-docker-compose.yml:docker-compose.prod.yml}"
 NEW_IMAGE_TAG="${IMAGE_TAG:?Zadejte IMAGE_TAG pro deploy.}"
+unset IMAGE_TAG
 
 cd "${APP_DIR}"
 
