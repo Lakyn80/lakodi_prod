@@ -29,7 +29,6 @@ jobs:
       frontend_image: ${{ steps.context.outputs.frontend_image }}
       publish_latest: ${{ steps.context.outputs.publish_latest }}
       head_sha: ${{ steps.context.outputs.head_sha }}
-      secret_prefix: ${{ steps.context.outputs.secret_prefix }}
     steps:
       - id: context
         shell: bash
@@ -41,10 +40,8 @@ jobs:
 
           if [[ "${branch}" == "develop" ]]; then
             branch_tag="develop"
-            secret_prefix="STAGING"
           elif [[ "${branch}" == "main" ]]; then
             branch_tag="main"
-            secret_prefix="PRODUCTION"
             publish_latest="true"
           else
             echo "Nepodporovaná branch ${branch}." >&2
@@ -58,7 +55,6 @@ jobs:
             echo "frontend_image=ghcr.io/${owner}/lakodi-frontend"
             echo "publish_latest=${publish_latest}"
             echo "head_sha=${{ github.event.workflow_run.head_sha }}"
-            echo "secret_prefix=${secret_prefix}"
           } >> "${GITHUB_OUTPUT}"
 
   build-backend-image:
@@ -152,7 +148,7 @@ jobs:
 
       - name: Build a push frontend image
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets[format('{0}_NEXT_PUBLIC_API_URL', needs.determine-context.outputs.secret_prefix)] }}
+          NEXT_PUBLIC_API_URL: https://${{ secrets.SERVER_HOST }}
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
@@ -187,9 +183,9 @@ jobs:
         shell: bash
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets[format('{0}_SERVER_SSH_PRIVATE_KEY', needs.determine-context.outputs.secret_prefix)] }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets[format('{0}_SERVER_SSH_KNOWN_HOSTS', needs.determine-context.outputs.secret_prefix)] }}" > ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
       - name: Příprava deploy bundle
@@ -200,37 +196,29 @@ jobs:
           cp docker-compose.prod.yml .deploy/docker-compose.prod.yml
           cp scripts/remote_deploy.sh .deploy/remote_deploy.sh
           chmod +x .deploy/remote_deploy.sh
-          printf '%s' "${{ secrets[format('{0}_SERVER_ENV_FILE', needs.determine-context.outputs.secret_prefix)] }}" > .deploy/.env.prod
 
       - name: Nahrání souborů na server
         shell: bash
         env:
-          SERVER_HOST: ${{ secrets[format('{0}_SERVER_SSH_HOST', needs.determine-context.outputs.secret_prefix)] }}
-          SERVER_PORT: ${{ secrets[format('{0}_SERVER_SSH_PORT', needs.determine-context.outputs.secret_prefix)] }}
-          SERVER_USER: ${{ secrets[format('{0}_SERVER_SSH_USER', needs.determine-context.outputs.secret_prefix)] }}
-          SERVER_PATH: ${{ secrets[format('{0}_SERVER_PATH', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PATH: /home/lucky/projects/apps/lakodi
         run: |
-          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "mkdir -p '${SERVER_PATH}' '${SERVER_PATH}/scripts'"
-          scp -P "${SERVER_PORT}" .deploy/docker-compose.yml "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/docker-compose.yml"
-          scp -P "${SERVER_PORT}" .deploy/docker-compose.prod.yml "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/docker-compose.prod.yml"
-          scp -P "${SERVER_PORT}" .deploy/.env.prod "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/.env.prod"
-          scp -P "${SERVER_PORT}" .deploy/remote_deploy.sh "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/scripts/remote_deploy.sh"
-          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "chmod 755 '${SERVER_PATH}/scripts/remote_deploy.sh'"
+          ssh "${SERVER_USER}@${SERVER_HOST}" "mkdir -p '${SERVER_PATH}' '${SERVER_PATH}/scripts'"
+          scp .deploy/docker-compose.yml "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/docker-compose.yml"
+          scp .deploy/docker-compose.prod.yml "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/docker-compose.prod.yml"
+          scp .deploy/remote_deploy.sh "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/scripts/remote_deploy.sh"
+          ssh "${SERVER_USER}@${SERVER_HOST}" "chmod 755 '${SERVER_PATH}/scripts/remote_deploy.sh'"
 
       - name: Spuštění deploye
         shell: bash
         env:
-          SERVER_HOST: ${{ secrets[format('{0}_SERVER_SSH_HOST', needs.determine-context.outputs.secret_prefix)] }}
-          SERVER_PORT: ${{ secrets[format('{0}_SERVER_SSH_PORT', needs.determine-context.outputs.secret_prefix)] }}
-          SERVER_USER: ${{ secrets[format('{0}_SERVER_SSH_USER', needs.determine-context.outputs.secret_prefix)] }}
-          SERVER_PATH: ${{ secrets[format('{0}_SERVER_PATH', needs.determine-context.outputs.secret_prefix)] }}
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PATH: /home/lucky/projects/apps/lakodi
           IMAGE_TAG: ${{ needs.determine-context.outputs.image_tag }}
         run: |
-          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+          ssh "${SERVER_USER}@${SERVER_HOST}" \
             "cd '${SERVER_PATH}' && \
-             export GHCR_USERNAME='${GHCR_USERNAME}' && \
-             export GHCR_TOKEN='${GHCR_TOKEN}' && \
              export IMAGE_TAG='${IMAGE_TAG}' && \
              bash scripts/remote_deploy.sh '${SERVER_PATH}' '.env.prod' 'docker-compose.yml:docker-compose.prod.yml'"
