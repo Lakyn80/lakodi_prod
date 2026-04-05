@@ -1,6 +1,6 @@
 services:
   lakodi-backend:
-    image: ${BACKEND_IMAGE:?Zadejte BACKEND_IMAGE}:${IMAGE_TAG:?Zadejte IMAGE_TAG}
+    image: ${BACKEND_IMAGE:-ghcr.io/lakyn80/lakodi-backend}:${IMAGE_TAG:?Zadejte IMAGE_TAG}
     pull_policy: always
     restart: unless-stopped
     depends_on:
@@ -20,7 +20,7 @@ services:
       - "127.0.0.1:${BACKEND_BIND_PORT:-8016}:8016"
 
   lakodi-frontend:
-    image: ${FRONTEND_IMAGE:?Zadejte FRONTEND_IMAGE}:${IMAGE_TAG:?Zadejte IMAGE_TAG}
+    image: ${FRONTEND_IMAGE:-ghcr.io/lakyn80/lakodi-frontend}:${IMAGE_TAG:?Zadejte IMAGE_TAG}
     pull_policy: always
     restart: unless-stopped
     depends_on:
