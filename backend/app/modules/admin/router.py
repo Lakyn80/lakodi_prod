@@ -53,8 +53,8 @@ def _make_legacy_token() -> str:
     ).hexdigest()
 
 
-def _seed_admin():
-    """Zajistí, že admin z env (ADMIN_EMAIL + ADMIN_PASSWORD) vždy existuje a funguje."""
+def _seed_admin(*, sync_password: bool = True):
+    """Zajistí, že admin z env vždy existuje a při startupu lze synchronizovat heslo z env."""
     from backend.app.db import SessionLocal
     db = SessionLocal()
     try:
@@ -65,9 +65,16 @@ def _seed_admin():
             if u.role != "admin":
                 u.role = "admin"
                 changed = True
-            if not u.password_hash:
-                u.password_hash = pwd_context.hash(ADMIN_PASSWORD)
-                changed = True
+            if sync_password:
+                password_matches = False
+                if u.password_hash:
+                    try:
+                        password_matches = pwd_context.verify(ADMIN_PASSWORD, u.password_hash)
+                    except Exception:
+                        password_matches = False
+                if not password_matches:
+                    u.password_hash = pwd_context.hash(ADMIN_PASSWORD)
+                    changed = True
             if changed:
                 db.commit()
         elif db.query(User).count() == 0:
@@ -181,7 +188,7 @@ def admin_login_challenge(response: Response):
 def admin_login(body: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     """Ověří email + heslo a nastaví session cookie s rolí."""
     try:
-        _seed_admin()
+        _seed_admin(sync_password=False)
     except Exception:
         pass
     u = db.query(User).filter(User.email == body.email.strip().lower()).first()
@@ -234,7 +241,7 @@ def admin_request_recovery(body: RequestRecoveryRequest):
 
 @router.get("/recover")
 def admin_recover(token: str, response: Response, request: Request, db: Session = Depends(get_db)):
-    _seed_admin()
+    _seed_admin(sync_password=False)
     email = _consume_recovery_email(token, db)
     if email:
         u = db.query(User).filter(User.email == email).first()
@@ -247,7 +254,7 @@ def admin_recover(token: str, response: Response, request: Request, db: Session 
 
 @router.post("/recover/reset")
 def admin_recover_reset(body: ResetRecoveryPasswordRequest, db: Session = Depends(get_db)):
-    _seed_admin()
+    _seed_admin(sync_password=False)
     token = body.token.strip()
     password = body.password.strip()
     if not token:

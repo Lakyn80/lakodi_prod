@@ -64,3 +64,41 @@ def test_recovery_reset_changes_password_and_allows_login():
         json={"email": email, "password": original_password},
     )
     assert restored_login.status_code == 200
+
+
+def test_seed_admin_syncs_existing_admin_password(monkeypatch):
+    email = admin_router.ADMIN_EMAIL.strip().lower()
+    original_password = admin_router.ADMIN_PASSWORD
+    replacement_password = "SynchronizovaneHeslo123!"
+    if replacement_password == original_password:
+        replacement_password = "SynchronizovaneHeslo456!"
+
+    first_login = client.post(
+        "/api/admin/login",
+        json={"email": email, "password": original_password},
+    )
+    assert first_login.status_code == 200
+
+    monkeypatch.setattr(admin_router, "ADMIN_PASSWORD", replacement_password)
+    admin_router._seed_admin()
+
+    old_login = client.post(
+        "/api/admin/login",
+        json={"email": email, "password": original_password},
+    )
+    assert old_login.status_code == 401
+
+    new_login = client.post(
+        "/api/admin/login",
+        json={"email": email, "password": replacement_password},
+    )
+    assert new_login.status_code == 200
+
+    monkeypatch.setattr(admin_router, "ADMIN_PASSWORD", original_password)
+    admin_router._seed_admin()
+
+    restored_login = client.post(
+        "/api/admin/login",
+        json={"email": email, "password": original_password},
+    )
+    assert restored_login.status_code == 200
