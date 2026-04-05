@@ -221,4 +221,4 @@ jobs:
           ssh "${SERVER_USER}@${SERVER_HOST}" \
             "cd '${SERVER_PATH}' && \
              export IMAGE_TAG='${IMAGE_TAG}' && \
-             bash scripts/remote_deploy.sh '${SERVER_PATH}' '.env.prod' 'docker-compose.yml:docker-compose.prod.yml'"
+             bash scripts/remote_deploy.sh '${SERVER_PATH}' '' 'docker-compose.yml:docker-compose.prod.yml'"

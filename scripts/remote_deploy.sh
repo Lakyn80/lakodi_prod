@@ -2,13 +2,21 @@
 set -Eeuo pipefail
 
 APP_DIR="${1:?Zadejte cílový adresář aplikace.}"
-ENV_FILE="${2:-.env.prod}"
+ENV_FILE="${2:-}"
 COMPOSE_FILES="${3:-docker-compose.yml:docker-compose.prod.yml}"
 NEW_IMAGE_TAG="${IMAGE_TAG:?Zadejte IMAGE_TAG pro deploy.}"
 
 cd "${APP_DIR}"
 
-if [[ ! -f "${ENV_FILE}" ]]; then
+if [[ -z "${ENV_FILE}" ]]; then
+  if [[ -f ".env.prod" ]]; then
+    ENV_FILE=".env.prod"
+  elif [[ -f ".env" ]]; then
+    ENV_FILE=".env"
+  fi
+fi
+
+if [[ -z "${ENV_FILE}" || ! -f "${ENV_FILE}" ]]; then
   echo "Chybí env soubor ${ENV_FILE}." >&2
   exit 1
 fi
@@ -77,10 +85,6 @@ wait_for_url() {
 previous_tag="$(read_env_value "${ENV_FILE}" "IMAGE_TAG")"
 backend_health_url="$(read_env_value "${ENV_FILE}" "BACKEND_HEALTHCHECK_URL")"
 frontend_health_url="$(read_env_value "${ENV_FILE}" "FRONTEND_HEALTHCHECK_URL")"
-
-if [[ -n "${GHCR_USERNAME:-}" && -n "${GHCR_TOKEN:-}" ]]; then
-  printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
-fi
 
 cp "${ENV_FILE}" "${ENV_FILE}.bak"
 update_env_value "${ENV_FILE}" "PREVIOUS_IMAGE_TAG" "${previous_tag}"
