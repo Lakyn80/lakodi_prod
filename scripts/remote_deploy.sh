@@ -2,21 +2,13 @@
 set -Eeuo pipefail
 
 APP_DIR="${1:?Zadejte cílový adresář aplikace.}"
-ENV_FILE="${2:-}"
+ENV_FILE="${2:-.env}"
 COMPOSE_FILES="${3:-docker-compose.yml:docker-compose.prod.yml}"
 NEW_IMAGE_TAG="${IMAGE_TAG:?Zadejte IMAGE_TAG pro deploy.}"
 
 cd "${APP_DIR}"
 
-if [[ -z "${ENV_FILE}" ]]; then
-  if [[ -f ".env.prod" ]]; then
-    ENV_FILE=".env.prod"
-  elif [[ -f ".env" ]]; then
-    ENV_FILE=".env"
-  fi
-fi
-
-if [[ -z "${ENV_FILE}" || ! -f "${ENV_FILE}" ]]; then
+if [[ ! -f "${ENV_FILE}" ]]; then
   echo "Chybí env soubor ${ENV_FILE}." >&2
   exit 1
 fi
