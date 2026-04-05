@@ -1,0 +1,31 @@
+services:
+  lakodi-backend:
+    image: ${BACKEND_IMAGE:?Zadejte BACKEND_IMAGE}:${IMAGE_TAG:?Zadejte IMAGE_TAG}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      - lakodi-redis
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/app.db}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/data/uploads}
+      REDIS_URL: ${REDIS_URL:-redis://lakodi-redis:6379/0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://lakodi.cz,https://www.lakodi.cz}
+      ADMIN_COOKIE_SECURE: ${ADMIN_COOKIE_SECURE:-true}
+      ARES_PROVIDER: ${ARES_PROVIDER:-real}
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:${BACKEND_BIND_PORT:-8016}:8016"
+
+  lakodi-frontend:
+    image: ${FRONTEND_IMAGE:?Zadejte FRONTEND_IMAGE}:${IMAGE_TAG:?Zadejte IMAGE_TAG}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      - lakodi-backend
+    env_file:
+      - .env.prod
+    ports:
+      - "127.0.0.1:${FRONTEND_BIND_PORT:-8090}:8080"

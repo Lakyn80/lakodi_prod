@@ -48,6 +48,7 @@ def init_db():
     from backend.app.modules.zakazky import models  # noqa: F401
     from backend.app.modules.auth import models as auth_models  # noqa: F401
     from backend.app.modules.gallery import models as gallery_models  # noqa: F401
+    from backend.app.modules.invoices import models as invoice_models  # noqa: F401
 
     db_path = DATABASE_URL.replace("sqlite:///", "")
     if db_path:

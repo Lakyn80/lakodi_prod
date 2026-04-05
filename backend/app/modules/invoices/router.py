@@ -1,0 +1,158 @@
+"""API administrace pro faktury."""
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from sqlalchemy.orm import Session
+
+from backend.app.db import get_db
+from backend.app.modules.admin.router import require_admin
+from backend.app.modules.invoices.ares_service import (
+    AresCompanyNotFoundError,
+    AresUnavailableError,
+    InvalidCompanyNameError,
+    InvalidIcoError,
+    resolve_ares_provider,
+    UnsupportedAresProviderError,
+    lookup_ares_company,
+    search_ares_companies,
+)
+from backend.app.modules.invoices.email_service import InvoiceEmailConfigurationError, InvoiceEmailSendError
+from backend.app.modules.invoices.pdf_service import InvoicePdfGenerationError
+from backend.app.modules.invoices.schemas import (
+    AresCompanyLookupResponse,
+    InvoiceCreate,
+    InvoiceDetailResponse,
+    InvoiceSendEmailRequest,
+    InvoiceSendEmailResponse,
+    InvoiceSummaryResponse,
+)
+from backend.app.modules.invoices.service import (
+    InvoiceNotFoundError,
+    InvoiceValidationError,
+    create_invoice,
+    generate_invoice_pdf,
+    get_invoice_detail,
+    list_invoices,
+    send_invoice_email,
+)
+
+router = APIRouter()
+
+
+@router.get("/ares/search", response_model=list[AresCompanyLookupResponse])
+def admin_search_companies_in_ares(
+    name: str = Query(...),
+    response: Response = None,
+    _: None = Depends(require_admin),
+):
+    try:
+        resolved_provider = resolve_ares_provider()
+        if response is not None:
+            response.headers["X-Ares-Provider"] = resolved_provider.mode
+        return search_ares_companies(name, provider=resolved_provider.provider)
+    except InvalidCompanyNameError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except UnsupportedAresProviderError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except AresUnavailableError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/ares/{ico}", response_model=AresCompanyLookupResponse)
+def admin_lookup_company_in_ares(
+    ico: str,
+    response: Response = None,
+    _: None = Depends(require_admin),
+):
+    try:
+        resolved_provider = resolve_ares_provider()
+        if response is not None:
+            response.headers["X-Ares-Provider"] = resolved_provider.mode
+        return lookup_ares_company(ico, provider=resolved_provider.provider)
+    except InvalidIcoError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except AresCompanyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except UnsupportedAresProviderError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except AresUnavailableError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post("", response_model=InvoiceDetailResponse)
+def admin_create_invoice(
+    body: InvoiceCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_invoice(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("", response_model=list[InvoiceSummaryResponse])
+def admin_list_invoices(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    return list_invoices(db)
+
+
+@router.get("/{invoice_id}/pdf")
+def admin_get_invoice_pdf(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        pdf_document = generate_invoice_pdf(db, invoice_id)
+        return Response(
+            content=pdf_document.content,
+            media_type=pdf_document.content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{pdf_document.filename}"',
+            },
+        )
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoicePdfGenerationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/{invoice_id}/send-email", response_model=InvoiceSendEmailResponse)
+def admin_send_invoice_email(
+    invoice_id: int,
+    body: InvoiceSendEmailRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        payload = body or InvoiceSendEmailRequest()
+        result = send_invoice_email(db, invoice_id, to_email=payload.to_email)
+        return {
+            "ok": True,
+            "invoice_id": result.invoice_id,
+            "invoice_number": result.invoice_number,
+            "sent_to": result.sent_to,
+        }
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoicePdfGenerationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except InvoiceEmailConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except InvoiceEmailSendError as exc:
+        detail = str(exc) or "Fakturu se nepodařilo odeslat e-mailem."
+        status_code = 400 if "chybí e-mailová adresa příjemce" in detail.lower() else 502
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+
+
+@router.get("/{invoice_id}", response_model=InvoiceDetailResponse)
+def admin_get_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_detail(db, invoice_id)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc

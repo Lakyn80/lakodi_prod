@@ -1,0 +1,48 @@
+# Environment files
+.env
+.env.dev
+.env.prod
+.env.staging
+.env.local
+.env.*.local
+!.env.example
+!.env.dev.example
+!.env.prod.example
+!.env.staging.example
+
+# Python cache and tooling
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node and build output
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+dist/
+
+# Local data and uploads
+data/app.db
+data/redis/
+data/uploads/
+
+# Local temp and scratch files
+cookies.txt
+ares_app.js
+ares_index.js
+ares_main.js
+.deploy/
+.deploy_tag
+*.log
+*.tmp
+*.bak

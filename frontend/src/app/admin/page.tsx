@@ -329,12 +329,20 @@ export default function AdminPage() {
     <div className="container mx-auto px-4 py-12">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-foreground">Administrace</h1>
-        <Link
-          href="/admin/kalendar"
-          className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:border-primary/50"
-        >
-          Kalendář rezervací
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/invoices"
+            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:border-primary/50"
+          >
+            Fakturace
+          </Link>
+          <Link
+            href="/admin/kalendar"
+            className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:border-primary/50"
+          >
+            Kalendář rezervací
+          </Link>
+        </div>
       </div>
 
       <section className="mb-6 rounded-xl border border-border bg-card p-4">

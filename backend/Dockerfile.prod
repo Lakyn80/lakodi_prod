@@ -3,10 +3,12 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
     libheif-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend /app/backend
+COPY frontend/public/logo/lakodi_logo_crena_pozadi.png /app/frontend/public/logo/lakodi_logo_crena_pozadi.png
 
 RUN pip install --no-cache-dir \
     fastapi \
@@ -14,9 +16,11 @@ RUN pip install --no-cache-dir \
     python-multipart \
     pillow \
     pillow-heif \
+    reportlab \
     sqlalchemy \
     resend \
     passlib \
+    redis \
     "bcrypt==4.0.1"
 
 EXPOSE 8016

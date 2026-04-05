@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import Layout from "@/components/layout/Layout";
+import PwaRegister from "@/components/PwaRegister";
 import { CANONICAL_HOST, toCanonicalUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_HOST),
-  themeColor: "#000000",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "Lakodi",
@@ -56,15 +57,19 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#000000",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="cs">
       <body className="min-h-screen antialiased">
         <Providers>
+          <PwaRegister />
           <Layout>{children}</Layout>
         </Providers>
       </body>
     </html>
   );
 }
-

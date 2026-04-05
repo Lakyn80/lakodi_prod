@@ -1,7 +1,12 @@
-"""Odesílání recovery emailů přes Resend API."""
+"""Odesílání admin a transakčních emailů přes Resend API nebo SMTP."""
+from __future__ import annotations
+
+import base64
 import os
 import smtplib
 import ssl
+from collections.abc import Sequence
+from dataclasses import dataclass
 from email.message import EmailMessage
 from email.utils import parseaddr
 
@@ -16,6 +21,13 @@ SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "true").strip().lower() in {"1", "true"
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
+@dataclass(frozen=True)
+class EmailAttachment:
+    filename: str
+    content: bytes
+    content_type: str = "application/octet-stream"
+
+
 def _is_smtp_configured() -> bool:
     return bool(SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD)
 
@@ -24,20 +36,52 @@ def is_email_configured() -> bool:
     return bool(RESEND_API_KEY) or _is_smtp_configured()
 
 
-def _send_email_smtp(to_email: str, subject: str, html: str) -> bool:
+def _build_email_message(
+    to_email: str,
+    subject: str,
+    html: str,
+    attachments: Sequence[EmailAttachment] | None = None,
+) -> EmailMessage:
+    message = EmailMessage()
+    message["From"] = FROM_EMAIL
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content("Tato zpráva obsahuje HTML verzi.")
+    message.add_alternative(html, subtype="html")
+
+    for attachment in attachments or ():
+        maintype, _, subtype = attachment.content_type.partition("/")
+        if not maintype or not subtype:
+            maintype, subtype = "application", "octet-stream"
+        message.add_attachment(
+            attachment.content,
+            maintype=maintype,
+            subtype=subtype,
+            filename=attachment.filename,
+        )
+
+    return message
+
+
+def _send_email_smtp(
+    to_email: str,
+    subject: str,
+    html: str,
+    attachments: Sequence[EmailAttachment] | None = None,
+) -> bool:
     if not _is_smtp_configured():
         return False
     try:
         from_addr = parseaddr(FROM_EMAIL)[1] or SMTP_USER
-        message = EmailMessage()
-        message["From"] = FROM_EMAIL
-        message["To"] = to_email
-        message["Subject"] = subject
-        message.set_content("Tato zpráva obsahuje HTML verzi.")
-        message.add_alternative(html, subtype="html")
+        message = _build_email_message(to_email, subject, html, attachments)
 
         if SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20, context=ssl.create_default_context()) as server:
+            with smtplib.SMTP_SSL(
+                SMTP_HOST,
+                SMTP_PORT,
+                timeout=20,
+                context=ssl.create_default_context(),
+            ) as server:
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(message, from_addr=from_addr, to_addrs=[to_email])
         else:
@@ -51,21 +95,47 @@ def _send_email_smtp(to_email: str, subject: str, html: str) -> bool:
         return False
 
 
-def _send_email(to_email: str, subject: str, html: str) -> bool:
+def _send_email(
+    to_email: str,
+    subject: str,
+    html: str,
+    attachments: Sequence[EmailAttachment] | None = None,
+) -> bool:
     if RESEND_API_KEY:
         try:
             import resend  # type: ignore
+
             resend.api_key = RESEND_API_KEY
-            resend.Emails.send({
+            payload = {
                 "from": FROM_EMAIL,
                 "to": [to_email],
                 "subject": subject,
                 "html": html,
-            })
+            }
+            if attachments:
+                payload["attachments"] = [
+                    {
+                        "filename": attachment.filename,
+                        "content": base64.b64encode(attachment.content).decode("ascii"),
+                    }
+                    for attachment in attachments
+                ]
+            resend.Emails.send(payload)
             return True
         except Exception:
             pass
-    return _send_email_smtp(to_email, subject, html)
+    return _send_email_smtp(to_email, subject, html, attachments)
+
+
+def send_html_email(
+    to_email: str,
+    subject: str,
+    html: str,
+    attachments: Sequence[EmailAttachment] | None = None,
+) -> bool:
+    """Public helper for sending arbitrary HTML emails via configured provider."""
+
+    return _send_email(to_email, subject, html, attachments)
 
 
 def send_recovery_email(to_email: str, token: str) -> bool:
@@ -81,7 +151,7 @@ def send_recovery_email(to_email: str, token: str) -> bool:
     <p>Odkaz je platný 1 hodinu. Pokud jste o něj nepožádali, tento email ignorujte.</p>
     <p>— Lakodi</p>
     """
-    return _send_email(to_email, "Přihlášení do administrace Lakodi", html)
+    return send_html_email(to_email, "Přihlášení do administrace Lakodi", html)
 
 
 def send_booking_confirmation_email(to_email: str, name: str, zakazka_id: int) -> bool:
@@ -91,7 +161,7 @@ def send_booking_confirmation_email(to_email: str, name: str, zakazka_id: int) -
     <p>Brzy se vám ozveme s dalšími informacemi.</p>
     <p>— Lakodi autoservis</p>
     """
-    return _send_email(to_email, f"Potvrzení poptávky #{zakazka_id}", html)
+    return send_html_email(to_email, f"Potvrzení poptávky #{zakazka_id}", html)
 
 
 def send_booking_update_email(
@@ -120,4 +190,4 @@ def send_booking_update_email(
     <p><strong>Konečná cena:</strong> {final}</p>
     <p>— Lakodi autoservis</p>
     """
-    return _send_email(to_email, f"Aktualizace zakázky {display_number}", html)
+    return send_html_email(to_email, f"Aktualizace zakázky {display_number}", html)

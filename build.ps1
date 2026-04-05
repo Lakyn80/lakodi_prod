@@ -48,11 +48,11 @@ function Require-EnvValue {
   return $Map[$Key]
 }
 
-if (-not (Test-Path ".env")) {
-  throw "Missing .env in project root."
+if (-not (Test-Path ".env.prod")) {
+  throw "Missing .env.prod in project root."
 }
 
-$envMap = Read-EnvFile -Path ".env"
+$envMap = Read-EnvFile -Path ".env.prod"
 
 $dockerHubFrontendRepo = Require-EnvValue -Map $envMap -Key "DOCKERHUB_FE_REPO"
 $dockerHubBackendRepo = Require-EnvValue -Map $envMap -Key "DOCKERHUB_BE_REPO"
@@ -101,10 +101,12 @@ if (Test-Path $tmpDir) {
 New-Item -ItemType Directory -Path $tmpDir | Out-Null
 
 $tmpCompose = Join-Path $tmpDir "docker-compose.yml"
+$tmpComposeProd = Join-Path $tmpDir "docker-compose.prod.yml"
 $tmpEnv = Join-Path $tmpDir ".env"
 
-Copy-Item -Path "docker-compose.server.yml" -Destination $tmpCompose -Force
-Copy-Item -Path ".env" -Destination $tmpEnv -Force
+Copy-Item -Path "docker-compose.yml" -Destination $tmpCompose -Force
+Copy-Item -Path "docker-compose.prod.yml" -Destination $tmpComposeProd -Force
+Copy-Item -Path ".env.prod" -Destination $tmpEnv -Force
 
 $envLines = Get-Content -Path $tmpEnv
 $updated = $false
@@ -132,6 +134,7 @@ Invoke-Cmd -FilePath "ssh" -Arguments ($sshArgs + @(
 
 Invoke-Cmd -FilePath "scp" -Arguments ($sshArgs + @(
   $tmpCompose,
+  $tmpComposeProd,
   $tmpEnv,
   ("{0}:{1}/" -f $sshTarget, $deployServerPath)
 ))
@@ -139,8 +142,8 @@ Invoke-Cmd -FilePath "scp" -Arguments ($sshArgs + @(
 $remoteDeploy = @"
 set -e
 cd $deployServerPath
-docker compose pull
-docker compose up -d --remove-orphans
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose --env-file .env -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 docker image prune -f
 "@
 

@@ -1,34 +1,13 @@
+name: ${COMPOSE_PROJECT_NAME:-lakodi}
+
 services:
-  lakodi-all:
-    image: lakodi-all:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/app.db}
-      - UPLOAD_DIR=${UPLOAD_DIR:-/app/data/uploads}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8016}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080,http://localhost:8090,http://localhost:3000}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-lakodi@seznam.cz}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - ADMIN_RECOVERY_TOKEN=${ADMIN_RECOVERY_TOKEN:-}
-      - ADMIN_RECOVERY_EMAILS=${ADMIN_RECOVERY_EMAILS:-}
-      - RESEND_API_KEY=${RESEND_API_KEY:-}
-      - ADMIN_FROM_EMAIL=${ADMIN_FROM_EMAIL:-Lakodi <onboarding@resend.dev>}
-      - ADMIN_RECOVERY_BASE_URL=${ADMIN_RECOVERY_BASE_URL:-http://localhost:8090}
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-0}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - SMTP_USE_SSL=${SMTP_USE_SSL:-true}
-      - SMTP_USE_TLS=${SMTP_USE_TLS:-false}
-    ports:
-      - "8016:8016"
-      - "8090:8080"
-      - "6381:6379"
+  lakodi-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
-      - ./backend:/app/backend
-      - ./frontend:/app/frontend
-      - ./img_dílna:/app/img_dilna:ro
-      - /app/frontend/node_modules
-      - ./data:/app/data
+      - ./data/redis:/data
+
+volumes:
+  lakodi_frontend_node_modules:
+  lakodi_frontend_next:

@@ -13,6 +13,7 @@ from backend.app.modules.services_catalog.router import router as services_catal
 from backend.app.modules.admin.router import router as admin_router
 from backend.app.modules.gallery.admin_router import router as gallery_admin_router
 from backend.app.modules.gallery.router import router as gallery_router
+from backend.app.modules.invoices.router import router as invoices_router
 from backend.app.modules.zakazky.router import router as zakazky_router
 
 
@@ -45,6 +46,7 @@ app.add_middleware(
 )
 
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(invoices_router, prefix="/api/admin/invoices", tags=["invoices"])
 app.include_router(gallery_admin_router, prefix="/api/admin/gallery", tags=["gallery-admin"])
 app.include_router(gallery_router, prefix="/api/gallery", tags=["gallery"])
 app.include_router(zakazky_router, prefix="/api/zakazky", tags=["zakazky"])

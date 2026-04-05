@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { adminApiUrl, apiFetchOptions } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -232,6 +233,12 @@ export default function AdminLayout({
     );
   }
 
+  const navItems = [
+    { href: "/admin", label: "Zakázky" },
+    { href: "/admin/invoices", label: "Faktury" },
+    { href: "/admin/kalendar", label: "Kalendář" },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
@@ -240,6 +247,24 @@ export default function AdminLayout({
           Odhlásit
         </Button>
       </div>
+      <nav className="mb-6 flex flex-wrap gap-2">
+        {navItems.map((item) => {
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary/40"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
       {children}
     </div>
   );
