@@ -23,13 +23,13 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     outputs:
-      environment_name: ${{ steps.context.outputs.environment_name }}
       branch_tag: ${{ steps.context.outputs.branch_tag }}
       image_tag: ${{ steps.context.outputs.image_tag }}
       backend_image: ${{ steps.context.outputs.backend_image }}
       frontend_image: ${{ steps.context.outputs.frontend_image }}
       publish_latest: ${{ steps.context.outputs.publish_latest }}
       head_sha: ${{ steps.context.outputs.head_sha }}
+      secret_prefix: ${{ steps.context.outputs.secret_prefix }}
     steps:
       - id: context
         shell: bash
@@ -40,11 +40,11 @@ jobs:
           publish_latest="false"
 
           if [[ "${branch}" == "develop" ]]; then
-            environment_name="staging"
             branch_tag="develop"
+            secret_prefix="STAGING"
           elif [[ "${branch}" == "main" ]]; then
-            environment_name="production"
             branch_tag="main"
+            secret_prefix="PRODUCTION"
             publish_latest="true"
           else
             echo "Nepodporovaná branch ${branch}." >&2
@@ -52,13 +52,13 @@ jobs:
           fi
 
           {
-            echo "environment_name=${environment_name}"
             echo "branch_tag=${branch_tag}"
             echo "image_tag=${image_tag}"
             echo "backend_image=ghcr.io/${owner}/lakodi-backend"
             echo "frontend_image=ghcr.io/${owner}/lakodi-frontend"
             echo "publish_latest=${publish_latest}"
             echo "head_sha=${{ github.event.workflow_run.head_sha }}"
+            echo "secret_prefix=${secret_prefix}"
           } >> "${GITHUB_OUTPUT}"
 
   build-backend-image:
@@ -116,7 +116,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-context
-    environment: ${{ needs.determine-context.outputs.environment_name }}
     permissions:
       contents: read
       packages: write
@@ -152,12 +151,14 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Build a push frontend image
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets[format('{0}_NEXT_PUBLIC_API_URL', needs.determine-context.outputs.secret_prefix)] }}
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: frontend/Dockerfile.prod
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
           platforms: linux/amd64
           push: true
           tags: ${{ steps.frontend-meta.outputs.tags }}
@@ -171,11 +172,10 @@ jobs:
       - determine-context
       - build-backend-image
       - build-frontend-image
-    environment: ${{ needs.determine-context.outputs.environment_name }}
     permissions:
       contents: read
     concurrency:
-      group: deploy-${{ needs.determine-context.outputs.environment_name }}
+      group: deploy-${{ needs.determine-context.outputs.branch_tag }}
       cancel-in-progress: false
     steps:
       - name: Checkout
@@ -187,9 +187,9 @@ jobs:
         shell: bash
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets[format('{0}_SERVER_SSH_PRIVATE_KEY', needs.determine-context.outputs.secret_prefix)] }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "${{ secrets.SERVER_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets[format('{0}_SERVER_SSH_KNOWN_HOSTS', needs.determine-context.outputs.secret_prefix)] }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
       - name: Příprava deploy bundle
@@ -200,15 +200,15 @@ jobs:
           cp docker-compose.prod.yml .deploy/docker-compose.prod.yml
           cp scripts/remote_deploy.sh .deploy/remote_deploy.sh
           chmod +x .deploy/remote_deploy.sh
-          printf '%s' "${{ secrets.SERVER_ENV_FILE }}" > .deploy/.env.prod
+          printf '%s' "${{ secrets[format('{0}_SERVER_ENV_FILE', needs.determine-context.outputs.secret_prefix)] }}" > .deploy/.env.prod
 
       - name: Nahrání souborů na server
         shell: bash
         env:
-          SERVER_HOST: ${{ secrets.SERVER_SSH_HOST }}
-          SERVER_PORT: ${{ secrets.SERVER_SSH_PORT }}
-          SERVER_USER: ${{ secrets.SERVER_SSH_USER }}
-          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+          SERVER_HOST: ${{ secrets[format('{0}_SERVER_SSH_HOST', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_PORT: ${{ secrets[format('{0}_SERVER_SSH_PORT', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_USER: ${{ secrets[format('{0}_SERVER_SSH_USER', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_PATH: ${{ secrets[format('{0}_SERVER_PATH', needs.determine-context.outputs.secret_prefix)] }}
         run: |
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "mkdir -p '${SERVER_PATH}' '${SERVER_PATH}/scripts'"
           scp -P "${SERVER_PORT}" .deploy/docker-compose.yml "${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/docker-compose.yml"
@@ -220,10 +220,10 @@ jobs:
       - name: Spuštění deploye
         shell: bash
         env:
-          SERVER_HOST: ${{ secrets.SERVER_SSH_HOST }}
-          SERVER_PORT: ${{ secrets.SERVER_SSH_PORT }}
-          SERVER_USER: ${{ secrets.SERVER_SSH_USER }}
-          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+          SERVER_HOST: ${{ secrets[format('{0}_SERVER_SSH_HOST', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_PORT: ${{ secrets[format('{0}_SERVER_SSH_PORT', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_USER: ${{ secrets[format('{0}_SERVER_SSH_USER', needs.determine-context.outputs.secret_prefix)] }}
+          SERVER_PATH: ${{ secrets[format('{0}_SERVER_PATH', needs.determine-context.outputs.secret_prefix)] }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
           IMAGE_TAG: ${{ needs.determine-context.outputs.image_tag }}
