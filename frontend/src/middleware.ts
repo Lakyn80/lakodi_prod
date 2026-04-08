@@ -1,28 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  ADMIN_HOSTNAME,
+  CANONICAL_HOSTNAME,
+  WWW_HOSTNAME,
+  isAdminPath,
+  normalizeHostname,
+} from "@/lib/hosts";
 
-const CANONICAL_HOST = "lakodi.cz";
+function buildRedirectUrl(request: NextRequest, hostname: string): URL {
+  const target = request.nextUrl.clone();
+  target.protocol = "https";
+  target.hostname = hostname;
+  target.port = "";
+  return target;
+}
 
 export function middleware(request: NextRequest) {
-  const host = request.headers.get("host") ?? "";
-  const hostName = host.split(":")[0];
+  const hostName = normalizeHostname(request.headers.get("host") ?? "");
   const forwardedProto = request.headers.get("x-forwarded-proto");
   const requestProto = request.nextUrl.protocol.replace(":", "");
-  const proto = forwardedProto ?? requestProto;
+  const proto = forwardedProto?.split(",")[0]?.trim() || requestProto;
+  const adminPath = isAdminPath(request.nextUrl.pathname);
 
-  const shouldRedirectWww = hostName === "www.lakodi.cz";
-  const shouldRedirectHttp = hostName === "lakodi.cz" && proto === "http";
+  if (
+    adminPath &&
+    (hostName === CANONICAL_HOSTNAME || hostName === WWW_HOSTNAME)
+  ) {
+    return NextResponse.redirect(buildRedirectUrl(request, ADMIN_HOSTNAME), 308);
+  }
 
-  if (shouldRedirectWww || shouldRedirectHttp) {
-    const target = new URL(
-      `${request.nextUrl.pathname}${request.nextUrl.search}`,
-      `https://${CANONICAL_HOST}`,
-    );
-    return new Response(null, {
-      status: 301,
-      headers: {
-        Location: target.toString(),
-      },
-    });
+  const shouldRedirectWww = hostName === WWW_HOSTNAME;
+  const shouldRedirectHttp =
+    (hostName === CANONICAL_HOSTNAME || hostName === ADMIN_HOSTNAME) &&
+    proto === "http";
+
+  if (shouldRedirectWww) {
+    return NextResponse.redirect(buildRedirectUrl(request, CANONICAL_HOSTNAME), 301);
+  }
+
+  if (shouldRedirectHttp) {
+    return NextResponse.redirect(buildRedirectUrl(request, hostName), 301);
+  }
+
+  if (hostName === ADMIN_HOSTNAME && request.nextUrl.pathname === "/") {
+    const target = buildRedirectUrl(request, ADMIN_HOSTNAME);
+    target.pathname = "/admin/login";
+    return NextResponse.redirect(target, 307);
   }
 
   return NextResponse.next();

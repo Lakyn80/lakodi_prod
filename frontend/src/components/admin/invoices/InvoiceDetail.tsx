@@ -133,7 +133,7 @@ export function InvoiceDetail({
           <h3 className="mb-3 font-medium text-foreground">Odběratel</h3>
           <div className="space-y-1 text-sm">
             <p className="font-medium text-foreground">{invoice.customer_name}</p>
-            <p className="text-muted-foreground">{invoice.customer_email}</p>
+            <p className="break-all text-muted-foreground">{invoice.customer_email}</p>
             {invoice.customer_phone && <p className="text-muted-foreground">{invoice.customer_phone}</p>}
             {invoice.customer_address && <p className="text-muted-foreground">{invoice.customer_address}</p>}
             {invoice.customer_ico && <p className="text-muted-foreground">IČO: {invoice.customer_ico}</p>}
@@ -143,7 +143,33 @@ export function InvoiceDetail({
       </div>
 
       <div className="mt-5 rounded-lg border border-border bg-background p-4">
-        <div className="overflow-x-auto">
+        <div className="space-y-3 sm:hidden">
+          {invoice.items.map((item) => (
+            <div key={item.id} className="rounded-lg border border-border/70 bg-card p-3">
+              <p className="font-medium text-foreground">{item.description}</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <p className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Množství</span>
+                  <span className="text-foreground">{item.quantity}</span>
+                </p>
+                <p className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Jednotková cena</span>
+                  <span className="text-right text-foreground">
+                    {formatInvoiceMoney(item.unit_price, invoice.currency)}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Celkem</span>
+                  <span className="text-right font-medium text-foreground">
+                    {formatInvoiceMoney(item.line_total, invoice.currency)}
+                  </span>
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden overflow-x-auto sm:block">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">

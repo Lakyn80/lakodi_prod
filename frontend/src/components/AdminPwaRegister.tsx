@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { ADMIN_HOSTNAME, normalizeHostname } from "@/lib/hosts";
+import { shouldRegisterAdminPwa, unregisterServiceWorkers } from "@/lib/pwa";
 
 export default function AdminPwaRegister() {
   useEffect(() => {
@@ -11,7 +13,17 @@ export default function AdminPwaRegister() {
     let hasReloadedAfterUpdate = false;
 
     const registerServiceWorker = async () => {
+      const currentLocation = window.location;
+
+      if (!shouldRegisterAdminPwa(currentLocation)) {
+        if (normalizeHostname(currentLocation.hostname) !== ADMIN_HOSTNAME) {
+          await unregisterServiceWorkers((scopePathname) => scopePathname.startsWith("/admin/"));
+        }
+        return;
+      }
+
       try {
+        await unregisterServiceWorkers((scopePathname) => scopePathname === "/");
         const registration = await navigator.serviceWorker.register("/admin/sw.js", {
           scope: "/admin/",
         });
