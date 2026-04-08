@@ -3,7 +3,6 @@ import {
   ADMIN_HOSTNAME,
   CANONICAL_HOSTNAME,
   WWW_HOSTNAME,
-  isAdminPath,
   normalizeHostname,
 } from "@/lib/hosts";
 
@@ -20,14 +19,6 @@ export function middleware(request: NextRequest) {
   const forwardedProto = request.headers.get("x-forwarded-proto");
   const requestProto = request.nextUrl.protocol.replace(":", "");
   const proto = forwardedProto?.split(",")[0]?.trim() || requestProto;
-  const adminPath = isAdminPath(request.nextUrl.pathname);
-
-  if (
-    adminPath &&
-    (hostName === CANONICAL_HOSTNAME || hostName === WWW_HOSTNAME)
-  ) {
-    return NextResponse.redirect(buildRedirectUrl(request, ADMIN_HOSTNAME), 308);
-  }
 
   const shouldRedirectWww = hostName === WWW_HOSTNAME;
   const shouldRedirectHttp =
