@@ -1,0 +1,98 @@
+const CACHE_NAME = "lakodi-admin-shell-v1";
+const PRECACHE_URLS = [
+  "/admin/login",
+  "/admin/",
+  "/admin/manifest.webmanifest",
+  "/icon-192x192.png",
+  "/icon-512x512.png",
+  "/apple-touch-icon.png",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => undefined),
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+            return Promise.resolve();
+          }),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  // Navigation requests within /admin/ → network first, fall back to cached login shell
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches
+          .match("/admin/login")
+          .then((r) => r ?? caches.match("/admin/")),
+      ),
+    );
+    return;
+  }
+
+  // Cache static assets: scripts, styles, images, fonts, admin manifest
+  const cacheableDestinations = new Set(["style", "script", "image", "font"]);
+  const isCacheableAsset =
+    cacheableDestinations.has(event.request.destination) ||
+    requestUrl.pathname === "/admin/manifest.webmanifest";
+
+  if (!isCacheableAsset) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        if (
+          !networkResponse ||
+          networkResponse.status !== 200 ||
+          networkResponse.type !== "basic"
+        ) {
+          return networkResponse;
+        }
+
+        const responseClone = networkResponse.clone();
+        caches
+          .open(CACHE_NAME)
+          .then((cache) => cache.put(event.request, responseClone))
+          .catch(() => undefined);
+        return networkResponse;
+      });
+    }),
+  );
+});

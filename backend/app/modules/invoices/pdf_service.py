@@ -187,6 +187,7 @@ def build_invoice_pdf_document(invoice: Invoice) -> InvoicePdfDocument:
                     ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
                     ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
                     ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                    ("FONTNAME", (0, 0), (-1, -1), regular_font),
                     ("FONTNAME", (0, -1), (-1, -1), bold_font),
                     ("LEFTPADDING", (0, 0), (-1, -1), 8),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 8),

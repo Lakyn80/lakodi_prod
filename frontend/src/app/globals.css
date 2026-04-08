@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Admin standalone PWA: zakryje veřejný layout (header, footer, mobile bar) */
+@media (display-mode: standalone) {
+  .admin-pwa-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    overflow-y: auto;
+    background-color: hsl(var(--background));
+  }
+}
+
 @layer base {
   :root {
     --background: 213 29% 6%;
