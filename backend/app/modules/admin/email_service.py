@@ -41,10 +41,13 @@ def _build_email_message(
     subject: str,
     html: str,
     attachments: Sequence[EmailAttachment] | None = None,
+    cc: Sequence[str] | None = None,
 ) -> EmailMessage:
     message = EmailMessage()
     message["From"] = FROM_EMAIL
     message["To"] = to_email
+    if cc:
+        message["Cc"] = ", ".join(cc)
     message["Subject"] = subject
     message.set_content("Tato zpráva obsahuje HTML verzi.")
     message.add_alternative(html, subtype="html")
@@ -68,12 +71,17 @@ def _send_email_smtp(
     subject: str,
     html: str,
     attachments: Sequence[EmailAttachment] | None = None,
+    cc: Sequence[str] | None = None,
+    bcc: Sequence[str] | None = None,
 ) -> bool:
     if not _is_smtp_configured():
         return False
     try:
         from_addr = parseaddr(FROM_EMAIL)[1] or SMTP_USER
-        message = _build_email_message(to_email, subject, html, attachments)
+        cc_list = [email for email in (cc or ()) if email]
+        bcc_list = [email for email in (bcc or ()) if email]
+        message = _build_email_message(to_email, subject, html, attachments, cc=cc_list)
+        recipient_list = [to_email, *cc_list, *bcc_list]
 
         if SMTP_USE_SSL:
             with smtplib.SMTP_SSL(
@@ -83,13 +91,13 @@ def _send_email_smtp(
                 context=ssl.create_default_context(),
             ) as server:
                 server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(message, from_addr=from_addr, to_addrs=[to_email])
+                server.send_message(message, from_addr=from_addr, to_addrs=recipient_list)
         else:
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
                 if SMTP_USE_TLS:
                     server.starttls(context=ssl.create_default_context())
                 server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(message, from_addr=from_addr, to_addrs=[to_email])
+                server.send_message(message, from_addr=from_addr, to_addrs=recipient_list)
         return True
     except Exception:
         return False
@@ -100,9 +108,11 @@ def _send_email(
     subject: str,
     html: str,
     attachments: Sequence[EmailAttachment] | None = None,
+    cc: Sequence[str] | None = None,
+    bcc: Sequence[str] | None = None,
 ) -> bool:
     if _is_smtp_configured():
-        return _send_email_smtp(to_email, subject, html, attachments)
+        return _send_email_smtp(to_email, subject, html, attachments, cc=cc, bcc=bcc)
     if RESEND_API_KEY:
         try:
             import resend  # type: ignore
@@ -114,6 +124,10 @@ def _send_email(
                 "subject": subject,
                 "html": html,
             }
+            if cc:
+                payload["cc"] = [email for email in cc if email]
+            if bcc:
+                payload["bcc"] = [email for email in bcc if email]
             if attachments:
                 payload["attachments"] = [
                     {
@@ -126,7 +140,7 @@ def _send_email(
             return True
         except Exception:
             pass
-    return _send_email_smtp(to_email, subject, html, attachments)
+    return _send_email_smtp(to_email, subject, html, attachments, cc=cc, bcc=bcc)
 
 
 def send_html_email(
@@ -134,10 +148,12 @@ def send_html_email(
     subject: str,
     html: str,
     attachments: Sequence[EmailAttachment] | None = None,
+    cc: Sequence[str] | None = None,
+    bcc: Sequence[str] | None = None,
 ) -> bool:
     """Public helper for sending arbitrary HTML emails via configured provider."""
 
-    return _send_email(to_email, subject, html, attachments)
+    return _send_email(to_email, subject, html, attachments, cc=cc, bcc=bcc)
 
 
 def send_recovery_email(to_email: str, token: str) -> bool:

@@ -39,6 +39,7 @@ class InvoiceItemCreate(BaseModel):
 
 
 class InvoiceCreate(BaseModel):
+    invoice_number: str | None = Field(default=None, min_length=1, max_length=9)
     issue_date: date
     due_date: date
 
@@ -64,6 +65,22 @@ class InvoiceCreate(BaseModel):
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("Toto pole je povinné.")
+        return cleaned
+
+    @field_validator("invoice_number")
+    @classmethod
+    def validate_invoice_number(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if not cleaned.isdigit():
+            raise ValueError("Číslo faktury může obsahovat pouze číslice.")
+        if len(cleaned) > 9:
+            raise ValueError("Číslo faktury může mít maximálně 9 číslic.")
+        if int(cleaned) <= 0:
+            raise ValueError("Číslo faktury musí být větší než nula.")
         return cleaned
 
     @field_validator("customer_phone", "customer_address", "customer_ico", "customer_dic", "note")
@@ -123,6 +140,7 @@ class InvoiceSummaryResponse(BaseModel):
 
     id: int
     invoice_number: str
+    variable_symbol: str
     issue_date: date
     due_date: date
 
@@ -154,6 +172,11 @@ class InvoiceSummaryResponse(BaseModel):
 
     reverse_charge_reason: str | None
     reverse_charge_text: str | None
+    payment_method: str
+    bank_account_number: str
+    bank_account_prefix: str | None
+    bank_code: str
+    bank_iban: str
 
     created_at: datetime
 
@@ -197,3 +220,44 @@ class InvoiceSendEmailResponse(BaseModel):
     invoice_id: int
     invoice_number: str
     sent_to: str
+    copied_to: list[str] = Field(default_factory=list)
+
+
+class InvoiceDefaultsResponse(BaseModel):
+    suggested_invoice_number: str
+    suggested_variable_symbol: str
+
+
+class InvoiceSettingsUpdate(BaseModel):
+    owner_email: str = Field(min_length=3, max_length=256)
+    payment_method: str = Field(min_length=1, max_length=64)
+    bank_account_number: str = Field(min_length=1, max_length=32)
+    bank_account_prefix: str | None = Field(default=None, max_length=16)
+    bank_code: str = Field(min_length=1, max_length=16)
+    bank_iban: str | None = Field(default=None, max_length=34)
+
+    @field_validator("owner_email", "payment_method", "bank_account_number", "bank_code")
+    @classmethod
+    def validate_required_string(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Toto pole je povinné.")
+        return cleaned
+
+    @field_validator("bank_account_prefix", "bank_iban")
+    @classmethod
+    def normalize_optional_setting(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceSettingsResponse(BaseModel):
+    owner_email: str
+    payment_method: str
+    bank_account_number: str
+    bank_account_prefix: str | None
+    bank_code: str
+    bank_iban: str
+    account_label: str

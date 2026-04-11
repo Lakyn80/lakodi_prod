@@ -48,7 +48,9 @@ export function InvoiceDetail({
     setError("");
     try {
       const result = await sendInvoiceEmail(invoice.id, { to_email: toEmail || undefined });
-      setMessage(`Faktura byla odeslána na adresu ${result.sent_to}.`);
+      const copiedTo =
+        result.copied_to.length > 0 ? ` Kopie odešla také na ${result.copied_to.join(", ")}.` : "";
+      setMessage(`Faktura byla odeslána na adresu ${result.sent_to}.${copiedTo}`);
       onRefresh();
     } catch (err) {
       if (err instanceof AdminApiError || err instanceof Error) {
@@ -204,6 +206,21 @@ export function InvoiceDetail({
             <p>
               <span className="font-medium text-foreground">Datum splatnosti:</span> {formatInvoiceDate(invoice.due_date)}
             </p>
+            <p>
+              <span className="font-medium text-foreground">Variabilní symbol:</span> {invoice.variable_symbol}
+            </p>
+            <p>
+              <span className="font-medium text-foreground">Způsob platby:</span> {invoice.payment_method}
+            </p>
+            <p>
+              <span className="font-medium text-foreground">Bankovní účet:</span>{" "}
+              {invoice.bank_account_prefix
+                ? `${invoice.bank_account_prefix}-${invoice.bank_account_number}/${invoice.bank_code}`
+                : `${invoice.bank_account_number}/${invoice.bank_code}`}
+            </p>
+            <p className="break-all">
+              <span className="font-medium text-foreground">IBAN:</span> {invoice.bank_iban}
+            </p>
             {invoice.note && (
               <p>
                 <span className="font-medium text-foreground">Poznámka:</span> {invoice.note}
@@ -263,7 +280,9 @@ export function InvoiceDetail({
               {downloading ? "Stahuji PDF…" : "Stáhnout PDF"}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">E-mail se odesílá s PDF fakturou v příloze.</p>
+          <p className="text-xs text-muted-foreground">
+            E-mail se odesílá s PDF fakturou v příloze a skrytou kopií pro majitele.
+          </p>
         </div>
         {message && <p className="mt-3 text-sm text-green-600">{message}</p>}
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}

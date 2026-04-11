@@ -103,11 +103,16 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
 
     assert create_response.status_code == 200
     invoice = create_response.json()
-    assert invoice["invoice_number"] == "INV-2026-0001"
+    assert invoice["invoice_number"] == "001"
+    assert invoice["variable_symbol"] == "001"
     assert invoice["issuer_name"] == "lakodi s.r.o."
     assert invoice["issuer_ico"] == "09695982"
     assert invoice["currency"] == "CZK"
     assert invoice["status"] == "draft"
+    assert invoice["payment_method"] == "Převodem"
+    assert invoice["bank_account_number"] == "5997826359"
+    assert invoice["bank_code"] == "0800"
+    assert invoice["bank_iban"] == "CZ9108000000005997826359"
     assert invoice["subtotal"] == 8200.0
     assert invoice["vat_amount"] == 1722.0
     assert invoice["total"] == 9922.0
@@ -116,7 +121,8 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert invoice["items"][1]["line_total"] == 7000.0
     assert captured["invoice"] is not None
     assert captured["customer"] is not None
-    assert captured["invoice"].identity.invoice_number == "INV-2026-0001"
+    assert captured["invoice"].identity.invoice_number == "001"
+    assert captured["invoice"].payment.variable_symbol == "001"
     assert captured["customer"].customer.email == "jan@example.com"
 
     list_response = client.get("/api/admin/invoices")
@@ -124,7 +130,7 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     listed = list_response.json()
     assert len(listed) == 1
     assert listed[0]["id"] == invoice["id"]
-    assert listed[0]["invoice_number"] == "INV-2026-0001"
+    assert listed[0]["invoice_number"] == "001"
 
     detail_response = client.get(f"/api/admin/invoices/{invoice['id']}")
     assert detail_response.status_code == 200
@@ -132,6 +138,7 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert detail["id"] == invoice["id"]
     assert detail["customer_name"] == "Jan Novák"
     assert detail["items"][0]["description"] == "Diagnostika"
+    assert detail["variable_symbol"] == "001"
 
 
 def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
@@ -163,6 +170,86 @@ def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
     assert invoice["total"] == 15000.0
     assert invoice["reverse_charge_reason"] == "construction_services_reverse_charge"
     assert "Daň odvede zákazník" in invoice["reverse_charge_text"]
+
+
+def test_defaults_vraci_navrzene_cislo_faktury_a_variabilni_symbol() -> None:
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/defaults")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "suggested_invoice_number": "001",
+        "suggested_variable_symbol": "001",
+    }
+
+
+def test_nastaveni_fakturace_vraci_defaultni_hodnoty() -> None:
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/settings")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "owner_email": "lakodi@seznam.cz",
+        "payment_method": "Převodem",
+        "bank_account_number": "5997826359",
+        "bank_account_prefix": None,
+        "bank_code": "0800",
+        "bank_iban": "CZ9108000000005997826359",
+        "account_label": "5997826359/0800",
+    }
+
+
+def test_ulozeni_nastaveni_fakturace_se_propise_do_novych_faktur() -> None:
+    _login_admin()
+
+    save_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "ucetni@lakodi.cz",
+            "payment_method": "Bankovním převodem",
+            "bank_account_number": "1234567890",
+            "bank_account_prefix": "19",
+            "bank_code": "0800",
+            "bank_iban": "",
+        },
+    )
+
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["owner_email"] == "ucetni@lakodi.cz"
+    assert saved["payment_method"] == "Bankovním převodem"
+    assert saved["bank_account_number"] == "1234567890"
+    assert saved["bank_account_prefix"] == "19"
+    assert saved["bank_code"] == "0800"
+    assert saved["account_label"] == "19-1234567890/0800"
+    assert saved["bank_iban"].startswith("CZ")
+
+    invoice = _vytvor_fakturu()
+    assert invoice["payment_method"] == "Bankovním převodem"
+    assert invoice["bank_account_number"] == "1234567890"
+    assert invoice["bank_account_prefix"] == "19"
+    assert invoice["bank_code"] == "0800"
+    assert invoice["bank_iban"] == saved["bank_iban"]
+
+
+def test_rucne_nastavene_cislo_faktury_posune_dalsi_automatickou_radu() -> None:
+    prvni = _vytvor_fakturu({"invoice_number": "024"})
+    druha = _vytvor_fakturu({"customer_email": "druhy@example.com"})
+
+    assert prvni["invoice_number"] == "024"
+    assert prvni["variable_symbol"] == "024"
+    assert druha["invoice_number"] == "025"
+    assert druha["variable_symbol"] == "025"
+
+    _login_admin()
+    defaults_response = client.get("/api/admin/invoices/defaults")
+    assert defaults_response.status_code == 200
+    assert defaults_response.json() == {
+        "suggested_invoice_number": "026",
+        "suggested_variable_symbol": "026",
+    }
 
 
 def test_standardni_faktura_bez_sazby_dph_je_odmitnuta() -> None:
@@ -507,6 +594,20 @@ def test_pdf_endpoint_vrati_pdf_soubor() -> None:
 
 
 def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
+    _login_admin()
+    settings_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "kopie@lakodi.cz",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert settings_response.status_code == 200
+
     invoice = _vytvor_fakturu()
 
     from backend.app.modules.invoices import email_service as invoice_email_service
@@ -522,11 +623,12 @@ def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
         content=b"%PDF-test-payload",
     )
 
-    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None) -> bool:
+    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None, bcc=None, cc=None) -> bool:
         captured["to_email"] = to_email
         captured["subject"] = subject
         captured["html"] = html
         captured["attachments"] = attachments
+        captured["bcc"] = bcc
         return True
 
     invoice_email_service.send_html_email = fake_send_html_email
@@ -543,10 +645,14 @@ def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
         "invoice_id": invoice["id"],
         "invoice_number": invoice["invoice_number"],
         "sent_to": "jan@example.com",
+        "copied_to": ["kopie@lakodi.cz"],
     }
     assert captured["to_email"] == "jan@example.com"
     assert captured["subject"] == f"Faktura {invoice['invoice_number']}"
     assert "Jan Novák" in captured["html"]
+    assert "5997826359/0800" in captured["html"]
+    assert "001" in captured["html"]
+    assert captured["bcc"] == ["kopie@lakodi.cz"]
     attachments = captured["attachments"]
     assert attachments is not None
     assert len(attachments) == 1
@@ -578,7 +684,7 @@ def test_odeslani_faktury_vrati_400_kdyz_chybi_prijemce() -> None:
 
     original_deliver_invoice_email = invoice_service.deliver_invoice_email
 
-    def raise_missing_recipient(_invoice, to_email=None):
+    def raise_missing_recipient(_invoice, to_email=None, owner_email=None):
         raise InvoiceEmailSendError("Chybí e-mailová adresa příjemce faktury.")
 
     invoice_service.deliver_invoice_email = raise_missing_recipient

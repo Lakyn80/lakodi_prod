@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { Plus, Search, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   createInvoice,
   formatAresSource,
   formatInvoiceMoney,
+  getInvoiceDefaults,
   lookupAresCompany,
   searchAresCompanies,
 } from "@/lib/invoices";
@@ -28,6 +29,7 @@ type DraftItem = {
 };
 
 type InvoiceFormState = {
+  invoice_number: string;
   issue_date: string;
   due_date: string;
   customer_name: string;
@@ -61,6 +63,7 @@ const dueDateIso = () => {
 };
 
 const initialState = (): InvoiceFormState => ({
+  invoice_number: "",
   issue_date: todayIso(),
   due_date: dueDateIso(),
   customer_name: "",
@@ -97,10 +100,32 @@ export function InvoiceForm({
   const [companySearchLoading, setCompanySearchLoading] = useState(false);
   const [companySearchName, setCompanySearchName] = useState("");
   const [companySearchResults, setCompanySearchResults] = useState<AresCompanyLookup[]>([]);
+  const [suggestedVariableSymbol, setSuggestedVariableSymbol] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [aresMessage, setAresMessage] = useState("");
   const [companySearchMessage, setCompanySearchMessage] = useState("");
+
+  const loadInvoiceDefaults = async () => {
+    try {
+      const defaults = await getInvoiceDefaults();
+      setSuggestedVariableSymbol(defaults.suggested_variable_symbol);
+      setForm((current) => ({
+        ...current,
+        invoice_number: defaults.suggested_invoice_number,
+      }));
+    } catch (err) {
+      setSuggestedVariableSymbol("");
+      if (err instanceof AdminApiError || err instanceof Error) {
+        setError(err.message);
+      }
+    }
+  };
+
+  useEffect(() => {
+    void loadInvoiceDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const preview = useMemo(() => {
     const subtotal = form.items.reduce((sum, item) => {
@@ -126,6 +151,8 @@ export function InvoiceForm({
       total: subtotal + vatAmount,
     };
   }, [form.items, form.tax_mode, form.vat_rate]);
+
+  const displayedVariableSymbol = form.invoice_number || suggestedVariableSymbol;
 
   const updateField = <K extends keyof InvoiceFormState>(field: K, value: InvoiceFormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -242,6 +269,7 @@ export function InvoiceForm({
     }
 
     const payload: InvoiceCreatePayload = {
+      invoice_number: form.invoice_number.trim() || null,
       issue_date: form.issue_date,
       due_date: form.due_date,
       customer_name: form.customer_name,
@@ -269,10 +297,12 @@ export function InvoiceForm({
       setSuccess(`Faktura ${created.invoice_number} byla úspěšně vytvořena.`);
       setForm((current) => ({
         ...current,
+        invoice_number: "",
         note: "",
         items: [initialItem()],
       }));
       setCompanySearchResults([]);
+      await loadInvoiceDefaults();
     } catch (err) {
       if (err instanceof AdminApiError || err instanceof Error) {
         setError(err.message);
@@ -301,6 +331,20 @@ export function InvoiceForm({
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-2">
+            <Label htmlFor="invoice_number">Číslo faktury</Label>
+            <Input
+              id="invoice_number"
+              value={form.invoice_number}
+              onChange={(event) => updateField("invoice_number", event.target.value.replace(/\D/g, "").slice(0, 9))}
+              inputMode="numeric"
+              placeholder="Např. 001"
+            />
+            <p className="text-xs text-muted-foreground">
+              Klient může číslo změnit. Další faktura pak naváže automaticky.
+              {displayedVariableSymbol ? ` VS pro tuto fakturu: ${displayedVariableSymbol}.` : ""}
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="issue_date">Datum vystavení</Label>
             <Input
@@ -586,6 +630,7 @@ export function InvoiceForm({
               setSuccess("");
               setAresMessage("");
               setCompanySearchMessage("");
+              void loadInvoiceDefaults();
             }}
           >
             Vyčistit formulář

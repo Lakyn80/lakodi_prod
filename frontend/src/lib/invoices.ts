@@ -33,6 +33,7 @@ export interface InvoiceItemInput {
 }
 
 export interface InvoiceCreatePayload {
+  invoice_number?: string | null;
   issue_date: string;
   due_date: string;
   customer_name: string;
@@ -60,6 +61,7 @@ export interface InvoiceItem {
 export interface InvoiceSummary {
   id: number;
   invoice_number: string;
+  variable_symbol: string;
   issue_date: string;
   due_date: string;
   issuer_name: string;
@@ -86,6 +88,11 @@ export interface InvoiceSummary {
   status: string;
   reverse_charge_reason: string | null;
   reverse_charge_text: string | null;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string;
   created_at: string;
 }
 
@@ -114,6 +121,31 @@ export interface SendInvoiceEmailResponse {
   invoice_id: number;
   invoice_number: string;
   sent_to: string;
+  copied_to: string[];
+}
+
+export interface InvoiceDefaultsResponse {
+  suggested_invoice_number: string;
+  suggested_variable_symbol: string;
+}
+
+export interface InvoiceSettingsPayload {
+  owner_email: string;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix?: string | null;
+  bank_code: string;
+  bank_iban?: string | null;
+}
+
+export interface InvoiceSettingsResponse {
+  owner_email: string;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string;
+  account_label: string;
 }
 
 export class AdminApiError extends Error {
@@ -179,6 +211,25 @@ export async function getInvoiceDetail(invoiceId: number): Promise<InvoiceDetail
 export async function createInvoice(payload: InvoiceCreatePayload): Promise<InvoiceDetail> {
   return requestJson<InvoiceDetail>("", {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getInvoiceDefaults(): Promise<InvoiceDefaultsResponse> {
+  return requestJson<InvoiceDefaultsResponse>("/defaults", {
+    method: "GET",
+  });
+}
+
+export async function getInvoiceSettings(): Promise<InvoiceSettingsResponse> {
+  return requestJson<InvoiceSettingsResponse>("/settings", {
+    method: "GET",
+  });
+}
+
+export async function updateInvoiceSettings(payload: InvoiceSettingsPayload): Promise<InvoiceSettingsResponse> {
+  return requestJson<InvoiceSettingsResponse>("/settings", {
+    method: "PUT",
     body: JSON.stringify(payload),
   });
 }

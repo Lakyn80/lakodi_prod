@@ -17,6 +17,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 
 from backend.app.modules.invoices.exporters import build_invoice_export
 from backend.app.modules.invoices.models import Invoice
+from backend.app.modules.invoices.payment_service import build_qr_code_drawing, build_qr_payment_payload
 
 LOGO_RELATIVE_PATH = Path("frontend/public/logo/lakodi_logo_crena_pozadi.png")
 REGULAR_FONT_NAME = "Helvetica"
@@ -126,6 +127,69 @@ def build_invoice_pdf_document(invoice: Invoice) -> InvoicePdfDocument:
             )
         )
         story.append(party_table)
+        story.append(Spacer(1, 16))
+
+        qr_payload = build_qr_payment_payload(
+            iban=export.payment.iban,
+            amount=export.totals.total,
+            currency=export.totals.currency,
+            variable_symbol=export.payment.variable_symbol,
+            invoice_number=export.identity.invoice_number,
+            due_date=export.identity.due_date,
+        )
+        payment_info_rows = [
+            [
+                Paragraph("Způsob platby", styles["payment_label"]),
+                Paragraph(_safe_markup(export.payment.method), styles["payment_value"]),
+            ],
+            [
+                Paragraph("Bankovní účet", styles["payment_label"]),
+                Paragraph(_safe_markup(export.payment.account_label), styles["payment_value"]),
+            ],
+            [
+                Paragraph("Variabilní symbol", styles["payment_label"]),
+                Paragraph(_safe_markup(export.payment.variable_symbol), styles["payment_value"]),
+            ],
+            [
+                Paragraph("IBAN", styles["payment_label"]),
+                Paragraph(_safe_markup(export.payment.iban), styles["payment_value_small"]),
+            ],
+        ]
+        payment_info_table = Table(payment_info_rows, colWidths=[42 * mm, 76 * mm])
+        payment_info_table.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ]
+            )
+        )
+        qr_block = [
+            build_qr_code_drawing(qr_payload, size_mm=33),
+            Spacer(1, 5),
+            Paragraph("QR platba", styles["qr_caption"]),
+        ]
+        payment_table = Table([[payment_info_table, qr_block]], colWidths=[122 * mm, 52 * mm])
+        payment_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f9fafb")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                    ("TOPPADDING", (0, 0), (-1, -1), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ]
+            )
+        )
+        story.append(Paragraph("Platební údaje", styles["section_heading"]))
+        story.append(payment_table)
         story.append(Spacer(1, 16))
 
         items_data = [
@@ -268,6 +332,39 @@ def _build_styles(regular_font: str, bold_font: str) -> dict[str, ParagraphStyle
             fontName=regular_font,
             fontSize=10,
             leading=13,
+            textColor=colors.HexColor("#111827"),
+        ),
+        "payment_label": ParagraphStyle(
+            "LakodiPaymentLabel",
+            parent=base_styles["BodyText"],
+            fontName=regular_font,
+            fontSize=9.5,
+            leading=12,
+            textColor=colors.HexColor("#4b5563"),
+        ),
+        "payment_value": ParagraphStyle(
+            "LakodiPaymentValue",
+            parent=base_styles["BodyText"],
+            fontName=bold_font,
+            fontSize=10,
+            leading=12,
+            textColor=colors.HexColor("#111827"),
+        ),
+        "payment_value_small": ParagraphStyle(
+            "LakodiPaymentValueSmall",
+            parent=base_styles["BodyText"],
+            fontName=regular_font,
+            fontSize=8.5,
+            leading=11,
+            textColor=colors.HexColor("#111827"),
+        ),
+        "qr_caption": ParagraphStyle(
+            "LakodiQrCaption",
+            parent=base_styles["BodyText"],
+            fontName=bold_font,
+            fontSize=9,
+            leading=11,
+            alignment=1,
             textColor=colors.HexColor("#111827"),
         ),
         "table_header": ParagraphStyle(

@@ -43,6 +43,47 @@ def _ensure_zakazky_columns():
                 conn.execute(text(sql))
 
 
+def _ensure_invoice_columns():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoices)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "variable_symbol": "ALTER TABLE invoices ADD COLUMN variable_symbol VARCHAR(9)",
+            "payment_method": "ALTER TABLE invoices ADD COLUMN payment_method VARCHAR(64) NOT NULL DEFAULT 'Převodem'",
+            "bank_account_number": "ALTER TABLE invoices ADD COLUMN bank_account_number VARCHAR(32) NOT NULL DEFAULT '5997826359'",
+            "bank_account_prefix": "ALTER TABLE invoices ADD COLUMN bank_account_prefix VARCHAR(16)",
+            "bank_code": "ALTER TABLE invoices ADD COLUMN bank_code VARCHAR(16) NOT NULL DEFAULT '0800'",
+            "bank_iban": "ALTER TABLE invoices ADD COLUMN bank_iban VARCHAR(34) NOT NULL DEFAULT 'CZ9108000000005997826359'",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(
+            text(
+                "UPDATE invoices "
+                "SET variable_symbol = CASE "
+                "WHEN invoice_number GLOB '[0-9]*' THEN invoice_number "
+                "ELSE CAST(id AS TEXT) "
+                "END "
+                "WHERE variable_symbol IS NULL"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_invoices_variable_symbol "
+                "ON invoices (variable_symbol)"
+            )
+        )
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -57,6 +98,7 @@ def init_db():
             os.makedirs(d, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     _ensure_zakazky_columns()
+    _ensure_invoice_columns()
 
 
 def get_db():

@@ -19,7 +19,10 @@ from backend.app.modules.invoices.pdf_service import InvoicePdfGenerationError
 from backend.app.modules.invoices.schemas import (
     AresCompanyLookupResponse,
     InvoiceCreate,
+    InvoiceDefaultsResponse,
     InvoiceDetailResponse,
+    InvoiceSettingsResponse,
+    InvoiceSettingsUpdate,
     InvoiceSendEmailRequest,
     InvoiceSendEmailResponse,
     InvoiceSummaryResponse,
@@ -29,8 +32,11 @@ from backend.app.modules.invoices.service import (
     InvoiceValidationError,
     create_invoice,
     generate_invoice_pdf,
+    get_invoice_creation_defaults,
     get_invoice_detail,
+    get_invoice_settings,
     list_invoices,
+    save_invoice_settings,
     send_invoice_email,
 )
 
@@ -89,6 +95,46 @@ def admin_create_invoice(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/defaults", response_model=InvoiceDefaultsResponse)
+def admin_get_invoice_defaults(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        defaults = get_invoice_creation_defaults(db)
+        return {
+            "suggested_invoice_number": defaults.invoice_number,
+            "suggested_variable_symbol": defaults.variable_symbol,
+        }
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/settings", response_model=InvoiceSettingsResponse)
+def admin_get_invoice_settings(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        settings = get_invoice_settings(db)
+        return _build_settings_response(settings)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.put("/settings", response_model=InvoiceSettingsResponse)
+def admin_update_invoice_settings(
+    body: InvoiceSettingsUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        settings = save_invoice_settings(db, body)
+        return _build_settings_response(settings)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("", response_model=list[InvoiceSummaryResponse])
 def admin_list_invoices(
     db: Session = Depends(get_db),
@@ -133,6 +179,7 @@ def admin_send_invoice_email(
             "invoice_id": result.invoice_id,
             "invoice_number": result.invoice_number,
             "sent_to": result.sent_to,
+            "copied_to": list(result.copied_to),
         }
     except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
@@ -156,3 +203,15 @@ def admin_get_invoice(
         return get_invoice_detail(db, invoice_id)
     except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+
+
+def _build_settings_response(settings) -> dict:
+    return {
+        "owner_email": settings.owner_email,
+        "payment_method": settings.payment_profile.payment_method,
+        "bank_account_number": settings.payment_profile.account_number,
+        "bank_account_prefix": settings.payment_profile.account_prefix,
+        "bank_code": settings.payment_profile.bank_code,
+        "bank_iban": settings.payment_profile.iban,
+        "account_label": settings.payment_profile.account_label,
+    }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { InvoiceDetail } from "@/components/admin/invoices/InvoiceDetail";
 import { InvoiceForm } from "@/components/admin/invoices/InvoiceForm";
 import { InvoiceList } from "@/components/admin/invoices/InvoiceList";
+import { InvoiceSettingsForm } from "@/components/admin/invoices/InvoiceSettingsForm";
 import {
   AdminApiError,
   InvoiceDetail as InvoiceDetailType,
@@ -96,6 +97,8 @@ export default function AdminInvoicesPage() {
           Kompletní správa faktur v administraci včetně ARES, PDF exportu a odeslání e-mailem.
         </p>
       </div>
+
+      <InvoiceSettingsForm />
 
       <InvoiceForm onCreated={handleCreated} />
 

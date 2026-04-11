@@ -33,9 +33,15 @@ class InvoiceEmailDeliveryResult:
     invoice_id: int
     invoice_number: str
     sent_to: str
+    copied_to: tuple[str, ...] = ()
 
 
-def deliver_invoice_email(invoice: Invoice, to_email: str | None = None) -> InvoiceEmailDeliveryResult:
+def deliver_invoice_email(
+    invoice: Invoice,
+    to_email: str | None = None,
+    *,
+    owner_email: str | None = None,
+) -> InvoiceEmailDeliveryResult:
     export = build_invoice_export(invoice)
     recipient = (to_email or export.customer.email or "").strip()
     if not recipient:
@@ -53,13 +59,15 @@ def deliver_invoice_email(invoice: Invoice, to_email: str | None = None) -> Invo
             content_type=pdf_document.content_type,
         )
     ]
-    if not send_html_email(recipient, subject, html, attachments=attachments):
+    copied_to = _build_copy_recipients(recipient, owner_email=owner_email)
+    if not send_html_email(recipient, subject, html, attachments=attachments, bcc=copied_to):
         raise InvoiceEmailSendError("Fakturu se nepodařilo odeslat e-mailem.")
 
     return InvoiceEmailDeliveryResult(
         invoice_id=export.identity.id,
         invoice_number=export.identity.invoice_number,
         sent_to=recipient,
+        copied_to=tuple(copied_to),
     )
 
 
@@ -99,6 +107,9 @@ def _build_invoice_email_html(export) -> str:
       <p style="margin:0 0 8px;"><strong>Datum vystavení:</strong> {export.identity.issue_date}</p>
       <p style="margin:0 0 8px;"><strong>Datum splatnosti:</strong> {export.identity.due_date}</p>
       <p style="margin:0 0 8px;"><strong>Režim faktury:</strong> {escape(business_mode)} / {escape(tax_mode)}</p>
+      <p style="margin:0 0 8px;"><strong>Způsob platby:</strong> {escape(export.payment.method)}</p>
+      <p style="margin:0 0 8px;"><strong>Bankovní účet:</strong> {escape(export.payment.account_label)}</p>
+      <p style="margin:0 0 8px;"><strong>Variabilní symbol:</strong> {escape(export.payment.variable_symbol)}</p>
 
       <table style="width:100%;border-collapse:collapse;margin:24px 0;">
         <thead>
@@ -128,3 +139,11 @@ def _format_money(value: Decimal) -> str:
 def _format_decimal(value: Decimal) -> str:
     normalized = Decimal(value).normalize()
     return format(normalized, "f").rstrip("0").rstrip(".") or "0"
+
+
+def _build_copy_recipients(recipient: str, *, owner_email: str | None) -> list[str]:
+    normalized_recipient = recipient.strip().lower()
+    normalized_owner_email = (owner_email or "").strip().lower()
+    if not normalized_owner_email or normalized_owner_email == normalized_recipient:
+        return []
+    return [normalized_owner_email]

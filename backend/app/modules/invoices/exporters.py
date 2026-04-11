@@ -53,11 +53,22 @@ class InvoiceExportTotalsDTO(BaseModel):
     total: Decimal
 
 
+class InvoiceExportPaymentDTO(BaseModel):
+    method: str
+    account_number: str
+    account_prefix: str | None
+    bank_code: str
+    account_label: str
+    iban: str
+    variable_symbol: str
+
+
 class InvoiceExportDTO(BaseModel):
     identity: InvoiceExportIdentityDTO
     issuer: InvoiceExportIssuerDTO
     customer: InvoiceExportCustomerDTO
     items: list[InvoiceExportItemDTO]
+    payment: InvoiceExportPaymentDTO
     business_mode: str
     tax_mode: str
     totals: InvoiceExportTotalsDTO
@@ -111,6 +122,19 @@ def build_invoice_export(invoice: Invoice) -> InvoiceExportDTO:
             )
             for item in invoice.items
         ],
+        payment=InvoiceExportPaymentDTO(
+            method=invoice.payment_method,
+            account_number=invoice.bank_account_number,
+            account_prefix=invoice.bank_account_prefix,
+            bank_code=invoice.bank_code,
+            account_label=(
+                f"{invoice.bank_account_prefix}-{invoice.bank_account_number}/{invoice.bank_code}"
+                if invoice.bank_account_prefix
+                else f"{invoice.bank_account_number}/{invoice.bank_code}"
+            ),
+            iban=invoice.bank_iban,
+            variable_symbol=invoice.variable_symbol,
+        ),
         business_mode=invoice.business_mode,
         tax_mode=invoice.tax_mode,
         totals=InvoiceExportTotalsDTO(

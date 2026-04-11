@@ -11,6 +11,7 @@ class Invoice(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     invoice_number = Column(String(64), nullable=False, unique=True, index=True)
+    variable_symbol = Column(String(9), nullable=False, unique=True, index=True)
     issue_date = Column(Date, nullable=False, index=True)
     due_date = Column(Date, nullable=False)
 
@@ -42,6 +43,11 @@ class Invoice(Base):
 
     reverse_charge_reason = Column(String(256), nullable=True)
     reverse_charge_text = Column(Text, nullable=True)
+    payment_method = Column(String(64), nullable=False)
+    bank_account_number = Column(String(32), nullable=False)
+    bank_account_prefix = Column(String(16), nullable=True)
+    bank_code = Column(String(16), nullable=False)
+    bank_iban = Column(String(34), nullable=False)
 
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
@@ -64,3 +70,27 @@ class InvoiceItem(Base):
     line_total = Column(Numeric(12, 2), nullable=False)
 
     invoice = relationship("Invoice", back_populates="items")
+
+
+class InvoiceSequenceState(Base):
+    __tablename__ = "invoice_sequence_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sequence_key = Column(String(64), nullable=False, unique=True, index=True)
+    last_number = Column(Integer, nullable=False, default=0)
+    padding = Column(Integer, nullable=False, default=3)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class InvoiceSettings(Base):
+    __tablename__ = "invoice_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_email = Column(String(256), nullable=False)
+    payment_method = Column(String(64), nullable=False)
+    bank_account_number = Column(String(32), nullable=False)
+    bank_account_prefix = Column(String(16), nullable=True)
+    bank_code = Column(String(16), nullable=False)
+    bank_iban = Column(String(34), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
