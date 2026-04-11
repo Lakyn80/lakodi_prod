@@ -12,6 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/data/translations";
 import { CONTACT } from "@/data/contact";
 import { adminApiUrl, apiFetchOptions } from "@/lib/api";
+import { getDesktopHomeHrefForHostname } from "@/lib/hosts";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
@@ -20,6 +21,7 @@ export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [desktopHomeHref, setDesktopHomeHref] = useState("/");
 
   useEffect(() => {
     const checkAdmin = () => {
@@ -28,6 +30,11 @@ export default function Header() {
         .then((d) => setIsAdmin(Boolean(d.authenticated && d.role === "admin")))
         .catch(() => setIsAdmin(false));
     };
+
+    if (typeof window !== "undefined") {
+      setDesktopHomeHref(getDesktopHomeHrefForHostname(window.location.host));
+    }
+
     checkAdmin();
     window.addEventListener("admin-auth-changed", checkAdmin);
     return () => window.removeEventListener("admin-auth-changed", checkAdmin);
@@ -62,7 +69,7 @@ export default function Header() {
           {navItems.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href === "/" ? desktopHomeHref : item.href}
               className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                 isActive(item.href)
                   ? 'text-primary'
