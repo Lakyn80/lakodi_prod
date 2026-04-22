@@ -81,8 +81,24 @@ const initialState = (): InvoiceFormState => ({
 });
 
 function buildAresAddress(addressLine: string, zip: string, city: string, country: string) {
-  const line = [addressLine, [zip, city].filter(Boolean).join(" "), country].filter(Boolean);
-  return line.join(", ");
+  const normalizeAddressPart = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase("cs-CZ");
+  const includesPart = (source: string, candidate: string) => {
+    const normalizedCandidate = normalizeAddressPart(candidate);
+    if (!normalizedCandidate) return false;
+    return normalizeAddressPart(source).includes(normalizedCandidate);
+  };
+
+  const parts = [addressLine.trim()].filter(Boolean);
+  const zipCity = [zip, city].filter(Boolean).join(" ").trim();
+
+  if (zipCity && !includesPart(parts.join(", "), zipCity)) {
+    parts.push(zipCity);
+  }
+  if (country && !includesPart(parts.join(", "), country)) {
+    parts.push(country.trim());
+  }
+
+  return parts.join(", ");
 }
 
 function getAresResultLabel(company: AresCompanyLookup) {
@@ -410,7 +426,7 @@ export function InvoiceForm({
           </div>
           <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground md:col-span-2">
             {form.tax_mode === "reverse_charge"
-              ? "Přenesená daňová povinnost je povolená jen pro typ zakázky Stavební práce. Popis položky může být konkrétní, např. odvoz železa."
+              ? "Přenesená daňová povinnost nastaví DPH na faktuře na nulu. Typ zakázky ji nijak neomezuje."
               : "Běžný režim DPH dopočítá DPH z mezisoučtu všech položek."}
           </div>
         </div>
@@ -541,11 +557,7 @@ export function InvoiceForm({
                     id={`item_description_${index}`}
                     value={item.description}
                     onChange={(event) => updateItem(index, "description", event.target.value)}
-                    placeholder={
-                      form.business_mode === "construction"
-                        ? "Např. odvoz železa nebo bourací práce"
-                        : "Např. diagnostika převodovky"
-                    }
+                    placeholder="Např. odvoz železa, servis nebo diagnostika převodovky"
                     required
                   />
                 </div>

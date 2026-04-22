@@ -74,7 +74,7 @@ ISSUER_PROFILES: dict[str, IssuerProfile] = {
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
-        reason="construction_services_reverse_charge",
+        reason="reverse_charge",
         text="Daň odvede zákazník v režimu přenesené daňové povinnosti.",
     )
 }
@@ -135,7 +135,6 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
     payment_settings = get_invoice_settings(db)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
     totals = _calculate_totals(
-        business_mode=payload.business_mode,
         tax_mode=payload.tax_mode,
         vat_rate=payload.vat_rate,
         line_totals=[item.line_total for item in prepared_items],
@@ -200,7 +199,6 @@ def _prepare_invoice_item(item) -> PreparedInvoiceItem:
 
 def _calculate_totals(
     *,
-    business_mode: str,
     tax_mode: str,
     vat_rate: Decimal | None,
     line_totals: list[Decimal],
@@ -222,11 +220,6 @@ def _calculate_totals(
         )
 
     if tax_mode == "reverse_charge":
-        if business_mode != "construction":
-            raise InvoiceValidationError(
-                "Režim přenesené daňové povinnosti lze použít jen pro typ zakázky "
-                "Stavební práce. Popis položky může být konkrétní, například odvoz železa."
-            )
         normalized_vat_rate = _normalize_vat_rate(vat_rate) if vat_rate is not None else None
         reverse_charge_meta = REVERSE_CHARGE_RULES["reverse_charge"]
         return InvoiceTotals(

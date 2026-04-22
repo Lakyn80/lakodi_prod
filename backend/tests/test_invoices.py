@@ -169,7 +169,7 @@ def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
     assert invoice["vat_amount"] == 0.0
     assert invoice["total"] == 15000.0
     assert invoice["items"][0]["description"] == "Odvoz železa"
-    assert invoice["reverse_charge_reason"] == "construction_services_reverse_charge"
+    assert invoice["reverse_charge_reason"] == "reverse_charge"
     assert "Daň odvede zákazník" in invoice["reverse_charge_text"]
 
 
@@ -276,7 +276,7 @@ def test_standardni_faktura_bez_sazby_dph_je_odmitnuta() -> None:
     assert "Pro běžný režim DPH musíte vyplnit sazbu DPH." in response.text
 
 
-def test_prenesena_danova_povinnost_mimo_stavebni_rezim_je_odmitnuta() -> None:
+def test_prenesena_danova_povinnost_je_povolena_i_pro_autoservis() -> None:
     _login_admin()
 
     response = client.post(
@@ -295,8 +295,13 @@ def test_prenesena_danova_povinnost_mimo_stavebni_rezim_je_odmitnuta() -> None:
         },
     )
 
-    assert response.status_code == 422
-    assert "Režim přenesené daňové povinnosti lze použít jen" in response.text
+    assert response.status_code == 200
+    invoice = response.json()
+    assert invoice["business_mode"] == "autoservice"
+    assert invoice["tax_mode"] == "reverse_charge"
+    assert invoice["vat_amount"] == 0.0
+    assert invoice["total"] == 5000.0
+    assert invoice["reverse_charge_reason"] == "reverse_charge"
 
 
 def test_faktura_bez_polozek_je_odmitnuta() -> None:

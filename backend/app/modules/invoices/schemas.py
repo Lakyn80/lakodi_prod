@@ -116,11 +116,6 @@ class InvoiceCreate(BaseModel):
             raise ValueError("Datum splatnosti nemůže být dříve než datum vystavení.")
         if self.tax_mode == "standard" and self.vat_rate is None:
             raise ValueError("Pro běžný režim DPH musíte vyplnit sazbu DPH.")
-        if self.tax_mode == "reverse_charge" and self.business_mode != "construction":
-            raise ValueError(
-                "Režim přenesené daňové povinnosti lze použít jen pro typ zakázky "
-                "Stavební práce. Popis položky může být konkrétní, například odvoz železa."
-            )
         return self
 
 

@@ -23,7 +23,8 @@ const ARES_SOURCE_LABELS = {
 } as const;
 
 const REVERSE_CHARGE_REASON_LABELS: Record<string, string> = {
-  construction_services_reverse_charge: "Přenesená daňová povinnost u stavebních prací",
+  reverse_charge: "Přenesená daňová povinnost",
+  construction_services_reverse_charge: "Přenesená daňová povinnost",
 };
 
 export interface InvoiceItemInput {
