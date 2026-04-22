@@ -156,7 +156,7 @@ def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
             "currency": "CZK",
             "vat_rate": 21,
             "items": [
-                {"description": "Stavební práce", "quantity": 3, "unit_price": 5000},
+                {"description": "Odvoz železa", "quantity": 3, "unit_price": 5000},
             ],
         },
     )
@@ -168,6 +168,7 @@ def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
     assert invoice["subtotal"] == 15000.0
     assert invoice["vat_amount"] == 0.0
     assert invoice["total"] == 15000.0
+    assert invoice["items"][0]["description"] == "Odvoz železa"
     assert invoice["reverse_charge_reason"] == "construction_services_reverse_charge"
     assert "Daň odvede zákazník" in invoice["reverse_charge_text"]
 

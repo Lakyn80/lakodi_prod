@@ -223,7 +223,10 @@ def _calculate_totals(
 
     if tax_mode == "reverse_charge":
         if business_mode != "construction":
-            raise InvoiceValidationError("Režim přenesené daňové povinnosti lze použít jen pro stavební práce.")
+            raise InvoiceValidationError(
+                "Režim přenesené daňové povinnosti lze použít jen pro typ zakázky "
+                "Stavební práce. Popis položky může být konkrétní, například odvoz železa."
+            )
         normalized_vat_rate = _normalize_vat_rate(vat_rate) if vat_rate is not None else None
         reverse_charge_meta = REVERSE_CHARGE_RULES["reverse_charge"]
         return InvoiceTotals(

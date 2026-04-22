@@ -124,7 +124,6 @@ export function InvoiceForm({
 
   useEffect(() => {
     void loadInvoiceDefaults();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const preview = useMemo(() => {
@@ -411,7 +410,7 @@ export function InvoiceForm({
           </div>
           <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground md:col-span-2">
             {form.tax_mode === "reverse_charge"
-              ? "Přenesená daňová povinnost je povolená jen pro stavební práce."
+              ? "Přenesená daňová povinnost je povolená jen pro typ zakázky Stavební práce. Popis položky může být konkrétní, např. odvoz železa."
               : "Běžný režim DPH dopočítá DPH z mezisoučtu všech položek."}
           </div>
         </div>
@@ -542,7 +541,11 @@ export function InvoiceForm({
                     id={`item_description_${index}`}
                     value={item.description}
                     onChange={(event) => updateItem(index, "description", event.target.value)}
-                    placeholder="Např. diagnostika převodovky"
+                    placeholder={
+                      form.business_mode === "construction"
+                        ? "Např. odvoz železa nebo bourací práce"
+                        : "Např. diagnostika převodovky"
+                    }
                     required
                   />
                 </div>
