@@ -1,6 +1,7 @@
 """Admin přihlášení – email + heslo, role-based auth."""
 import hmac
 import hashlib
+import ipaddress
 import os
 import re
 import secrets
@@ -162,7 +163,40 @@ def _cookie_secure_flag(request: Request) -> bool:
     return _is_secure_request(request)
 
 
+def _request_hostname(request: Request) -> str:
+    forwarded_host = request.headers.get("x-forwarded-host", "").strip()
+    raw_host = forwarded_host or request.headers.get("host", "").strip() or (request.url.hostname or "")
+    host = raw_host.split(",")[0].strip().split(":")[0].strip().lower()
+    return host
+
+
+def _cookie_domain(request: Request) -> str | None:
+    explicit = os.getenv("ADMIN_COOKIE_DOMAIN", "").strip().lower()
+    if explicit and explicit not in {"auto", "none", "off"}:
+        domain = explicit.lstrip(".")
+        return f".{domain}" if domain else None
+
+    host = _request_hostname(request)
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        return None
+
+    try:
+        ipaddress.ip_address(host)
+        return None
+    except ValueError:
+        pass
+
+    parts = [part for part in host.split(".") if part]
+    if len(parts) < 2:
+        return None
+    return f".{'.'.join(parts[-2:])}"
+
+
 def _set_auth_cookie(response: Response, token: str, request: Request):
+    cookie_domain = _cookie_domain(request)
+    if cookie_domain:
+        # Remove an older host-only cookie so the browser does not send two admin_session values.
+        response.delete_cookie(COOKIE_NAME, path="/")
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
@@ -171,6 +205,7 @@ def _set_auth_cookie(response: Response, token: str, request: Request):
         samesite="strict",
         max_age=86400 * 7,
         path="/",
+        domain=cookie_domain,
     )
 
 
@@ -276,8 +311,11 @@ def admin_recover_reset(body: ResetRecoveryPasswordRequest, db: Session = Depend
 
 
 @router.post("/logout")
-def admin_logout(response: Response):
+def admin_logout(response: Response, request: Request):
     response.delete_cookie(COOKIE_NAME, path="/")
+    cookie_domain = _cookie_domain(request)
+    if cookie_domain:
+        response.delete_cookie(COOKIE_NAME, path="/", domain=cookie_domain)
     return {"ok": True}
 
 

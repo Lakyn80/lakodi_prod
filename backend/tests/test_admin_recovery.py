@@ -102,3 +102,21 @@ def test_seed_admin_syncs_existing_admin_password(monkeypatch):
         json={"email": email, "password": original_password},
     )
     assert restored_login.status_code == 200
+
+
+def test_login_sets_shared_cookie_domain_for_subdomains(monkeypatch):
+    monkeypatch.delenv("ADMIN_COOKIE_DOMAIN", raising=False)
+
+    response = client.post(
+        "/api/admin/login",
+        json={"email": admin_router.ADMIN_EMAIL.strip().lower(), "password": admin_router.ADMIN_PASSWORD},
+        headers={
+            "x-forwarded-host": "admin.lakodi.cz",
+            "x-forwarded-proto": "https",
+        },
+    )
+
+    assert response.status_code == 200
+    cookie_header = response.headers.get("set-cookie", "")
+    assert "admin_session=" in cookie_header
+    assert "Domain=.lakodi.cz" in cookie_header
