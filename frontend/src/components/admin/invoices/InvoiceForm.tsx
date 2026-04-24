@@ -20,6 +20,7 @@ import {
   getInvoiceDefaults,
   lookupAresCompany,
   searchAresCompanies,
+  updateInvoice,
 } from "@/lib/invoices";
 
 type DraftItem = {
@@ -105,10 +106,40 @@ function getAresResultLabel(company: AresCompanyLookup) {
   return `${company.company_name} • IČO ${company.ico}`;
 }
 
+function mapInvoiceToForm(invoice: InvoiceDetail): InvoiceFormState {
+  return {
+    invoice_number: invoice.invoice_number,
+    issue_date: invoice.issue_date,
+    due_date: invoice.due_date,
+    customer_name: invoice.customer_name,
+    customer_email: invoice.customer_email,
+    customer_phone: invoice.customer_phone ?? "",
+    customer_address: invoice.customer_address ?? "",
+    customer_ico: invoice.customer_ico ?? "",
+    customer_dic: invoice.customer_dic ?? "",
+    note: invoice.note ?? "",
+    business_mode: invoice.business_mode,
+    tax_mode: invoice.tax_mode,
+    currency: invoice.currency,
+    vat_rate: invoice.vat_rate != null ? String(invoice.vat_rate) : "",
+    items: invoice.items.map((item) => ({
+      description: item.description,
+      quantity: String(item.quantity),
+      unit_price: String(item.unit_price),
+    })),
+  };
+}
+
 export function InvoiceForm({
+  invoiceToEdit,
   onCreated,
+  onUpdated,
+  onCancelEdit,
 }: {
+  invoiceToEdit: InvoiceDetail | null;
   onCreated: (invoice: InvoiceDetail) => void | Promise<void>;
+  onUpdated: (invoice: InvoiceDetail) => void | Promise<void>;
+  onCancelEdit: () => void;
 }) {
   const [form, setForm] = useState<InvoiceFormState>(() => initialState());
   const [submitting, setSubmitting] = useState(false);
@@ -121,6 +152,14 @@ export function InvoiceForm({
   const [success, setSuccess] = useState("");
   const [aresMessage, setAresMessage] = useState("");
   const [companySearchMessage, setCompanySearchMessage] = useState("");
+  const isEditing = invoiceToEdit !== null;
+
+  const clearMessages = () => {
+    setError("");
+    setSuccess("");
+    setAresMessage("");
+    setCompanySearchMessage("");
+  };
 
   const loadInvoiceDefaults = async () => {
     try {
@@ -139,8 +178,21 @@ export function InvoiceForm({
   };
 
   useEffect(() => {
+    if (invoiceToEdit) {
+      setSuggestedVariableSymbol(invoiceToEdit.variable_symbol);
+      setForm(mapInvoiceToForm(invoiceToEdit));
+      setCompanySearchName(invoiceToEdit.customer_name);
+      setCompanySearchResults([]);
+      clearMessages();
+      return;
+    }
+
+    setForm(initialState());
+    setCompanySearchName("");
+    setCompanySearchResults([]);
+    clearMessages();
     void loadInvoiceDefaults();
-  }, []);
+  }, [invoiceToEdit]);
 
   const preview = useMemo(() => {
     const subtotal = form.items.reduce((sum, item) => {
@@ -167,7 +219,7 @@ export function InvoiceForm({
     };
   }, [form.items, form.tax_mode, form.vat_rate]);
 
-  const displayedVariableSymbol = form.invoice_number || suggestedVariableSymbol;
+  const displayedVariableSymbol = isEditing ? form.invoice_number : form.invoice_number || suggestedVariableSymbol;
 
   const updateField = <K extends keyof InvoiceFormState>(field: K, value: InvoiceFormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -290,7 +342,7 @@ export function InvoiceForm({
       customer_name: form.customer_name,
       customer_email: form.customer_email,
       customer_phone: form.customer_phone || null,
-      customer_address: form.customer_address || null,
+      customer_address: form.customer_address,
       customer_ico: form.customer_ico || null,
       customer_dic: form.customer_dic || null,
       note: form.note || null,
@@ -307,17 +359,22 @@ export function InvoiceForm({
 
     setSubmitting(true);
     try {
-      const created = await createInvoice(payload);
-      await onCreated(created);
-      setSuccess(`Faktura ${created.invoice_number} byla úspěšně vytvořena.`);
-      setForm((current) => ({
-        ...current,
-        invoice_number: "",
-        note: "",
-        items: [initialItem()],
-      }));
-      setCompanySearchResults([]);
-      await loadInvoiceDefaults();
+      if (isEditing && invoiceToEdit) {
+        const updated = await updateInvoice(invoiceToEdit.id, payload);
+        await onUpdated(updated);
+      } else {
+        const created = await createInvoice(payload);
+        await onCreated(created);
+        setSuccess(`Faktura ${created.invoice_number} byla úspěšně vytvořena.`);
+        setForm((current) => ({
+          ...current,
+          invoice_number: "",
+          note: "",
+          items: [initialItem()],
+        }));
+        setCompanySearchResults([]);
+        await loadInvoiceDefaults();
+      }
     } catch (err) {
       if (err instanceof AdminApiError || err instanceof Error) {
         setError(err.message);
@@ -333,9 +390,11 @@ export function InvoiceForm({
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Nová faktura</h2>
+          <h2 className="text-xl font-semibold text-foreground">{isEditing ? "Úprava faktury" : "Nová faktura"}</h2>
           <p className="text-sm text-muted-foreground">
-            Vystavení servisní nebo stavební faktury včetně předvyplnění z registru ARES.
+            {isEditing
+              ? "Libovolná vystavená faktura je kdykoliv upravitelná včetně položek, čísel a adres."
+              : "Vystavení servisní nebo stavební faktury včetně předvyplnění z registru ARES."}
           </p>
         </div>
         <div className="rounded-lg border border-border bg-background px-3 py-2 text-right text-sm">
@@ -356,7 +415,7 @@ export function InvoiceForm({
               placeholder="Např. 001"
             />
             <p className="text-xs text-muted-foreground">
-              Klient může číslo změnit. Další faktura pak naváže automaticky.
+              Klient může použít libovolné volné číslo faktury. Další automatický návrh zůstává navázaný na nejvyšší použité číslo.
               {displayedVariableSymbol ? ` VS pro tuto fakturu: ${displayedVariableSymbol}.` : ""}
             </p>
           </div>
@@ -529,7 +588,8 @@ export function InvoiceForm({
               id="customer_address"
               value={form.customer_address}
               onChange={(event) => updateField("customer_address", event.target.value)}
-              placeholder="Ulice, PSČ, město"
+              placeholder="Ulice, PSČ, město, stát"
+              required
             />
           </div>
         </div>
@@ -632,24 +692,27 @@ export function InvoiceForm({
 
         <div className="flex flex-wrap gap-3">
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Vystavuji fakturu…" : "Vystavit fakturu"}
+            {submitting ? (isEditing ? "Ukládám změny…" : "Vystavuji fakturu…") : isEditing ? "Uložit změny" : "Vystavit fakturu"}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setForm(initialState());
-              setCompanySearchName("");
-              setCompanySearchResults([]);
-              setError("");
-              setSuccess("");
-              setAresMessage("");
-              setCompanySearchMessage("");
-              void loadInvoiceDefaults();
-            }}
-          >
-            Vyčistit formulář
-          </Button>
+          {isEditing ? (
+            <Button type="button" variant="ghost" onClick={onCancelEdit}>
+              Zrušit úpravy
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setForm(initialState());
+                setCompanySearchName("");
+                setCompanySearchResults([]);
+                clearMessages();
+                void loadInvoiceDefaults();
+              }}
+            >
+              Vyčistit formulář
+            </Button>
+          )}
         </div>
       </form>
     </section>

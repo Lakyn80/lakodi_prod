@@ -46,7 +46,7 @@ class InvoiceCreate(BaseModel):
     customer_name: str = Field(min_length=1, max_length=256)
     customer_email: str = Field(min_length=1, max_length=256)
     customer_phone: str | None = Field(default=None, max_length=64)
-    customer_address: str | None = Field(default=None, max_length=256)
+    customer_address: str = Field(max_length=256)
     customer_ico: str | None = Field(default=None, max_length=32)
     customer_dic: str | None = Field(default=None, max_length=32)
 
@@ -59,7 +59,7 @@ class InvoiceCreate(BaseModel):
 
     items: list[InvoiceItemCreate]
 
-    @field_validator("customer_name", "customer_email")
+    @field_validator("customer_name", "customer_email", "customer_address")
     @classmethod
     def validate_required_text(cls, value: str) -> str:
         cleaned = value.strip()
@@ -83,7 +83,7 @@ class InvoiceCreate(BaseModel):
             raise ValueError("Číslo faktury musí být větší než nula.")
         return cleaned
 
-    @field_validator("customer_phone", "customer_address", "customer_ico", "customer_dic", "note")
+    @field_validator("customer_phone", "customer_ico", "customer_dic", "note")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -187,6 +187,10 @@ class InvoiceSummaryResponse(BaseModel):
 
 class InvoiceDetailResponse(InvoiceSummaryResponse):
     items: list[InvoiceItemResponse]
+
+
+class InvoiceUpdate(InvoiceCreate):
+    pass
 
 
 class AresCompanyLookupResponse(BaseModel):

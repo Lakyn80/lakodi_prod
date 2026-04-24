@@ -20,6 +20,7 @@ export default function AdminInvoicesPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetailType | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceDetailType | null>(null);
   const [listError, setListError] = useState("");
 
   const refreshInvoices = async (preferredInvoiceId?: number | null) => {
@@ -71,12 +72,21 @@ export default function AdminInvoicesPage() {
   }, []);
 
   const handleCreated = async (invoice: InvoiceDetailType) => {
+    setEditingInvoice(null);
+    setSelectedInvoice(invoice);
+    setSelectedInvoiceId(invoice.id);
+    await refreshInvoices(invoice.id);
+  };
+
+  const handleUpdated = async (invoice: InvoiceDetailType) => {
+    setEditingInvoice(null);
     setSelectedInvoice(invoice);
     setSelectedInvoiceId(invoice.id);
     await refreshInvoices(invoice.id);
   };
 
   const handleSelectInvoice = async (invoiceId: number) => {
+    setEditingInvoice(null);
     setSelectedInvoiceId(invoiceId);
     try {
       await loadInvoiceDetail(invoiceId);
@@ -100,7 +110,12 @@ export default function AdminInvoicesPage() {
 
       <InvoiceSettingsForm />
 
-      <InvoiceForm onCreated={handleCreated} />
+      <InvoiceForm
+        invoiceToEdit={editingInvoice}
+        onCreated={handleCreated}
+        onUpdated={handleUpdated}
+        onCancelEdit={() => setEditingInvoice(null)}
+      />
 
       {listError && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -119,6 +134,7 @@ export default function AdminInvoicesPage() {
         <InvoiceDetail
           invoice={selectedInvoice}
           loading={detailLoading}
+          onEdit={() => setEditingInvoice(selectedInvoice)}
           onRefresh={() => void refreshInvoices(selectedInvoiceId)}
         />
       </div>

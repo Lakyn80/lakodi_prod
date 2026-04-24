@@ -98,12 +98,15 @@ def _build_invoice_email_html(export) -> str:
 
     business_mode = BUSINESS_MODE_LABELS.get(export.business_mode, export.business_mode)
     tax_mode = TAX_MODE_LABELS.get(export.tax_mode, export.tax_mode)
+    issuer_full_address = _build_full_issuer_address(export)
+    customer_full_address = export.customer.address or "Adresa odběratele není vyplněna."
 
     return f"""
     <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:760px;margin:0 auto;padding:24px;">
       <h1 style="margin:0 0 16px;font-size:24px;">Faktura {escape(export.identity.invoice_number)}</h1>
       <p style="margin:0 0 8px;">Dobrý den, v příloze zasíláme PDF fakturu k vaší zakázce.</p>
-      <p style="margin:0 0 8px;"><strong>Odběratel:</strong> {escape(export.customer.name)}</p>
+      <p style="margin:0 0 8px;"><strong>Dodavatel:</strong> {escape(export.issuer.name)}<br>{escape(issuer_full_address)}</p>
+      <p style="margin:0 0 8px;"><strong>Odběratel:</strong> {escape(export.customer.name)}<br>{escape(customer_full_address)}</p>
       <p style="margin:0 0 8px;"><strong>Datum vystavení:</strong> {export.identity.issue_date}</p>
       <p style="margin:0 0 8px;"><strong>Datum splatnosti:</strong> {export.identity.due_date}</p>
       <p style="margin:0 0 8px;"><strong>Režim faktury:</strong> {escape(business_mode)} / {escape(tax_mode)}</p>
@@ -139,6 +142,23 @@ def _format_money(value: Decimal) -> str:
 def _format_decimal(value: Decimal) -> str:
     normalized = Decimal(value).normalize()
     return format(normalized, "f").rstrip("0").rstrip(".") or "0"
+
+
+def _build_full_issuer_address(export) -> str:
+    return _build_full_address(export.issuer.address, export.issuer.zip, export.issuer.city)
+
+
+def _build_full_address(address: str | None, zip_code: str | None, city: str | None) -> str:
+    def normalize_part(value: str) -> str:
+        return " ".join(value.strip().split()).lower()
+
+    parts = [str(address or "").strip()]
+    zip_city = " ".join(part for part in (zip_code or "", city or "") if part).strip()
+    if zip_city:
+        source = ", ".join(part for part in parts if part)
+        if normalize_part(zip_city) not in normalize_part(source):
+            parts.append(zip_city)
+    return ", ".join(part for part in parts if part)
 
 
 def _build_copy_recipients(recipient: str, *, owner_email: str | None) -> list[str]:

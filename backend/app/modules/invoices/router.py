@@ -26,6 +26,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceSendEmailRequest,
     InvoiceSendEmailResponse,
     InvoiceSummaryResponse,
+    InvoiceUpdate,
 )
 from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
@@ -38,6 +39,7 @@ from backend.app.modules.invoices.service import (
     list_invoices,
     save_invoice_settings,
     send_invoice_email,
+    update_invoice,
 )
 
 router = APIRouter()
@@ -131,6 +133,21 @@ def admin_update_invoice_settings(
     try:
         settings = save_invoice_settings(db, body)
         return _build_settings_response(settings)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.put("/{invoice_id}", response_model=InvoiceDetailResponse)
+def admin_update_invoice(
+    invoice_id: int,
+    body: InvoiceUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return update_invoice(db, invoice_id, body)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

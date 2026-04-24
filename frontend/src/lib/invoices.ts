@@ -40,7 +40,7 @@ export interface InvoiceCreatePayload {
   customer_name: string;
   customer_email: string;
   customer_phone?: string | null;
-  customer_address?: string | null;
+  customer_address: string;
   customer_ico?: string | null;
   customer_dic?: string | null;
   note?: string | null;
@@ -212,6 +212,13 @@ export async function getInvoiceDetail(invoiceId: number): Promise<InvoiceDetail
 export async function createInvoice(payload: InvoiceCreatePayload): Promise<InvoiceDetail> {
   return requestJson<InvoiceDetail>("", {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateInvoice(invoiceId: number, payload: InvoiceCreatePayload): Promise<InvoiceDetail> {
+  return requestJson<InvoiceDetail>(`/${invoiceId}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
   });
 }

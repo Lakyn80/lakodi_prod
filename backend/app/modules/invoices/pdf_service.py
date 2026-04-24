@@ -85,8 +85,7 @@ def build_invoice_pdf_document(invoice: Invoice) -> InvoicePdfDocument:
                 _multiline_paragraph(
                     [
                         export.issuer.name,
-                        export.issuer.address,
-                        f"{export.issuer.zip} {export.issuer.city}",
+                        _build_full_address(export.issuer.address, export.issuer.zip, export.issuer.city),
                         f"IČO: {export.issuer.ico}",
                         f"DIČ: {export.issuer.dic}",
                         f"Datová schránka: {export.issuer.data_box}" if export.issuer.data_box else None,
@@ -101,7 +100,7 @@ def build_invoice_pdf_document(invoice: Invoice) -> InvoicePdfDocument:
                 _multiline_paragraph(
                     [
                         export.customer.name,
-                        export.customer.address,
+                        export.customer.address or "Adresa odběratele není vyplněna.",
                         export.customer.email,
                         export.customer.phone,
                         f"IČO: {export.customer.ico}" if export.customer.ico else None,
@@ -460,6 +459,19 @@ def _safe_markup(value: str | None) -> str:
 
 def _multiline_paragraph(lines: list[str | None]) -> str:
     return "<br/>".join(_safe_markup(line) for line in lines if line)
+
+
+def _build_full_address(address: str | None, zip_code: str | None, city: str | None) -> str:
+    def normalize_part(value: str) -> str:
+        return " ".join(value.strip().split()).lower()
+
+    parts = [str(address or "").strip()]
+    zip_city = " ".join(part for part in (zip_code or "", city or "") if part).strip()
+    if zip_city:
+        source = ", ".join(part for part in parts if part)
+        if normalize_part(zip_city) not in normalize_part(source):
+            parts.append(zip_city)
+    return ", ".join(part for part in parts if part)
 
 
 def _format_money(value: Decimal | None) -> str:

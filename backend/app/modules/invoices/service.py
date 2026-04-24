@@ -16,6 +16,7 @@ from backend.app.modules.invoices.numbering_service import (
     InvoiceSequencePreview,
     get_invoice_sequence_preview,
     reserve_invoice_sequence,
+    resolve_invoice_sequence_for_update,
 )
 from backend.app.modules.invoices.payment_service import (
     InvoicePaymentError,
@@ -24,7 +25,7 @@ from backend.app.modules.invoices.payment_service import (
     update_invoice_settings_profile,
 )
 from backend.app.modules.invoices.pdf_service import InvoicePdfDocument, build_invoice_pdf_document
-from backend.app.modules.invoices.schemas import InvoiceCreate, InvoiceSettingsUpdate
+from backend.app.modules.invoices.schemas import InvoiceCreate, InvoiceSettingsUpdate, InvoiceUpdate
 
 TWOPLACES = Decimal("0.01")
 THREEPLACES = Decimal("0.001")
@@ -149,6 +150,27 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
             totals=totals,
         )
     except (InvoiceNumberingError, InvoicePaymentError) as exc:
+        db.rollback()
+        raise InvoiceValidationError(str(exc)) from exc
+
+
+def update_invoice(db: Session, invoice_id: int, payload: InvoiceUpdate) -> Invoice:
+    invoice = get_invoice_detail(db, invoice_id)
+    prepared_items = [_prepare_invoice_item(item) for item in payload.items]
+    totals = _calculate_totals(
+        tax_mode=payload.tax_mode,
+        vat_rate=payload.vat_rate,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    try:
+        return _update_existing_invoice(
+            db=db,
+            invoice=invoice,
+            payload=payload,
+            prepared_items=prepared_items,
+            totals=totals,
+        )
+    except InvoiceNumberingError as exc:
         db.rollback()
         raise InvoiceValidationError(str(exc)) from exc
 
@@ -326,3 +348,58 @@ def _create_invoice_with_reserved_sequence(
             if payload.invoice_number or attempt > 0:
                 raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc
     raise InvoiceValidationError("Fakturu se nepodařilo bezpečně vytvořit.")
+
+
+def _update_existing_invoice(
+    *,
+    db: Session,
+    invoice: Invoice,
+    payload: InvoiceUpdate,
+    prepared_items: list[PreparedInvoiceItem],
+    totals: InvoiceTotals,
+) -> Invoice:
+    try:
+        reserved_sequence = resolve_invoice_sequence_for_update(
+            db,
+            invoice_id=invoice.id,
+            current_invoice_number=invoice.invoice_number,
+            requested_invoice_number=payload.invoice_number,
+        )
+        invoice.invoice_number = reserved_sequence.invoice_number
+        invoice.variable_symbol = reserved_sequence.variable_symbol
+        invoice.issue_date = payload.issue_date
+        invoice.due_date = payload.due_date
+        invoice.customer_name = payload.customer_name
+        invoice.customer_email = payload.customer_email
+        invoice.customer_phone = payload.customer_phone
+        invoice.customer_address = payload.customer_address
+        invoice.customer_ico = payload.customer_ico
+        invoice.customer_dic = payload.customer_dic
+        invoice.note = payload.note
+        invoice.business_mode = payload.business_mode
+        invoice.tax_mode = payload.tax_mode
+        invoice.currency = payload.currency
+        invoice.subtotal = totals.subtotal
+        invoice.vat_rate = totals.vat_rate
+        invoice.vat_amount = totals.vat_amount
+        invoice.total = totals.total
+        invoice.reverse_charge_reason = totals.reverse_charge_reason
+        invoice.reverse_charge_text = totals.reverse_charge_text
+        invoice.items = [
+            InvoiceItem(
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                line_total=item.line_total,
+            )
+            for item in prepared_items
+        ]
+
+        db.add(invoice)
+        db.commit()
+        updated_invoice = get_invoice_detail(db, invoice.id)
+        _cache_invoice_nonfatal(updated_invoice)
+        return updated_invoice
+    except IntegrityError as exc:
+        db.rollback()
+        raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc

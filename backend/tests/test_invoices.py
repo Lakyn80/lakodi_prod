@@ -151,6 +151,7 @@ def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
             "due_date": "2026-04-20",
             "customer_name": "Stavby Partner",
             "customer_email": "stavby@example.com",
+            "customer_address": "Stavební 1, 110 00 Praha",
             "business_mode": "construction",
             "tax_mode": "reverse_charge",
             "currency": "CZK",
@@ -253,6 +254,23 @@ def test_rucne_nastavene_cislo_faktury_posune_dalsi_automatickou_radu() -> None:
     }
 
 
+def test_rucne_nizsi_volne_cislo_faktury_je_povoleno() -> None:
+    _vytvor_fakturu({"invoice_number": "024"})
+    _vytvor_fakturu({"customer_email": "druhy@example.com"})
+    treti = _vytvor_fakturu({"invoice_number": "010", "customer_email": "treti@example.com"})
+
+    assert treti["invoice_number"] == "010"
+    assert treti["variable_symbol"] == "010"
+
+    _login_admin()
+    defaults_response = client.get("/api/admin/invoices/defaults")
+    assert defaults_response.status_code == 200
+    assert defaults_response.json() == {
+        "suggested_invoice_number": "026",
+        "suggested_variable_symbol": "026",
+    }
+
+
 def test_standardni_faktura_bez_sazby_dph_je_odmitnuta() -> None:
     _login_admin()
 
@@ -263,6 +281,7 @@ def test_standardni_faktura_bez_sazby_dph_je_odmitnuta() -> None:
             "due_date": "2026-04-18",
             "customer_name": "Jan Novák",
             "customer_email": "jan@example.com",
+            "customer_address": "Praha 10",
             "business_mode": "autoservice",
             "tax_mode": "standard",
             "currency": "CZK",
@@ -286,6 +305,7 @@ def test_prenesena_danova_povinnost_je_povolena_i_pro_autoservis() -> None:
             "due_date": "2026-04-20",
             "customer_name": "Klient",
             "customer_email": "klient@example.com",
+            "customer_address": "Servisní 5, 100 00 Praha",
             "business_mode": "autoservice",
             "tax_mode": "reverse_charge",
             "currency": "CZK",
@@ -304,6 +324,31 @@ def test_prenesena_danova_povinnost_je_povolena_i_pro_autoservis() -> None:
     assert invoice["reverse_charge_reason"] == "reverse_charge"
 
 
+def test_vytvoreni_faktury_bez_adresy_odberatele_je_odmitnuto() -> None:
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices",
+        json={
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+            "customer_name": "Jan Novák",
+            "customer_email": "jan@example.com",
+            "customer_address": "",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Diagnostika", "quantity": 1, "unit_price": 1200},
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Toto pole je povinné." in response.text
+
+
 def test_faktura_bez_polozek_je_odmitnuta() -> None:
     _login_admin()
 
@@ -314,6 +359,7 @@ def test_faktura_bez_polozek_je_odmitnuta() -> None:
             "due_date": "2026-04-18",
             "customer_name": "Jan Novák",
             "customer_email": "jan@example.com",
+            "customer_address": "Praha 10",
             "business_mode": "autoservice",
             "tax_mode": "standard",
             "currency": "CZK",
@@ -336,6 +382,7 @@ def test_faktura_s_nekladnym_mnozstvim_je_odmitnuta() -> None:
             "due_date": "2026-04-18",
             "customer_name": "Jan Novák",
             "customer_email": "jan@example.com",
+            "customer_address": "Praha 10",
             "business_mode": "autoservice",
             "tax_mode": "standard",
             "currency": "CZK",
@@ -360,6 +407,7 @@ def test_faktura_se_zapornou_cenou_je_odmitnuta() -> None:
             "due_date": "2026-04-18",
             "customer_name": "Jan Novák",
             "customer_email": "jan@example.com",
+            "customer_address": "Praha 10",
             "business_mode": "autoservice",
             "tax_mode": "standard",
             "currency": "CZK",
@@ -372,6 +420,54 @@ def test_faktura_se_zapornou_cenou_je_odmitnuta() -> None:
 
     assert response.status_code == 422
     assert "Jednotková cena nemůže být záporná." in response.text
+
+
+def test_uprava_existujici_faktury_je_povolena_a_prepocita_hodnoty() -> None:
+    invoice = _vytvor_fakturu({"invoice_number": "024"})
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/{invoice['id']}",
+        json={
+            "invoice_number": "010",
+            "issue_date": "2026-04-06",
+            "due_date": "2026-04-21",
+            "customer_name": "Upravený klient",
+            "customer_email": "upraveny@example.com",
+            "customer_phone": "+420777888999",
+            "customer_address": "Dlouhá 15, 110 00 Praha, Česká republika",
+            "customer_ico": "87654321",
+            "customer_dic": "CZ87654321",
+            "note": "Upravená faktura",
+            "business_mode": "construction",
+            "tax_mode": "reverse_charge",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Bourací práce", "quantity": 2, "unit_price": 4500},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["id"] == invoice["id"]
+    assert updated["invoice_number"] == "010"
+    assert updated["variable_symbol"] == "010"
+    assert updated["customer_name"] == "Upravený klient"
+    assert updated["customer_address"] == "Dlouhá 15, 110 00 Praha, Česká republika"
+    assert updated["tax_mode"] == "reverse_charge"
+    assert updated["vat_amount"] == 0.0
+    assert updated["total"] == 9000.0
+    assert updated["items"][0]["description"] == "Bourací práce"
+    assert updated["reverse_charge_reason"] == "reverse_charge"
+
+    defaults_response = client.get("/api/admin/invoices/defaults")
+    assert defaults_response.status_code == 200
+    assert defaults_response.json() == {
+        "suggested_invoice_number": "025",
+        "suggested_variable_symbol": "025",
+    }
 
 
 def test_detail_neexistujici_faktury_vrati_404() -> None:
@@ -656,6 +752,8 @@ def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
     assert captured["to_email"] == "jan@example.com"
     assert captured["subject"] == f"Faktura {invoice['invoice_number']}"
     assert "Jan Novák" in captured["html"]
+    assert "Praha 10" in captured["html"]
+    assert "Jaurisova 515/4, Michle, 140 00 Praha" in captured["html"]
     assert "5997826359/0800" in captured["html"]
     assert "001" in captured["html"]
     assert captured["bcc"] == ["kopie@lakodi.cz"]

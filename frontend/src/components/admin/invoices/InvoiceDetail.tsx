@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Mail } from "lucide-react";
+import { Download, Mail, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,13 +20,27 @@ import {
   sendInvoiceEmail,
 } from "@/lib/invoices";
 
+function buildFullAddress(address: string, zipCode: string, city: string) {
+  const normalizePart = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase("cs-CZ");
+  const parts = [address.trim()].filter(Boolean);
+  const zipCity = [zipCode, city].filter(Boolean).join(" ").trim();
+
+  if (zipCity && !normalizePart(parts.join(", ")).includes(normalizePart(zipCity))) {
+    parts.push(zipCity);
+  }
+
+  return parts.join(", ");
+}
+
 export function InvoiceDetail({
   invoice,
   loading,
+  onEdit,
   onRefresh,
 }: {
   invoice: InvoiceDetailType | null;
   loading: boolean;
+  onEdit: () => void;
   onRefresh: () => void;
 }) {
   const [toEmail, setToEmail] = useState("");
@@ -99,6 +113,7 @@ export function InvoiceDetail({
   }
 
   const reverseChargeReason = formatReverseChargeReason(invoice.reverse_charge_reason);
+  const issuerFullAddress = buildFullAddress(invoice.issuer_address, invoice.issuer_zip, invoice.issuer_city);
 
   return (
     <section className="rounded-xl border border-border bg-card p-5">
@@ -121,10 +136,7 @@ export function InvoiceDetail({
           <h3 className="mb-3 font-medium text-foreground">Dodavatel</h3>
           <div className="space-y-1 text-sm">
             <p className="font-medium text-foreground">{invoice.issuer_name}</p>
-            <p className="text-muted-foreground">{invoice.issuer_address}</p>
-            <p className="text-muted-foreground">
-              {invoice.issuer_zip} {invoice.issuer_city}
-            </p>
+            <p className="text-muted-foreground">{issuerFullAddress}</p>
             <p className="text-muted-foreground">IČO: {invoice.issuer_ico}</p>
             <p className="text-muted-foreground">DIČ: {invoice.issuer_dic}</p>
             {invoice.issuer_data_box && <p className="text-muted-foreground">Datová schránka: {invoice.issuer_data_box}</p>}
@@ -137,7 +149,7 @@ export function InvoiceDetail({
             <p className="font-medium text-foreground">{invoice.customer_name}</p>
             <p className="break-all text-muted-foreground">{invoice.customer_email}</p>
             {invoice.customer_phone && <p className="text-muted-foreground">{invoice.customer_phone}</p>}
-            {invoice.customer_address && <p className="text-muted-foreground">{invoice.customer_address}</p>}
+            <p className="text-muted-foreground">{invoice.customer_address || "Adresa odběratele není vyplněná."}</p>
             {invoice.customer_ico && <p className="text-muted-foreground">IČO: {invoice.customer_ico}</p>}
             {invoice.customer_dic && <p className="text-muted-foreground">DIČ: {invoice.customer_dic}</p>}
           </div>
@@ -265,6 +277,10 @@ export function InvoiceDetail({
         <h3 className="mb-3 font-medium text-foreground">Akce</h3>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 md:flex-row">
+            <Button variant="secondary" onClick={onEdit}>
+              <Pencil className="h-4 w-4" />
+              Upravit fakturu
+            </Button>
             <Input
               type="email"
               value={toEmail}
