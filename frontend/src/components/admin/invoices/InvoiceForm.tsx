@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Search, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,8 @@ export function InvoiceForm({
   const [success, setSuccess] = useState("");
   const [aresMessage, setAresMessage] = useState("");
   const [companySearchMessage, setCompanySearchMessage] = useState("");
+  const formSectionRef = useRef<HTMLElement | null>(null);
+  const preserveSuccessOnResetRef = useRef(false);
   const isEditing = invoiceToEdit !== null;
 
   const clearMessages = () => {
@@ -179,6 +181,7 @@ export function InvoiceForm({
 
   useEffect(() => {
     if (invoiceToEdit) {
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       setSuggestedVariableSymbol(invoiceToEdit.variable_symbol);
       setForm(mapInvoiceToForm(invoiceToEdit));
       setCompanySearchName(invoiceToEdit.customer_name);
@@ -190,7 +193,14 @@ export function InvoiceForm({
     setForm(initialState());
     setCompanySearchName("");
     setCompanySearchResults([]);
-    clearMessages();
+    setError("");
+    setAresMessage("");
+    setCompanySearchMessage("");
+    if (preserveSuccessOnResetRef.current) {
+      preserveSuccessOnResetRef.current = false;
+    } else {
+      setSuccess("");
+    }
     void loadInvoiceDefaults();
   }, [invoiceToEdit]);
 
@@ -361,6 +371,8 @@ export function InvoiceForm({
     try {
       if (isEditing && invoiceToEdit) {
         const updated = await updateInvoice(invoiceToEdit.id, payload);
+        preserveSuccessOnResetRef.current = true;
+        setSuccess(`Faktura ${updated.invoice_number} byla úspěšně upravena.`);
         await onUpdated(updated);
       } else {
         const created = await createInvoice(payload);
@@ -387,7 +399,7 @@ export function InvoiceForm({
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
+    <section ref={formSectionRef} className="rounded-xl border border-border bg-card p-5">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-foreground">{isEditing ? "Úprava faktury" : "Nová faktura"}</h2>
@@ -402,6 +414,12 @@ export function InvoiceForm({
           <p className="font-medium text-foreground">{formatInvoiceMoney(preview.total, form.currency || "CZK")}</p>
         </div>
       </div>
+
+      {isEditing && invoiceToEdit && (
+        <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          Upravujete fakturu {invoiceToEdit.invoice_number}. Změny se ukládají do existující faktury, ne do nové.
+        </div>
+      )}
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

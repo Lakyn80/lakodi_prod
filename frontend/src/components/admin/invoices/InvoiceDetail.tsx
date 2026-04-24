@@ -276,22 +276,23 @@ export function InvoiceDetail({
       <div className="mt-5 rounded-lg border border-border bg-background p-4">
         <h3 className="mb-3 font-medium text-foreground">Akce</h3>
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 md:flex-row">
-            <Button variant="secondary" onClick={onEdit}>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <Button variant="secondary" className="md:shrink-0" onClick={onEdit}>
               <Pencil className="h-4 w-4" />
               Upravit fakturu
             </Button>
             <Input
+              className="md:min-w-[24rem] md:flex-1"
               type="email"
               value={toEmail}
               onChange={(event) => setToEmail(event.target.value)}
               placeholder="prijemce@firma.cz"
             />
-            <Button onClick={handleSend} disabled={sending || !toEmail.trim()}>
+            <Button className="md:shrink-0" onClick={handleSend} disabled={sending || !toEmail.trim()}>
               <Mail className="h-4 w-4" />
               {sending ? "Odesílám e-mail…" : "Odeslat e-mailem"}
             </Button>
-            <Button variant="outline" onClick={handleDownload} disabled={downloading}>
+            <Button className="md:shrink-0" variant="outline" onClick={handleDownload} disabled={downloading}>
               <Download className="h-4 w-4" />
               {downloading ? "Stahuji PDF…" : "Stáhnout PDF"}
             </Button>
