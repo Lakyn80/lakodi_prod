@@ -116,7 +116,7 @@ export function InvoiceDetail({
   const issuerFullAddress = buildFullAddress(invoice.issuer_address, invoice.issuer_zip, invoice.issuer_city);
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
+    <section className="min-w-0 rounded-xl border border-border bg-card p-5">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Detail faktury {invoice.invoice_number}</h2>
@@ -183,20 +183,20 @@ export function InvoiceDetail({
           ))}
         </div>
 
-        <div className="hidden overflow-x-auto sm:block">
-          <table className="min-w-full text-sm">
+        <div className="hidden sm:block">
+          <table className="w-full table-fixed text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="px-3 py-2 font-medium">Položka</th>
-                <th className="px-3 py-2 font-medium text-right">Množství</th>
-                <th className="px-3 py-2 font-medium text-right">Jednotková cena</th>
-                <th className="px-3 py-2 font-medium text-right">Celkem</th>
+                <th className="w-[52%] px-3 py-2 font-medium">Položka</th>
+                <th className="w-[12%] px-3 py-2 font-medium text-right">Množství</th>
+                <th className="w-[18%] px-3 py-2 font-medium text-right">Jednotková cena</th>
+                <th className="w-[18%] px-3 py-2 font-medium text-right">Celkem</th>
               </tr>
             </thead>
             <tbody>
               {invoice.items.map((item) => (
                 <tr key={item.id} className="border-b border-border/70 last:border-0">
-                  <td className="px-3 py-2 text-foreground">{item.description}</td>
+                  <td className="break-words px-3 py-2 align-top text-foreground">{item.description}</td>
                   <td className="px-3 py-2 text-right text-muted-foreground">{item.quantity}</td>
                   <td className="px-3 py-2 text-right text-muted-foreground">
                     {formatInvoiceMoney(item.unit_price, invoice.currency)}
@@ -276,23 +276,23 @@ export function InvoiceDetail({
       <div className="mt-5 rounded-lg border border-border bg-background p-4">
         <h3 className="mb-3 font-medium text-foreground">Akce</h3>
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <Button variant="secondary" className="md:shrink-0" onClick={onEdit}>
+          <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+            <Button variant="secondary" className="md:flex-none" onClick={onEdit}>
               <Pencil className="h-4 w-4" />
               Upravit fakturu
             </Button>
             <Input
-              className="md:min-w-[24rem] md:flex-1"
+              className="md:min-w-0 md:flex-[1_1_18rem]"
               type="email"
               value={toEmail}
               onChange={(event) => setToEmail(event.target.value)}
               placeholder="prijemce@firma.cz"
             />
-            <Button className="md:shrink-0" onClick={handleSend} disabled={sending || !toEmail.trim()}>
+            <Button className="md:flex-none" onClick={handleSend} disabled={sending || !toEmail.trim()}>
               <Mail className="h-4 w-4" />
               {sending ? "Odesílám e-mail…" : "Odeslat e-mailem"}
             </Button>
-            <Button className="md:shrink-0" variant="outline" onClick={handleDownload} disabled={downloading}>
+            <Button className="md:flex-none" variant="outline" onClick={handleDownload} disabled={downloading}>
               <Download className="h-4 w-4" />
               {downloading ? "Stahuji PDF…" : "Stáhnout PDF"}
             </Button>

@@ -1,4 +1,4 @@
-import { adminApiUrl, apiFetchOptions } from "@/lib/api";
+import { apiFetchOptions } from "@/lib/api";
 
 export type BusinessMode = "autoservice" | "construction";
 export type TaxMode = "standard" | "reverse_charge";
@@ -159,8 +159,10 @@ export class AdminApiError extends Error {
   }
 }
 
+const INVOICE_API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "");
+
 function invoicesAdminUrl(path = "") {
-  return adminApiUrl(`/invoices${path}`);
+  return `${INVOICE_API_BASE}/api/admin/invoices${path}`;
 }
 
 async function parseApiError(response: Response): Promise<never> {
