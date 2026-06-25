@@ -25,6 +25,8 @@ class DocumentKindMetadata:
     allows_payment_tracking: bool
     allows_pdf_email: bool
     participates_in_total_calculation: bool
+    supports_tax_document_generation: bool
+    supports_final_invoice_settlement: bool
 
 
 DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
@@ -35,14 +37,18 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=True,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        supports_tax_document_generation=False,
+        supports_final_invoice_settlement=False,
     ),
     "proforma": DocumentKindMetadata(
         machine_value="proforma",
         internal_label="Proforma",
         numbering_prefix="1",
-        allows_payment_tracking=False,
+        allows_payment_tracking=True,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        supports_tax_document_generation=False,
+        supports_final_invoice_settlement=False,
     ),
     "tax_document": DocumentKindMetadata(
         machine_value="tax_document",
@@ -51,6 +57,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        supports_tax_document_generation=False,
+        supports_final_invoice_settlement=False,
     ),
     "correction": DocumentKindMetadata(
         machine_value="correction",
@@ -59,6 +67,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        supports_tax_document_generation=False,
+        supports_final_invoice_settlement=False,
     ),
     "final_invoice": DocumentKindMetadata(
         machine_value="final_invoice",
@@ -67,6 +77,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        supports_tax_document_generation=False,
+        supports_final_invoice_settlement=False,
     ),
     "quote": DocumentKindMetadata(
         machine_value="quote",
@@ -75,6 +87,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        supports_tax_document_generation=False,
+        supports_final_invoice_settlement=False,
     ),
 }
 

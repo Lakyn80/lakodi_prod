@@ -16,6 +16,7 @@ from backend.app.modules.invoices.ares_service import (
 )
 from backend.app.modules.invoices.cache_service import InvoiceCacheService
 from backend.app.modules.invoices.email_service import InvoiceEmailSendError
+from backend.app.modules.invoices.document_types import get_document_kind_metadata
 from backend.app.modules.invoices.models import InvoiceSequenceState
 from backend.app.modules.invoices.numbering_service import (
     get_document_sequence_preview,
@@ -476,6 +477,17 @@ def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
     assert invoice["variable_symbol"] == "001"
 
 
+def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_workflow() -> None:
+    metadata = get_document_kind_metadata("proforma")
+
+    assert metadata.machine_value == "proforma"
+    assert metadata.allows_payment_tracking is True
+    assert metadata.allows_pdf_email is True
+    assert metadata.participates_in_total_calculation is True
+    assert metadata.supports_tax_document_generation is False
+    assert metadata.supports_final_invoice_settlement is False
+
+
 def test_neplatny_document_kind_je_odmitnut() -> None:
     _login_admin()
 
@@ -555,6 +567,111 @@ def test_document_kind_nelze_po_vytvoreni_menit() -> None:
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Typ dokladu nelze po vytvoření měnit."}
+
+
+def test_castecna_uhrada_proformy_funguje() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma-partial@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+
+    updated = _pridej_platbu(
+        proforma["id"],
+        {
+            "amount": 2000,
+            "paid_at": "2026-04-10",
+            "payment_method": "Bankovní převod",
+            "note": "Částečná úhrada proformy",
+        },
+    )
+
+    assert updated["document_kind"] == "proforma"
+    assert updated["payment_status"] == "partially_paid"
+    assert updated["effective_status"] == "partially_paid"
+    assert updated["total_paid"] == 2000.0
+    assert updated["remaining_amount"] == 7922.0
+
+
+def test_plna_uhrada_proformy_funguje() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma-paid@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+
+    updated = _pridej_platbu(
+        proforma["id"],
+        {
+            "amount": 9922.0,
+            "paid_at": "2026-04-11",
+            "payment_method": "Bankovní převod",
+            "note": "Plná úhrada proformy",
+        },
+    )
+
+    assert updated["document_kind"] == "proforma"
+    assert updated["payment_status"] == "paid"
+    assert updated["effective_status"] == "paid"
+    assert updated["total_paid"] == 9922.0
+    assert updated["remaining_amount"] == 0.0
+
+
+def test_preplatek_u_proformy_je_odmitnut() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma-overpay@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+    _login_admin()
+
+    response = client.post(
+        f"/api/admin/invoices/{proforma['id']}/payments",
+        json={
+            "amount": 10000,
+            "paid_at": "2026-04-10",
+            "payment_method": "Převodem",
+            "note": "Přeplatek proformy",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Součet plateb nesmí překročit celkovou částku faktury."}
+
+
+def test_smazani_platby_proformy_prepocita_summary() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma-delete@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+    _pridej_platbu(proforma["id"], {"amount": 2000, "paid_at": "2026-04-10"})
+    after_second = _pridej_platbu(proforma["id"], {"amount": 1500, "paid_at": "2026-04-11"})
+    payment_id = after_second["payments"][0]["id"]
+
+    _login_admin()
+    response = client.delete(f"/api/admin/invoices/{proforma['id']}/payments/{payment_id}")
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["document_kind"] == "proforma"
+    assert len(updated["payments"]) == 1
+    assert updated["payment_status"] == "partially_paid"
+    assert updated["effective_status"] == "partially_paid"
+    assert updated["total_paid"] == 1500.0
+    assert updated["remaining_amount"] == 8422.0
 
 
 def test_invoice_sequence_state_zustava_zpetne_kompatibilni_s_default_klicem() -> None:
@@ -1120,6 +1237,24 @@ def test_pdf_endpoint_vrati_pdf_soubor() -> None:
     assert response.content.startswith(b"%PDF")
 
 
+def test_pdf_endpoint_funguje_i_pro_proformu() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma-pdf@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+
+    response = client.get(f"/api/admin/invoices/{proforma['id']}/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert f'{proforma["invoice_number"]}.pdf' in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+
+
 def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
     _login_admin()
     settings_response = client.put(
@@ -1188,6 +1323,79 @@ def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
     assert attachments[0].filename == f"{invoice['invoice_number']}.pdf"
     assert attachments[0].content_type == "application/pdf"
     assert attachments[0].content == b"%PDF-test-payload"
+
+
+def test_odeslani_proformy_e_mailem_prilozi_pdf() -> None:
+    _login_admin()
+    settings_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "kopie@lakodi.cz",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert settings_response.status_code == 200
+
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma-mail@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+    captured = {}
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{proforma['invoice_number']}.pdf",
+        content=b"%PDF-test-proforma",
+    )
+
+    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None, bcc=None, cc=None) -> bool:
+        captured["to_email"] = to_email
+        captured["subject"] = subject
+        captured["html"] = html
+        captured["attachments"] = attachments
+        captured["bcc"] = bcc
+        return True
+
+    invoice_email_service.send_html_email = fake_send_html_email
+    try:
+        response = client.post(f"/api/admin/invoices/{proforma['id']}/send-email")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "invoice_id": proforma["id"],
+        "invoice_number": proforma["invoice_number"],
+        "sent_to": "proforma-mail@example.com",
+        "copied_to": ["kopie@lakodi.cz"],
+    }
+    assert captured["to_email"] == "proforma-mail@example.com"
+    assert captured["subject"] == f"Faktura {proforma['invoice_number']}"
+    assert "Jan Novák" in captured["html"]
+    assert "Praha 10" in captured["html"]
+    attachments = captured["attachments"]
+    assert attachments is not None
+    assert len(attachments) == 1
+    assert attachments[0].filename == f"{proforma['invoice_number']}.pdf"
+    assert attachments[0].content_type == "application/pdf"
+    assert attachments[0].content == b"%PDF-test-proforma"
 
 
 def test_odeslani_faktury_vrati_503_kdyz_neni_email_nakonfigurovany() -> None:

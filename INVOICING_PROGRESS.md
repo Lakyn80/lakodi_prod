@@ -191,3 +191,39 @@
   - This task adds only the document-type foundation, not the legal/accounting workflows behind those document kinds.
   - Non-invoice numbering now uses backend-only numeric prefixes to avoid collisions with the existing global unique constraints.
   - `document_kind` is intentionally immutable after creation for now; changing it later would require explicit workflow/migration rules per document type.
+
+## Úkol 4 Backend proforma invoice foundation
+
+- Date: 2026-06-26
+- Goal: Enable backend proforma usage on the existing invoice API foundation, including isolated numbering, payment tracking, PDF/email delivery, and fake-safe verification without implementing follow-up tax-document/final-invoice workflows.
+- Scope: Existing backend invoice document-kind metadata, existing payment/PDF/email/export pathways, backend invoice tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/modules/invoices/document_types.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes: None
+- Backend changes:
+  - Enabled `document_kind = proforma` to use the existing payment tracking path by updating centralized document-kind metadata.
+  - Kept proforma on the dense existing backend invoice flow:
+    - isolated proforma numbering sequence remains separate from regular invoice numbering
+    - existing PDF endpoint remains usable
+    - existing email send flow remains usable
+    - existing invoice export/payment summary pipeline remains usable
+  - Added explicit metadata guards that confirm proforma currently does not implement:
+    - tax document generation workflow
+    - final invoice settlement workflow
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `52 passed`
+  - `python -m pytest -q` -> `60 passed`
+  - Both runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend proforma invoice foundation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - No real-local or external workflow was executed; this task only extends the safe backend foundation already present in the repository.
+  - Proforma currently reuses the generic invoice PDF/email wording and does not yet add specialized document presentation.
+  - Tax-document and final-invoice follow-up flows remain intentionally unimplemented in this phase.
