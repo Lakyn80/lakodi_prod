@@ -131,3 +131,63 @@
   - Existing frontend still only edits the legacy payment settings subset; the new issuer/company settings are backend-ready and exposed by the API.
   - Current invoice creation continues to accept explicit `currency` and `due_date`, so `default_currency` and `default_due_days` mainly prepare future backend/frontend use.
   - Legacy invoice numbering remains on `sequence_key = "default"` by design to preserve compatibility; year-based series are enabled as backend foundation for future document workflows.
+
+## Úkol 3 Backend document type foundation
+
+- Date: 2026-06-25
+- Goal: Add safe backend document-kind foundation to the existing invoicing domain without implementing the full workflows for proforma, tax_document, correction, final_invoice, or quote.
+- Scope: Backend invoice model/schema/service/router/export updates, backend document-kind metadata helpers, safe SQLite backfill, backend numbering integration, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/document_types.py`
+  - `backend/app/modules/invoices/exporters.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/numbering_service.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added persistent `document_kind` column to `invoices`.
+  - Added safe SQLite backfill to set existing/null invoice rows to `document_kind = invoice`.
+  - Kept all existing invoice columns and tables intact.
+- Backend changes:
+  - Added backend document-kind foundation for:
+    - `invoice`
+    - `proforma`
+    - `tax_document`
+    - `correction`
+    - `final_invoice`
+    - `quote`
+  - Added centralized document-kind metadata and validation in `backend/app/modules/invoices/document_types.py`.
+  - Extended invoice create/update/detail/list/defaults schemas with safe `document_kind` support.
+  - Existing create requests without `document_kind` still default to `invoice`.
+  - Existing invoice detail/list behavior remains compatible and now exposes `document_kind`.
+  - Added optional `document_kind` support to `/api/admin/invoices/defaults`.
+  - Integrated document kind into numbering:
+    - legacy `invoice` numbering remains compatible
+    - non-invoice document kinds use independent document-kind/year series
+    - non-invoice auto-numbering uses a small numeric prefix per document kind to stay compatible with existing global unique constraints on `invoice_number` and `variable_symbol`
+  - Blocked changing `document_kind` after creation as the safe default.
+  - Added minimal export DTO compatibility by including `document_kind` in export identity metadata.
+  - Payment tracking is explicitly limited by document-kind metadata; regular invoices remain unchanged.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest backend/tests/test_invoices.py -q --disable-warnings`
+  - `python -m pytest -q --disable-warnings`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `45 passed`
+  - `python -m pytest -q` -> `53 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q --disable-warnings` -> `45 passed`
+  - `python -m pytest -q --disable-warnings` -> `53 passed`
+  - The environment still emits the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice document type foundation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - This task adds only the document-type foundation, not the legal/accounting workflows behind those document kinds.
+  - Non-invoice numbering now uses backend-only numeric prefixes to avoid collisions with the existing global unique constraints.
+  - `document_kind` is intentionally immutable after creation for now; changing it later would require explicit workflow/migration rules per document type.

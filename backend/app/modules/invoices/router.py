@@ -37,8 +37,8 @@ from backend.app.modules.invoices.service import (
     add_invoice_payment,
     create_invoice,
     delete_invoice_payment,
+    get_document_creation_defaults,
     generate_invoice_pdf,
-    get_invoice_creation_defaults,
     get_invoice_detail,
     get_invoice_settings,
     list_invoice_payments,
@@ -105,12 +105,14 @@ def admin_create_invoice(
 
 @router.get("/defaults", response_model=InvoiceDefaultsResponse)
 def admin_get_invoice_defaults(
+    document_kind: str | None = Query(default=None),
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
     try:
-        defaults = get_invoice_creation_defaults(db)
+        defaults = get_document_creation_defaults(db, document_kind=document_kind)
         return {
+            "document_kind": defaults.document_kind,
             "suggested_invoice_number": defaults.invoice_number,
             "suggested_variable_symbol": defaults.variable_symbol,
         }

@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
+from backend.app.modules.invoices.document_types import DEFAULT_DOCUMENT_KIND, normalize_document_kind
 
 BusinessMode = Literal["autoservice", "construction"]
 TaxMode = Literal["standard", "reverse_charge"]
@@ -43,6 +44,7 @@ class InvoiceItemCreate(BaseModel):
 
 class InvoiceCreate(BaseModel):
     invoice_number: str | None = Field(default=None, min_length=1, max_length=9)
+    document_kind: str = DEFAULT_DOCUMENT_KIND
     status: StoredInvoiceStatus = "issued"
     issue_date: date
     due_date: date
@@ -86,6 +88,11 @@ class InvoiceCreate(BaseModel):
         if int(cleaned) <= 0:
             raise ValueError("Číslo faktury musí být větší než nula.")
         return cleaned
+
+    @field_validator("document_kind")
+    @classmethod
+    def validate_document_kind(cls, value: str | None) -> str:
+        return normalize_document_kind(value)
 
     @field_validator("status")
     @classmethod
@@ -194,6 +201,7 @@ class InvoiceSummaryResponse(BaseModel):
     id: int
     invoice_number: str
     variable_symbol: str
+    document_kind: str
     issue_date: date
     due_date: date
 
@@ -258,7 +266,13 @@ class InvoiceDetailResponse(InvoiceSummaryResponse):
 
 
 class InvoiceUpdate(InvoiceCreate):
+    document_kind: str | None = None
     status: StoredInvoiceStatus | None = None
+
+    @field_validator("document_kind")
+    @classmethod
+    def validate_optional_document_kind(cls, value: str | None) -> str | None:
+        return normalize_document_kind(value, default_to_invoice=False)
 
 
 class AresCompanyLookupResponse(BaseModel):
@@ -294,6 +308,7 @@ class InvoiceSendEmailResponse(BaseModel):
 
 
 class InvoiceDefaultsResponse(BaseModel):
+    document_kind: str
     suggested_invoice_number: str
     suggested_variable_symbol: str
 

@@ -56,6 +56,7 @@ def _ensure_invoice_columns():
         columns = {row[1] for row in rows}
         add_map = {
             "variable_symbol": "ALTER TABLE invoices ADD COLUMN variable_symbol VARCHAR(9)",
+            "document_kind": "ALTER TABLE invoices ADD COLUMN document_kind VARCHAR(32) NOT NULL DEFAULT 'invoice'",
             "payment_method": "ALTER TABLE invoices ADD COLUMN payment_method VARCHAR(64) NOT NULL DEFAULT 'Převodem'",
             "bank_account_number": "ALTER TABLE invoices ADD COLUMN bank_account_number VARCHAR(32) NOT NULL DEFAULT '5997826359'",
             "bank_account_prefix": "ALTER TABLE invoices ADD COLUMN bank_account_prefix VARCHAR(16)",
@@ -66,6 +67,13 @@ def _ensure_invoice_columns():
             if col not in columns:
                 conn.execute(text(sql))
 
+        conn.execute(
+            text(
+                "UPDATE invoices "
+                "SET document_kind = 'invoice' "
+                "WHERE document_kind IS NULL"
+            )
+        )
         conn.execute(
             text(
                 "UPDATE invoices "

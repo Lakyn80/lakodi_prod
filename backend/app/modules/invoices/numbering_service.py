@@ -3,25 +3,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Literal
 
 from sqlalchemy.orm import Session
 
+from backend.app.modules.invoices.document_types import (
+    DEFAULT_DOCUMENT_KIND,
+    DocumentKind,
+    get_document_kind_metadata,
+    normalize_document_kind,
+)
 from backend.app.modules.invoices.models import Invoice, InvoiceSequenceState
-
-DocumentKind = Literal["invoice", "proforma", "tax_document", "correction", "final_invoice", "quote"]
 
 DEFAULT_SEQUENCE_KEY = "default"
 DEFAULT_PADDING = 3
 MAX_SEQUENCE_DIGITS = 9
-SUPPORTED_DOCUMENT_KINDS: set[str] = {
-    "invoice",
-    "proforma",
-    "tax_document",
-    "correction",
-    "final_invoice",
-    "quote",
-}
 
 
 class InvoiceNumberingError(ValueError):
@@ -41,7 +36,12 @@ class InvoiceSequencePreview:
 
 
 def get_invoice_sequence_preview(db: Session) -> InvoiceSequencePreview:
-    state = _get_or_create_sequence_state(db, document_kind="invoice", sequence_year=None, use_legacy_invoice_key=True)
+    state = _get_or_create_sequence_state(
+        db,
+        document_kind=DEFAULT_DOCUMENT_KIND,
+        sequence_year=None,
+        use_legacy_invoice_key=True,
+    )
     next_numeric_value = state.last_number + 1
     padding = max(state.padding, DEFAULT_PADDING)
     return _build_preview(
@@ -82,8 +82,18 @@ def get_document_sequence_preview(
 def reserve_invoice_sequence(
     db: Session,
     requested_invoice_number: str | None = None,
+    *,
+    document_kind: str = DEFAULT_DOCUMENT_KIND,
+    reference_date: date | None = None,
 ) -> InvoiceSequencePreview:
-    state = _get_or_create_sequence_state(db, document_kind="invoice", sequence_year=None, use_legacy_invoice_key=True)
+    normalized_document_kind = normalize_document_kind(document_kind)
+    sequence_year = None if normalized_document_kind == DEFAULT_DOCUMENT_KIND else _resolve_sequence_year(reference_date)
+    state = _get_or_create_sequence_state(
+        db,
+        document_kind=normalized_document_kind,
+        sequence_year=sequence_year,
+        use_legacy_invoice_key=normalized_document_kind == DEFAULT_DOCUMENT_KIND,
+    )
     requested_number = normalize_invoice_number(requested_invoice_number)
 
     if requested_number is None:
@@ -115,28 +125,15 @@ def reserve_document_sequence(
     db: Session,
     *,
     document_kind: DocumentKind,
+    requested_invoice_number: str | None = None,
     reference_date: date | None = None,
 ) -> InvoiceSequencePreview:
-    resolved_year = _resolve_sequence_year(reference_date)
-    state = _get_or_create_sequence_state(
+    return reserve_invoice_sequence(
         db,
+        requested_invoice_number=requested_invoice_number,
         document_kind=document_kind,
-        sequence_year=resolved_year,
-        use_legacy_invoice_key=False,
+        reference_date=reference_date,
     )
-    next_numeric_value = state.last_number + 1
-    padding = max(state.padding, DEFAULT_PADDING)
-    preview = _build_preview(
-        next_numeric_value=next_numeric_value,
-        padding=padding,
-        sequence_key=state.sequence_key,
-        document_kind=state.document_kind or document_kind,
-        sequence_year=state.sequence_year,
-        prefix=state.prefix,
-    )
-    state.last_number = max(state.last_number, next_numeric_value)
-    state.padding = max(state.padding, padding)
-    return preview
 
 
 def resolve_invoice_sequence_for_update(
@@ -145,8 +142,17 @@ def resolve_invoice_sequence_for_update(
     invoice_id: int,
     current_invoice_number: str,
     requested_invoice_number: str | None,
+    document_kind: str = DEFAULT_DOCUMENT_KIND,
+    reference_date: date | None = None,
 ) -> InvoiceSequencePreview:
-    state = _get_or_create_sequence_state(db, document_kind="invoice", sequence_year=None, use_legacy_invoice_key=True)
+    normalized_document_kind = normalize_document_kind(document_kind)
+    sequence_year = None if normalized_document_kind == DEFAULT_DOCUMENT_KIND else _resolve_sequence_year(reference_date)
+    state = _get_or_create_sequence_state(
+        db,
+        document_kind=normalized_document_kind,
+        sequence_year=sequence_year,
+        use_legacy_invoice_key=normalized_document_kind == DEFAULT_DOCUMENT_KIND,
+    )
     normalized_requested_number = normalize_invoice_number(requested_invoice_number)
     resolved_invoice_number = normalized_requested_number or current_invoice_number
     next_numeric_value = int(resolved_invoice_number)
@@ -201,7 +207,10 @@ def _build_preview(
     if sequence_year is None:
         invoice_number = f"{next_numeric_value:0{max(resolved_padding, len(str(next_numeric_value)))}d}"
     else:
-        invoice_number = f"{sequence_year}{next_numeric_value:0{resolved_padding}d}"
+        if prefix:
+            invoice_number = f"{prefix}{sequence_year}{next_numeric_value:0{resolved_padding}d}"
+        else:
+            invoice_number = f"{sequence_year}{next_numeric_value:0{resolved_padding}d}"
 
     if len(invoice_number) > MAX_SEQUENCE_DIGITS:
         raise InvoiceNumberingError("Vyčerpala se číselná řada variabilních symbolů (max. 9 číslic).")
@@ -250,7 +259,7 @@ def _get_or_create_sequence_state(
         sequence_key=sequence_key,
         document_kind=document_kind,
         sequence_year=sequence_year,
-        prefix=None,
+        prefix=_resolve_sequence_prefix(document_kind),
         last_number=inferred_last_number,
         padding=inferred_padding,
     )
@@ -270,8 +279,11 @@ def _build_sequence_key(*, document_kind: str, sequence_year: int | None, use_le
 def _infer_legacy_invoice_sequence_state(db: Session) -> tuple[int, int]:
     inferred_last_number = 0
     inferred_padding = DEFAULT_PADDING
-    existing_numbers = db.query(Invoice.invoice_number, Invoice.variable_symbol).all()
-    for invoice_number, variable_symbol in existing_numbers:
+    existing_numbers = db.query(Invoice.invoice_number, Invoice.variable_symbol, Invoice.document_kind).all()
+    for invoice_number, variable_symbol, document_kind in existing_numbers:
+        normalized_document_kind = normalize_document_kind(document_kind)
+        if normalized_document_kind != DEFAULT_DOCUMENT_KIND:
+            continue
         if invoice_number and invoice_number.isdigit():
             inferred_last_number = max(inferred_last_number, int(invoice_number))
             inferred_padding = max(inferred_padding, len(invoice_number))
@@ -286,8 +298,10 @@ def _resolve_sequence_year(reference_date: date | None) -> int:
 
 
 def _validate_document_kind(document_kind: str) -> None:
-    if document_kind not in SUPPORTED_DOCUMENT_KINDS:
-        raise InvoiceNumberingError(f"Neznámý typ číselné řady: {document_kind}.")
+    try:
+        normalize_document_kind(document_kind)
+    except ValueError as exc:
+        raise InvoiceNumberingError(str(exc)) from exc
 
 
 def _backfill_state_metadata(
@@ -298,8 +312,14 @@ def _backfill_state_metadata(
 ) -> None:
     if state.document_kind is None:
         state.document_kind = document_kind
+    if state.prefix is None:
+        state.prefix = _resolve_sequence_prefix(document_kind)
     if state.sequence_year is None and sequence_year is not None:
         state.sequence_year = sequence_year
+
+
+def _resolve_sequence_prefix(document_kind: str) -> str | None:
+    return get_document_kind_metadata(document_kind).numbering_prefix
 
 
 def _invoice_number_exists(db: Session, invoice_number: str, *, exclude_invoice_id: int | None = None) -> bool:

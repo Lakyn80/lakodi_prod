@@ -7,6 +7,11 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from backend.app.modules.invoices.document_types import (
+    DEFAULT_DOCUMENT_KIND,
+    get_document_kind_metadata,
+    normalize_document_kind,
+)
 from backend.app.modules.invoices.cache_service import get_invoice_cache_service
 from backend.app.modules.invoices.email_service import InvoiceEmailDeliveryResult, deliver_invoice_email
 from backend.app.modules.invoices.exporters import build_invoice_export
@@ -14,6 +19,7 @@ from backend.app.modules.invoices.models import Invoice, InvoiceItem, InvoicePay
 from backend.app.modules.invoices.numbering_service import (
     InvoiceNumberingError,
     InvoiceSequencePreview,
+    get_document_sequence_preview,
     get_invoice_sequence_preview,
     reserve_invoice_sequence,
     resolve_invoice_sequence_for_update,
@@ -96,6 +102,16 @@ def get_invoice_creation_defaults(db: Session) -> InvoiceSequencePreview:
     try:
         return get_invoice_sequence_preview(db)
     except InvoiceNumberingError as exc:
+        raise InvoiceValidationError(str(exc)) from exc
+
+
+def get_document_creation_defaults(db: Session, document_kind: str | None = None) -> InvoiceSequencePreview:
+    normalized_document_kind = normalize_document_kind(document_kind)
+    try:
+        if normalized_document_kind == DEFAULT_DOCUMENT_KIND:
+            return get_invoice_sequence_preview(db)
+        return get_document_sequence_preview(db, document_kind=normalized_document_kind)
+    except (InvoiceNumberingError, ValueError) as exc:
         raise InvoiceValidationError(str(exc)) from exc
 
 
@@ -182,6 +198,8 @@ def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCre
     amount = _quantize_money(Decimal(payload.amount))
     if amount <= 0:
         raise InvoiceValidationError("Částka platby musí být větší než nula.")
+    if not get_document_kind_metadata(invoice.document_kind).allows_payment_tracking:
+        raise InvoiceValidationError("Pro tento typ dokladu zatím nelze evidovat platby.")
     if _normalize_invoice_status(invoice.status) == "cancelled":
         raise InvoiceValidationError("Ke stornované faktuře nelze přidat platbu.")
 
@@ -309,6 +327,8 @@ def _compute_effective_status(
 
 
 def _attach_invoice_runtime_state(invoice: Invoice) -> Invoice:
+    normalized_document_kind = normalize_document_kind(getattr(invoice, "document_kind", None))
+    setattr(invoice, "document_kind", normalized_document_kind)
     summary = _build_payment_summary(invoice)
     setattr(invoice, "total_paid", summary.total_paid)
     setattr(invoice, "remaining_amount", summary.remaining_amount)
@@ -405,9 +425,15 @@ def _create_invoice_with_reserved_sequence(
 ) -> Invoice:
     resolved_currency = (payload.currency or payment_settings.invoice_defaults.default_currency).strip().upper()
     resolved_note = payload.note if payload.note is not None else payment_settings.invoice_defaults.default_note
+    resolved_document_kind = normalize_document_kind(payload.document_kind)
     for attempt in range(2):
         try:
-            reserved_sequence = reserve_invoice_sequence(db, payload.invoice_number)
+            reserved_sequence = reserve_invoice_sequence(
+                db,
+                payload.invoice_number,
+                document_kind=resolved_document_kind,
+                reference_date=payload.issue_date,
+            )
             invoice = Invoice(
                 invoice_number=reserved_sequence.invoice_number,
                 variable_symbol=reserved_sequence.variable_symbol,
@@ -427,6 +453,7 @@ def _create_invoice_with_reserved_sequence(
                 customer_ico=payload.customer_ico,
                 customer_dic=payload.customer_dic,
                 note=resolved_note,
+                document_kind=resolved_document_kind,
                 business_mode=payload.business_mode,
                 tax_mode=payload.tax_mode,
                 currency=resolved_currency,
@@ -474,14 +501,25 @@ def _update_existing_invoice(
     totals: InvoiceTotals,
 ) -> Invoice:
     try:
+        current_document_kind = normalize_document_kind(invoice.document_kind)
+        requested_document_kind = (
+            normalize_document_kind(payload.document_kind)
+            if "document_kind" in payload.model_fields_set and payload.document_kind is not None
+            else None
+        )
+        if requested_document_kind is not None and requested_document_kind != current_document_kind:
+            raise InvoiceValidationError("Typ dokladu nelze po vytvoření měnit.")
         reserved_sequence = resolve_invoice_sequence_for_update(
             db,
             invoice_id=invoice.id,
             current_invoice_number=invoice.invoice_number,
             requested_invoice_number=payload.invoice_number,
+            document_kind=current_document_kind,
+            reference_date=payload.issue_date,
         )
         invoice.invoice_number = reserved_sequence.invoice_number
         invoice.variable_symbol = reserved_sequence.variable_symbol
+        invoice.document_kind = current_document_kind
         invoice.issue_date = payload.issue_date
         invoice.due_date = payload.due_date
         invoice.customer_name = payload.customer_name

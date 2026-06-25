@@ -32,6 +32,7 @@ class Invoice(Base):
 
     note = Column(Text, nullable=True)
 
+    document_kind = Column(String(32), nullable=False, default="invoice", index=True)
     business_mode = Column(String(64), nullable=False, index=True)
     tax_mode = Column(String(64), nullable=False, index=True)
     currency = Column(String(8), nullable=False, default="CZK")

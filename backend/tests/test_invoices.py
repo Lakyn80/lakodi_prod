@@ -128,6 +128,7 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     invoice = create_response.json()
     assert invoice["invoice_number"] == "001"
     assert invoice["variable_symbol"] == "001"
+    assert invoice["document_kind"] == "invoice"
     assert invoice["issuer_name"] == "lakodi s.r.o."
     assert invoice["issuer_ico"] == "09695982"
     assert invoice["currency"] == "CZK"
@@ -159,6 +160,7 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert len(listed) == 1
     assert listed[0]["id"] == invoice["id"]
     assert listed[0]["invoice_number"] == "001"
+    assert listed[0]["document_kind"] == "invoice"
     assert listed[0]["effective_status"] == "issued"
     assert listed[0]["payment_status"] == "unpaid"
 
@@ -169,6 +171,7 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert detail["customer_name"] == "Jan Novák"
     assert detail["items"][0]["description"] == "Diagnostika"
     assert detail["variable_symbol"] == "001"
+    assert detail["document_kind"] == "invoice"
     assert detail["payments"] == []
     assert detail["remaining_amount"] == 9922.0
 
@@ -196,6 +199,7 @@ def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
 
     assert response.status_code == 200
     invoice = response.json()
+    assert invoice["document_kind"] == "invoice"
     assert invoice["business_mode"] == "construction"
     assert invoice["tax_mode"] == "reverse_charge"
     assert invoice["subtotal"] == 15000.0
@@ -213,6 +217,7 @@ def test_defaults_vraci_navrzene_cislo_faktury_a_variabilni_symbol() -> None:
 
     assert response.status_code == 200
     assert response.json() == {
+        "document_kind": "invoice",
         "suggested_invoice_number": "001",
         "suggested_variable_symbol": "001",
     }
@@ -326,6 +331,7 @@ def test_rucne_nastavene_cislo_faktury_posune_dalsi_automatickou_radu() -> None:
     defaults_response = client.get("/api/admin/invoices/defaults")
     assert defaults_response.status_code == 200
     assert defaults_response.json() == {
+        "document_kind": "invoice",
         "suggested_invoice_number": "026",
         "suggested_variable_symbol": "026",
     }
@@ -396,6 +402,7 @@ def test_rucne_nizsi_volne_cislo_faktury_je_povoleno() -> None:
     defaults_response = client.get("/api/admin/invoices/defaults")
     assert defaults_response.status_code == 200
     assert defaults_response.json() == {
+        "document_kind": "invoice",
         "suggested_invoice_number": "026",
         "suggested_variable_symbol": "026",
     }
@@ -416,15 +423,138 @@ def test_numbering_foundation_pripravi_nezavisle_dokladove_rady_podle_typu_a_rok
 
         assert proforma_preview.sequence_key == "proforma:2026"
         assert proforma_preview.sequence_year == 2026
-        assert proforma_preview.invoice_number == "2026001"
-        assert next_proforma.invoice_number == "2026001"
+        assert proforma_preview.invoice_number == "12026001"
+        assert next_proforma.invoice_number == "12026001"
 
         assert next_quote.sequence_key == "quote:2026"
-        assert next_quote.invoice_number == "2026001"
+        assert next_quote.invoice_number == "52026001"
 
         assert future_proforma.sequence_key == "proforma:2027"
         assert future_proforma.sequence_year == 2027
-        assert future_proforma.invoice_number == "2027001"
+        assert future_proforma.invoice_number == "12027001"
+
+
+def test_defaults_preview_pro_proformu_je_oddeleny_od_bezne_invoice_rady() -> None:
+    _login_admin()
+
+    proforma_response = client.get("/api/admin/invoices/defaults?document_kind=proforma")
+    invoice_response = client.get("/api/admin/invoices/defaults")
+
+    assert proforma_response.status_code == 200
+    assert invoice_response.status_code == 200
+
+    proforma_defaults = proforma_response.json()
+    invoice_defaults = invoice_response.json()
+    assert proforma_defaults["document_kind"] == "proforma"
+    assert proforma_defaults["suggested_invoice_number"].isdigit()
+    assert proforma_defaults["suggested_variable_symbol"].isdigit()
+    assert proforma_defaults["suggested_invoice_number"].startswith("1")
+    assert invoice_defaults == {
+        "document_kind": "invoice",
+        "suggested_invoice_number": "001",
+        "suggested_variable_symbol": "001",
+    }
+
+
+def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "proforma@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+    invoice = _vytvor_fakturu({"customer_email": "normal@example.com"})
+
+    assert proforma["document_kind"] == "proforma"
+    assert proforma["invoice_number"] == "12026001"
+    assert proforma["variable_symbol"] == "12026001"
+
+    assert invoice["document_kind"] == "invoice"
+    assert invoice["invoice_number"] == "001"
+    assert invoice["variable_symbol"] == "001"
+
+
+def test_neplatny_document_kind_je_odmitnut() -> None:
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices",
+        json={
+            "document_kind": "unsupported_kind",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+            "customer_name": "Jan Novák",
+            "customer_email": "jan@example.com",
+            "customer_address": "Praha 10",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Diagnostika", "quantity": 1, "unit_price": 1200},
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Neplatný typ dokladu." in response.text
+
+
+def test_vsechny_podporovane_document_kinds_jsou_prijaty_schematem() -> None:
+    supported_document_kinds = [
+        "invoice",
+        "proforma",
+        "tax_document",
+        "correction",
+        "final_invoice",
+        "quote",
+    ]
+
+    for index, document_kind in enumerate(supported_document_kinds, start=1):
+        invoice = _vytvor_fakturu(
+            {
+                "document_kind": document_kind,
+                "customer_email": f"{document_kind}{index}@example.com",
+                "issue_date": "2026-04-04" if document_kind != "invoice" else "2099-04-04",
+                "due_date": "2026-04-18" if document_kind != "invoice" else "2099-04-18",
+            }
+        )
+        assert invoice["document_kind"] == document_kind
+
+
+def test_document_kind_nelze_po_vytvoreni_menit() -> None:
+    invoice = _vytvor_fakturu()
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/{invoice['id']}",
+        json={
+            "document_kind": "quote",
+            "invoice_number": invoice["invoice_number"],
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+            "customer_name": "Jan Novák",
+            "customer_email": "jan@example.com",
+            "customer_phone": "+420123456789",
+            "customer_address": "Praha 10",
+            "customer_ico": "12345678",
+            "customer_dic": "CZ12345678",
+            "note": "Ruční servisní faktura",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Diagnostika", "quantity": 1, "unit_price": 1200},
+                {"description": "Oprava převodovky", "quantity": 2, "unit_price": 3500},
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Typ dokladu nelze po vytvoření měnit."}
 
 
 def test_invoice_sequence_state_zustava_zpetne_kompatibilni_s_default_klicem() -> None:
@@ -638,6 +768,7 @@ def test_uprava_existujici_faktury_je_povolena_a_prepocita_hodnoty() -> None:
     defaults_response = client.get("/api/admin/invoices/defaults")
     assert defaults_response.status_code == 200
     assert defaults_response.json() == {
+        "document_kind": "invoice",
         "suggested_invoice_number": "025",
         "suggested_variable_symbol": "025",
     }

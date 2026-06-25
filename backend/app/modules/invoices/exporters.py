@@ -12,6 +12,7 @@ from backend.app.modules.invoices.models import Invoice
 class InvoiceExportIdentityDTO(BaseModel):
     id: int
     invoice_number: str
+    document_kind: str
     issue_date: date
     due_date: date
     status: str
@@ -90,6 +91,7 @@ def build_invoice_export(invoice: Invoice) -> InvoiceExportDTO:
         identity=InvoiceExportIdentityDTO(
             id=invoice.id,
             invoice_number=invoice.invoice_number,
+            document_kind=invoice.document_kind or "invoice",
             issue_date=invoice.issue_date,
             due_date=invoice.due_date,
             status=invoice.status,
