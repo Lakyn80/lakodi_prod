@@ -25,6 +25,8 @@ class DocumentKindMetadata:
     allows_payment_tracking: bool
     allows_pdf_email: bool
     participates_in_total_calculation: bool
+    allows_manual_create: bool
+    requires_source_relation: bool
     supports_tax_document_generation: bool
     supports_final_invoice_settlement: bool
 
@@ -37,6 +39,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=True,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        allows_manual_create=True,
+        requires_source_relation=False,
         supports_tax_document_generation=False,
         supports_final_invoice_settlement=False,
     ),
@@ -47,7 +51,9 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=True,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
-        supports_tax_document_generation=False,
+        allows_manual_create=True,
+        requires_source_relation=False,
+        supports_tax_document_generation=True,
         supports_final_invoice_settlement=False,
     ),
     "tax_document": DocumentKindMetadata(
@@ -57,6 +63,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        allows_manual_create=False,
+        requires_source_relation=True,
         supports_tax_document_generation=False,
         supports_final_invoice_settlement=False,
     ),
@@ -67,6 +75,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        allows_manual_create=True,
+        requires_source_relation=False,
         supports_tax_document_generation=False,
         supports_final_invoice_settlement=False,
     ),
@@ -77,6 +87,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        allows_manual_create=True,
+        requires_source_relation=False,
         supports_tax_document_generation=False,
         supports_final_invoice_settlement=False,
     ),
@@ -87,6 +99,8 @@ DOCUMENT_KIND_METADATA: dict[DocumentKind, DocumentKindMetadata] = {
         allows_payment_tracking=False,
         allows_pdf_email=True,
         participates_in_total_calculation=True,
+        allows_manual_create=True,
+        requires_source_relation=False,
         supports_tax_document_generation=False,
         supports_final_invoice_settlement=False,
     ),

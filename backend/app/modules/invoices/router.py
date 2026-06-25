@@ -36,6 +36,7 @@ from backend.app.modules.invoices.service import (
     InvoiceValidationError,
     add_invoice_payment,
     create_invoice,
+    create_tax_document_from_proforma_payment,
     delete_invoice_payment,
     get_document_creation_defaults,
     generate_invoice_pdf,
@@ -208,6 +209,23 @@ def admin_delete_invoice_payment(
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
     except InvoicePaymentNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{invoice_id}/payments/{payment_id}/tax-document", response_model=InvoiceDetailResponse)
+def admin_create_tax_document_from_proforma_payment(
+    invoice_id: int,
+    payment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_tax_document_from_proforma_payment(db, invoice_id, payment_id)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoicePaymentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/{invoice_id}/pdf")

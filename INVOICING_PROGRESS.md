@@ -227,3 +227,52 @@
   - No real-local or external workflow was executed; this task only extends the safe backend foundation already present in the repository.
   - Proforma currently reuses the generic invoice PDF/email wording and does not yet add specialized document presentation.
   - Tax-document and final-invoice follow-up flows remain intentionally unimplemented in this phase.
+
+## Úkol 5 Backend tax document from proforma payment foundation
+
+- Date: 2026-06-26
+- Goal: Add a safe backend-only foundation for explicit creation of `document_kind = tax_document` from a registered payment on a proforma invoice without changing the frontend or disturbing existing invoice/proforma behavior.
+- Scope: Backend invoice relation persistence, backend document-kind metadata, backend invoice service/router logic, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/document_types.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added new table `invoice_document_relations`.
+  - Added unique duplicate-prevention constraint/index for `(source_payment_id, relation_type)`.
+  - Added safe SQLite compatibility helper so existing databases can keep working when the relation table exists.
+  - Existing `invoices`, `invoice_payments`, and historical rows were not rewritten destructively.
+- Backend changes:
+  - Added explicit admin-only endpoint:
+    - `POST /api/admin/invoices/{proforma_invoice_id}/payments/{payment_id}/tax-document`
+  - Endpoint creates a new `tax_document` only from an existing payment on a source `proforma`.
+  - Generated tax document:
+    - uses its own document-kind/year numbering series
+    - does not consume regular invoice numbering
+    - does not consume proforma numbering
+    - snapshots issuer/customer/payment/account data from the source proforma
+    - creates a minimal relation row to the source proforma/payment
+    - uses a single generated item based on the paid amount
+  - Added duplicate prevention for repeated tax-document generation from the same payment.
+  - Blocked manual standalone generic create for `document_kind = tax_document`; it must now be created through the explicit proforma-payment endpoint.
+  - Preserved existing invoice, proforma, payment, defaults, PDF, and email behavior for previously supported flows.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `62 passed`
+  - `python -m pytest -q` -> `70 passed`
+  - Both runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend tax document generation from proforma payments`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - This is a minimal backend foundation, not a complete legal/accounting workflow for all Czech tax-document cases.
+  - Generated tax documents currently reuse the generic PDF/email wording (`Faktura`) and existing layouts.
+  - Tax-document item content is represented as one generated payment-based item, which is sufficient for this backend phase but may need richer legal formatting later.
+  - Automatic tax-document creation on payment add remains intentionally disabled; generation happens only through the explicit admin endpoint.

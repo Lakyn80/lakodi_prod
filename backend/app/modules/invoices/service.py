@@ -15,7 +15,13 @@ from backend.app.modules.invoices.document_types import (
 from backend.app.modules.invoices.cache_service import get_invoice_cache_service
 from backend.app.modules.invoices.email_service import InvoiceEmailDeliveryResult, deliver_invoice_email
 from backend.app.modules.invoices.exporters import build_invoice_export
-from backend.app.modules.invoices.models import Invoice, InvoiceItem, InvoicePayment
+from backend.app.modules.invoices.models import (
+    RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+    Invoice,
+    InvoiceDocumentRelation,
+    InvoiceItem,
+    InvoicePayment,
+)
 from backend.app.modules.invoices.numbering_service import (
     InvoiceNumberingError,
     InvoiceSequencePreview,
@@ -193,6 +199,110 @@ def update_invoice(db: Session, invoice_id: int, payload: InvoiceUpdate) -> Invo
         raise InvoiceValidationError(str(exc)) from exc
 
 
+def create_tax_document_from_proforma_payment(db: Session, proforma_invoice_id: int, payment_id: int) -> Invoice:
+    source_invoice = get_invoice_detail(db, proforma_invoice_id)
+    source_document_meta = get_document_kind_metadata(source_invoice.document_kind)
+    if not source_document_meta.supports_tax_document_generation:
+        raise InvoiceValidationError("Daňový doklad lze vytvořit pouze z platby proformy.")
+
+    payment = db.query(InvoicePayment).filter(InvoicePayment.id == payment_id).first()
+    if payment is None:
+        raise InvoicePaymentNotFoundError("Platba faktury nebyla nalezena.")
+    if payment.invoice_id != source_invoice.id:
+        raise InvoiceValidationError("Platba nepatří k zadané proformě.")
+
+    payment_amount = _quantize_money(Decimal(payment.amount))
+    if payment_amount <= Decimal("0.00"):
+        raise InvoiceValidationError("Daňový doklad lze vytvořit pouze z kladné přijaté platby.")
+    if _tax_document_relation_exists(db, source_payment_id=payment.id):
+        raise InvoiceValidationError("Daňový doklad pro tuto platbu už existuje.")
+
+    generated_item = _build_tax_document_item(source_invoice, payment_amount)
+    generated_totals = _build_tax_document_totals_from_payment(
+        tax_mode=source_invoice.tax_mode,
+        vat_rate=Decimal(source_invoice.vat_rate) if source_invoice.vat_rate is not None else None,
+        payment_amount=payment_amount,
+        reverse_charge_reason=source_invoice.reverse_charge_reason,
+        reverse_charge_text=source_invoice.reverse_charge_text,
+    )
+    issue_date = payment.paid_at or date.today()
+    due_date = issue_date
+
+    for attempt in range(2):
+        try:
+            reserved_sequence = reserve_invoice_sequence(
+                db,
+                document_kind="tax_document",
+                reference_date=issue_date,
+            )
+            generated_invoice = Invoice(
+                invoice_number=reserved_sequence.invoice_number,
+                variable_symbol=reserved_sequence.variable_symbol,
+                issue_date=issue_date,
+                due_date=due_date,
+                issuer_name=source_invoice.issuer_name,
+                issuer_address=source_invoice.issuer_address,
+                issuer_city=source_invoice.issuer_city,
+                issuer_zip=source_invoice.issuer_zip,
+                issuer_ico=source_invoice.issuer_ico,
+                issuer_dic=source_invoice.issuer_dic,
+                issuer_data_box=source_invoice.issuer_data_box,
+                customer_name=source_invoice.customer_name,
+                customer_email=source_invoice.customer_email,
+                customer_phone=source_invoice.customer_phone,
+                customer_address=source_invoice.customer_address,
+                customer_ico=source_invoice.customer_ico,
+                customer_dic=source_invoice.customer_dic,
+                note=source_invoice.note,
+                document_kind="tax_document",
+                business_mode=source_invoice.business_mode,
+                tax_mode=source_invoice.tax_mode,
+                currency=source_invoice.currency,
+                subtotal=generated_totals.subtotal,
+                vat_rate=generated_totals.vat_rate,
+                vat_amount=generated_totals.vat_amount,
+                total=generated_totals.total,
+                status="issued",
+                reverse_charge_reason=generated_totals.reverse_charge_reason,
+                reverse_charge_text=generated_totals.reverse_charge_text,
+                payment_method=source_invoice.payment_method,
+                bank_account_number=source_invoice.bank_account_number,
+                bank_account_prefix=source_invoice.bank_account_prefix,
+                bank_code=source_invoice.bank_code,
+                bank_iban=source_invoice.bank_iban,
+            )
+            generated_invoice.items = [
+                InvoiceItem(
+                    description=generated_item.description,
+                    quantity=generated_item.quantity,
+                    unit_price=generated_item.unit_price,
+                    line_total=generated_item.line_total,
+                )
+            ]
+            db.add(generated_invoice)
+            db.flush()
+            db.add(
+                InvoiceDocumentRelation(
+                    source_invoice_id=source_invoice.id,
+                    target_invoice_id=generated_invoice.id,
+                    source_payment_id=payment.id,
+                    relation_type=RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+                )
+            )
+            db.commit()
+            created_invoice = get_invoice_detail(db, generated_invoice.id)
+            _cache_invoice_nonfatal(created_invoice)
+            return created_invoice
+        except IntegrityError as exc:
+            db.rollback()
+            if _tax_document_relation_exists(db, source_payment_id=payment.id):
+                raise InvoiceValidationError("Daňový doklad pro tuto platbu už existuje.") from exc
+            if attempt > 0:
+                raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc
+
+    raise InvoiceValidationError("Daňový doklad se nepodařilo bezpečně vytvořit.")
+
+
 def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
     invoice = get_invoice_detail(db, invoice_id)
     amount = _quantize_money(Decimal(payload.amount))
@@ -276,10 +386,11 @@ def _normalize_invoice_status(value: str | None) -> str:
 
 def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:
     invoice_total = _quantize_money(Decimal(invoice.total))
+    document_metadata = get_document_kind_metadata(invoice.document_kind)
     total_paid = _quantize_money(
         sum((Decimal(payment.amount) for payment in invoice.payments), Decimal("0.00"))
     )
-    if total_paid >= invoice_total:
+    if total_paid >= invoice_total and invoice_total > Decimal("0.00"):
         payment_status = "paid"
     elif total_paid > Decimal("0.00"):
         payment_status = "partially_paid"
@@ -287,14 +398,17 @@ def _build_payment_summary(invoice: Invoice, reference_date: date | None = None)
         payment_status = "unpaid"
 
     remaining_amount = max(_quantize_money(invoice_total - total_paid), Decimal("0.00"))
-    effective_status = _compute_effective_status(
-        stored_status=_normalize_invoice_status(invoice.status),
-        due_date=invoice.due_date,
-        payment_status=payment_status,
-        total_paid=total_paid,
-        invoice_total=invoice_total,
-        reference_date=reference_date,
-    )
+    if document_metadata.allows_payment_tracking:
+        effective_status = _compute_effective_status(
+            stored_status=_normalize_invoice_status(invoice.status),
+            due_date=invoice.due_date,
+            payment_status=payment_status,
+            total_paid=total_paid,
+            invoice_total=invoice_total,
+            reference_date=reference_date,
+        )
+    else:
+        effective_status = _compute_non_payment_effective_status(_normalize_invoice_status(invoice.status))
     return InvoicePaymentSummary(
         total_paid=total_paid,
         remaining_amount=remaining_amount,
@@ -326,6 +440,14 @@ def _compute_effective_status(
     return "issued"
 
 
+def _compute_non_payment_effective_status(stored_status: str) -> str:
+    if stored_status == "cancelled":
+        return "cancelled"
+    if stored_status == "draft":
+        return "draft"
+    return "issued"
+
+
 def _attach_invoice_runtime_state(invoice: Invoice) -> Invoice:
     normalized_document_kind = normalize_document_kind(getattr(invoice, "document_kind", None))
     setattr(invoice, "document_kind", normalized_document_kind)
@@ -350,6 +472,77 @@ def _prepare_invoice_item(item) -> PreparedInvoiceItem:
         unit_price=unit_price,
         line_total=_quantize_money(quantity * unit_price),
     )
+
+
+def _build_tax_document_item(source_invoice: Invoice, payment_amount: Decimal) -> PreparedInvoiceItem:
+    net_amount = _derive_tax_document_net_amount(
+        tax_mode=source_invoice.tax_mode,
+        vat_rate=Decimal(source_invoice.vat_rate) if source_invoice.vat_rate is not None else None,
+        payment_amount=payment_amount,
+    )
+    return PreparedInvoiceItem(
+        description=f"Přijatá platba k proformě {source_invoice.invoice_number}",
+        quantity=Decimal("1.000"),
+        unit_price=net_amount,
+        line_total=net_amount,
+    )
+
+
+def _build_tax_document_totals_from_payment(
+    *,
+    tax_mode: str,
+    vat_rate: Decimal | None,
+    payment_amount: Decimal,
+    reverse_charge_reason: str | None,
+    reverse_charge_text: str | None,
+) -> InvoiceTotals:
+    if tax_mode == "standard":
+        if vat_rate is None:
+            raise InvoiceValidationError("Pro běžný režim DPH chybí sazba DPH zdrojové proformy.")
+        normalized_vat_rate = _normalize_vat_rate(vat_rate)
+        subtotal = _derive_tax_document_net_amount(
+            tax_mode=tax_mode,
+            vat_rate=normalized_vat_rate,
+            payment_amount=payment_amount,
+        )
+        vat_amount = _quantize_money(payment_amount - subtotal)
+        return InvoiceTotals(
+            subtotal=subtotal,
+            vat_rate=normalized_vat_rate,
+            vat_amount=vat_amount,
+            total=payment_amount,
+            reverse_charge_reason=None,
+            reverse_charge_text=None,
+        )
+
+    if tax_mode == "reverse_charge":
+        return InvoiceTotals(
+            subtotal=payment_amount,
+            vat_rate=_normalize_vat_rate(vat_rate) if vat_rate is not None else None,
+            vat_amount=Decimal("0.00"),
+            total=payment_amount,
+            reverse_charge_reason=reverse_charge_reason,
+            reverse_charge_text=reverse_charge_text,
+        )
+
+    raise InvoiceValidationError("Neznámý režim DPH.")
+
+
+def _derive_tax_document_net_amount(
+    *,
+    tax_mode: str,
+    vat_rate: Decimal | None,
+    payment_amount: Decimal,
+) -> Decimal:
+    if tax_mode == "reverse_charge":
+        return payment_amount
+    if vat_rate is None:
+        raise InvoiceValidationError("Pro běžný režim DPH chybí sazba DPH zdrojové proformy.")
+    normalized_vat_rate = _normalize_vat_rate(vat_rate)
+    divisor = Decimal("1.00") + (normalized_vat_rate / Decimal("100"))
+    if divisor <= Decimal("0.00"):
+        raise InvoiceValidationError("Neplatná sazba DPH pro daňový doklad.")
+    return _quantize_money(payment_amount / divisor)
 
 
 def _calculate_totals(
@@ -426,6 +619,7 @@ def _create_invoice_with_reserved_sequence(
     resolved_currency = (payload.currency or payment_settings.invoice_defaults.default_currency).strip().upper()
     resolved_note = payload.note if payload.note is not None else payment_settings.invoice_defaults.default_note
     resolved_document_kind = normalize_document_kind(payload.document_kind)
+    _ensure_manual_document_creation_allowed(resolved_document_kind)
     for attempt in range(2):
         try:
             reserved_sequence = reserve_invoice_sequence(
@@ -490,6 +684,25 @@ def _create_invoice_with_reserved_sequence(
             if payload.invoice_number or attempt > 0:
                 raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc
     raise InvoiceValidationError("Fakturu se nepodařilo bezpečně vytvořit.")
+
+
+def _ensure_manual_document_creation_allowed(document_kind: str) -> None:
+    metadata = get_document_kind_metadata(document_kind)
+    if metadata.allows_manual_create:
+        return
+    raise InvoiceValidationError("Daňový doklad nelze vytvořit ručně. Vytvořte jej z platby proformy.")
+
+
+def _tax_document_relation_exists(db: Session, *, source_payment_id: int) -> bool:
+    relation = (
+        db.query(InvoiceDocumentRelation.id)
+        .filter(
+            InvoiceDocumentRelation.source_payment_id == source_payment_id,
+            InvoiceDocumentRelation.relation_type == RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+        )
+        .first()
+    )
+    return relation is not None
 
 
 def _update_existing_invoice(

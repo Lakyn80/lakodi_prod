@@ -151,6 +151,37 @@ def _ensure_invoice_sequence_state_columns():
         )
 
 
+def _ensure_invoice_document_relations_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_document_relations'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_document_relations)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "source_invoice_id": "ALTER TABLE invoice_document_relations ADD COLUMN source_invoice_id INTEGER",
+            "target_invoice_id": "ALTER TABLE invoice_document_relations ADD COLUMN target_invoice_id INTEGER",
+            "source_payment_id": "ALTER TABLE invoice_document_relations ADD COLUMN source_payment_id INTEGER",
+            "relation_type": "ALTER TABLE invoice_document_relations ADD COLUMN relation_type VARCHAR(64)",
+            "created_at": "ALTER TABLE invoice_document_relations ADD COLUMN created_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ux_invoice_document_relations_source_payment_relation_type "
+                "ON invoice_document_relations (source_payment_id, relation_type)"
+            )
+        )
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -168,6 +199,7 @@ def init_db():
     _ensure_invoice_columns()
     _ensure_invoice_settings_columns()
     _ensure_invoice_sequence_state_columns()
+    _ensure_invoice_document_relations_table()
 
 
 def get_db():

@@ -1,9 +1,11 @@
 """ORM models for invoices."""
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from backend.app.db import Base
+
+RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT = "tax_document_for_payment"
 
 
 class Invoice(Base):
@@ -91,6 +93,24 @@ class InvoicePayment(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     invoice = relationship("Invoice", back_populates="payments")
+
+
+class InvoiceDocumentRelation(Base):
+    __tablename__ = "invoice_document_relations"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_payment_id",
+            "relation_type",
+            name="uq_invoice_document_relations_source_payment_relation_type",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_payment_id = Column(Integer, ForeignKey("invoice_payments.id", ondelete="CASCADE"), nullable=False, index=True)
+    relation_type = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class InvoiceSequenceState(Base):
