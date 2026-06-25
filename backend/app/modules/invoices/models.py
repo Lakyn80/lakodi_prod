@@ -57,6 +57,12 @@ class Invoice(Base):
         cascade="all, delete-orphan",
         order_by="InvoiceItem.id",
     )
+    payments = relationship(
+        "InvoicePayment",
+        back_populates="invoice",
+        cascade="all, delete-orphan",
+        order_by="InvoicePayment.paid_at, InvoicePayment.id",
+    )
 
 
 class InvoiceItem(Base):
@@ -70,6 +76,20 @@ class InvoiceItem(Base):
     line_total = Column(Numeric(12, 2), nullable=False)
 
     invoice = relationship("Invoice", back_populates="items")
+
+
+class InvoicePayment(Base):
+    __tablename__ = "invoice_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    paid_at = Column(Date, nullable=False, index=True)
+    payment_method = Column(String(64), nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    invoice = relationship("Invoice", back_populates="payments")
 
 
 class InvoiceSequenceState(Base):

@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Mail, Pencil } from "lucide-react";
+import { Download, Mail, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  addInvoicePayment,
   AdminApiError,
+  deleteInvoicePayment,
   InvoiceDetail as InvoiceDetailType,
   downloadInvoicePdf,
   formatInvoiceBusinessMode,
   formatInvoiceDate,
   formatInvoiceDateTime,
   formatInvoiceMoney,
+  formatInvoicePaymentStatus,
   formatInvoiceStatus,
   formatInvoiceTaxMode,
   formatReverseChargeReason,
@@ -32,6 +35,10 @@ function buildFullAddress(address: string, zipCode: string, city: string) {
   return parts.join(", ");
 }
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function InvoiceDetail({
   invoice,
   loading,
@@ -46,14 +53,24 @@ export function InvoiceDetail({
   const [toEmail, setToEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(todayIso());
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     setToEmail(invoice?.customer_email ?? "");
+    setPaymentAmount(invoice ? String(invoice.remaining_amount || "") : "");
+    setPaymentDate(todayIso());
+    setPaymentMethod(invoice?.payment_method ?? "");
+    setPaymentNote("");
     setMessage("");
     setError("");
-  }, [invoice?.id, invoice?.customer_email]);
+  }, [invoice]);
 
   const handleSend = async () => {
     if (!invoice) return;
@@ -95,6 +112,51 @@ export function InvoiceDetail({
     }
   };
 
+  const handleAddPayment = async () => {
+    if (!invoice) return;
+    setSavingPayment(true);
+    setMessage("");
+    setError("");
+    try {
+      await addInvoicePayment(invoice.id, {
+        amount: Number(paymentAmount),
+        paid_at: paymentDate,
+        payment_method: paymentMethod,
+        note: paymentNote || undefined,
+      });
+      setMessage("Platba byla zaevidována.");
+      await onRefresh();
+    } catch (err) {
+      if (err instanceof AdminApiError || err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Platbu se nepodařilo uložit.");
+      }
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!invoice) return;
+    setDeletingPaymentId(paymentId);
+    setMessage("");
+    setError("");
+    try {
+      await deleteInvoicePayment(invoice.id, paymentId);
+      setMessage("Platba byla smazána.");
+      await onRefresh();
+    } catch (err) {
+      if (err instanceof AdminApiError || err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Platbu se nepodařilo smazat.");
+      }
+    } finally {
+      setDeletingPaymentId(null);
+    }
+  };
+
   if (loading) {
     return (
       <section className="rounded-xl border border-border bg-card p-5">
@@ -114,6 +176,7 @@ export function InvoiceDetail({
 
   const reverseChargeReason = formatReverseChargeReason(invoice.reverse_charge_reason);
   const issuerFullAddress = buildFullAddress(invoice.issuer_address, invoice.issuer_zip, invoice.issuer_city);
+  const canRegisterPayment = invoice.remaining_amount > 0 && invoice.effective_status !== "cancelled";
 
   return (
     <section className="min-w-0 rounded-xl border border-border bg-card p-5">
@@ -127,7 +190,7 @@ export function InvoiceDetail({
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">{formatInvoiceBusinessMode(invoice.business_mode)}</Badge>
           <Badge variant="secondary">{formatInvoiceTaxMode(invoice.tax_mode)}</Badge>
-          <Badge variant="outline">{formatInvoiceStatus(invoice.status)}</Badge>
+          <Badge variant="outline">{formatInvoiceStatus(invoice.effective_status)}</Badge>
         </div>
       </div>
 
@@ -269,6 +332,133 @@ export function InvoiceDetail({
               <span className="font-medium text-foreground">Celkem</span>
               <span className="text-lg font-semibold text-foreground">{formatInvoiceMoney(invoice.total, invoice.currency)}</span>
             </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-lg border border-border bg-background p-4">
+          <h3 className="mb-3 font-medium text-foreground">Platby</h3>
+          <div className="space-y-2 text-sm">
+            <p className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Platební stav</span>
+              <span className="font-medium text-foreground">
+                {formatInvoicePaymentStatus(invoice.payment_status)}
+              </span>
+            </p>
+            <p className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Uhrazeno</span>
+              <span className="font-medium text-foreground">
+                {formatInvoiceMoney(invoice.total_paid, invoice.currency)}
+              </span>
+            </p>
+            <p className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Zbývá uhradit</span>
+              <span className="font-medium text-foreground">
+                {formatInvoiceMoney(invoice.remaining_amount, invoice.currency)}
+              </span>
+            </p>
+            <p className="flex items-center justify-between gap-3 border-t border-border pt-2">
+              <span className="text-muted-foreground">Efektivní stav</span>
+              <span className="font-medium text-foreground">
+                {formatInvoiceStatus(invoice.effective_status)}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-background p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-medium text-foreground">Evidence plateb</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Přidejte ručně přijatou platbu a systém přepočítá zbývající částku.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={paymentAmount}
+              onChange={(event) => setPaymentAmount(event.target.value)}
+              placeholder="Částka platby"
+              disabled={!canRegisterPayment || savingPayment}
+            />
+            <Input
+              type="date"
+              value={paymentDate}
+              onChange={(event) => setPaymentDate(event.target.value)}
+              disabled={!canRegisterPayment || savingPayment}
+            />
+            <Input
+              value={paymentMethod}
+              onChange={(event) => setPaymentMethod(event.target.value)}
+              placeholder="Způsob platby"
+              disabled={!canRegisterPayment || savingPayment}
+            />
+            <Input
+              value={paymentNote}
+              onChange={(event) => setPaymentNote(event.target.value)}
+              placeholder="Poznámka k platbě"
+              disabled={!canRegisterPayment || savingPayment}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              onClick={() => void handleAddPayment()}
+              disabled={
+                savingPayment ||
+                !canRegisterPayment ||
+                !paymentAmount.trim() ||
+                !paymentDate.trim() ||
+                !paymentMethod.trim()
+              }
+            >
+              {savingPayment ? "Ukládám platbu…" : "Zaevidovat platbu"}
+            </Button>
+            {!canRegisterPayment && (
+              <p className="text-xs text-muted-foreground">
+                {invoice.effective_status === "cancelled"
+                  ? "Ke stornované faktuře nelze přidávat platby."
+                  : "Faktura je už plně uhrazená."}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {invoice.payments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Zatím není zaevidována žádná platba.</p>
+            ) : (
+              invoice.payments.map((payment) => (
+                <div
+                  key={payment.id}
+                  className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-3 md:flex-row md:items-start md:justify-between"
+                >
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium text-foreground">
+                      {formatInvoiceMoney(payment.amount, invoice.currency)} • {payment.payment_method}
+                    </p>
+                    <p className="text-muted-foreground">Uhrazeno {formatInvoiceDate(payment.paid_at)}</p>
+                    {payment.note && <p className="text-muted-foreground">{payment.note}</p>}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    disabled={deletingPaymentId === payment.id}
+                    onClick={() => void handleDeletePayment(payment.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {deletingPaymentId === payment.id ? "Mažu…" : "Smazat platbu"}
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

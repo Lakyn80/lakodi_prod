@@ -2,6 +2,8 @@ import { apiFetchOptions } from "@/lib/api";
 
 export type BusinessMode = "autoservice" | "construction";
 export type TaxMode = "standard" | "reverse_charge";
+export type InvoicePaymentStatus = "unpaid" | "partially_paid" | "paid";
+export type EffectiveInvoiceStatus = "draft" | "issued" | "partially_paid" | "paid" | "overdue" | "cancelled";
 
 const BUSINESS_MODE_LABELS: Record<BusinessMode, string> = {
   autoservice: "Autoservis",
@@ -15,6 +17,17 @@ const TAX_MODE_LABELS: Record<TaxMode, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Koncept",
+  issued: "Vystavená",
+  partially_paid: "Částečně uhrazená",
+  paid: "Uhrazená",
+  overdue: "Po splatnosti",
+  cancelled: "Stornovaná",
+};
+
+const PAYMENT_STATUS_LABELS: Record<InvoicePaymentStatus, string> = {
+  unpaid: "Neuhrazeno",
+  partially_paid: "Částečně uhrazeno",
+  paid: "Uhrazeno",
 };
 
 const ARES_SOURCE_LABELS = {
@@ -35,6 +48,7 @@ export interface InvoiceItemInput {
 
 export interface InvoiceCreatePayload {
   invoice_number?: string | null;
+  status?: "draft" | "issued" | "cancelled";
   issue_date: string;
   due_date: string;
   customer_name: string;
@@ -57,6 +71,23 @@ export interface InvoiceItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+}
+
+export interface InvoicePayment {
+  id: number;
+  invoice_id: number;
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface InvoicePaymentCreatePayload {
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note?: string | null;
 }
 
 export interface InvoiceSummary {
@@ -87,6 +118,10 @@ export interface InvoiceSummary {
   vat_amount: number;
   total: number;
   status: string;
+  total_paid: number;
+  remaining_amount: number;
+  payment_status: InvoicePaymentStatus;
+  effective_status: EffectiveInvoiceStatus;
   reverse_charge_reason: string | null;
   reverse_charge_text: string | null;
   payment_method: string;
@@ -99,6 +134,7 @@ export interface InvoiceSummary {
 
 export interface InvoiceDetail extends InvoiceSummary {
   items: InvoiceItem[];
+  payments: InvoicePayment[];
 }
 
 export interface AresCompanyLookup {
@@ -267,6 +303,28 @@ export async function sendInvoiceEmail(
   });
 }
 
+export async function listInvoicePayments(invoiceId: number): Promise<InvoicePayment[]> {
+  return requestJson<InvoicePayment[]>(`/${invoiceId}/payments`, {
+    method: "GET",
+  });
+}
+
+export async function addInvoicePayment(
+  invoiceId: number,
+  payload: InvoicePaymentCreatePayload,
+): Promise<InvoiceDetail> {
+  return requestJson<InvoiceDetail>(`/${invoiceId}/payments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteInvoicePayment(invoiceId: number, paymentId: number): Promise<InvoiceDetail> {
+  return requestJson<InvoiceDetail>(`/${invoiceId}/payments/${paymentId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function downloadInvoicePdf(invoiceId: number): Promise<void> {
   const response = await fetch(invoicesAdminUrl(`/${invoiceId}/pdf`), {
     ...apiFetchOptions,
@@ -326,6 +384,10 @@ export function formatInvoiceTaxMode(value: TaxMode) {
 
 export function formatInvoiceStatus(value: string) {
   return STATUS_LABELS[value] ?? value;
+}
+
+export function formatInvoicePaymentStatus(value: InvoicePaymentStatus) {
+  return PAYMENT_STATUS_LABELS[value] ?? value;
 }
 
 export function formatAresSource(value: AresCompanyLookup["source"]) {

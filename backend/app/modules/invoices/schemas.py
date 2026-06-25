@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 BusinessMode = Literal["autoservice", "construction"]
 TaxMode = Literal["standard", "reverse_charge"]
+StoredInvoiceStatus = Literal["draft", "issued", "cancelled"]
+EffectiveInvoiceStatus = Literal["draft", "issued", "partially_paid", "paid", "overdue", "cancelled"]
+InvoicePaymentStatus = Literal["unpaid", "partially_paid", "paid"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -40,6 +43,7 @@ class InvoiceItemCreate(BaseModel):
 
 class InvoiceCreate(BaseModel):
     invoice_number: str | None = Field(default=None, min_length=1, max_length=9)
+    status: StoredInvoiceStatus = "issued"
     issue_date: date
     due_date: date
 
@@ -82,6 +86,11 @@ class InvoiceCreate(BaseModel):
         if int(cleaned) <= 0:
             raise ValueError("Číslo faktury musí být větší než nula.")
         return cleaned
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: StoredInvoiceStatus | None) -> StoredInvoiceStatus | None:
+        return value
 
     @field_validator("customer_phone", "customer_ico", "customer_dic", "note")
     @classmethod
@@ -133,6 +142,52 @@ class InvoiceItemResponse(BaseModel):
         return float(value)
 
 
+class InvoicePaymentCreate(BaseModel):
+    amount: Decimal
+    paid_at: date
+    payment_method: str = Field(min_length=1, max_length=64)
+    note: str | None = None
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Částka platby musí být větší než nula.")
+        return value
+
+    @field_validator("payment_method")
+    @classmethod
+    def validate_payment_method(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Způsob platby je povinný.")
+        return cleaned
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoicePaymentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    invoice_id: int
+    amount: Decimal
+    paid_at: date
+    payment_method: str
+    note: str | None
+    created_at: datetime
+
+    @field_serializer("amount", when_used="json")
+    def serialize_amount(self, value: Decimal) -> float:
+        return float(value)
+
+
 class InvoiceSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -167,6 +222,10 @@ class InvoiceSummaryResponse(BaseModel):
     vat_amount: Decimal
     total: Decimal
     status: str
+    total_paid: Decimal
+    remaining_amount: Decimal
+    payment_status: InvoicePaymentStatus
+    effective_status: EffectiveInvoiceStatus
 
     reverse_charge_reason: str | None
     reverse_charge_text: str | None
@@ -178,7 +237,15 @@ class InvoiceSummaryResponse(BaseModel):
 
     created_at: datetime
 
-    @field_serializer("subtotal", "vat_rate", "vat_amount", "total", when_used="json")
+    @field_serializer(
+        "subtotal",
+        "vat_rate",
+        "vat_amount",
+        "total",
+        "total_paid",
+        "remaining_amount",
+        when_used="json",
+    )
     def serialize_decimal(self, value: Decimal | None) -> float | None:
         if value is None:
             return None
@@ -187,10 +254,11 @@ class InvoiceSummaryResponse(BaseModel):
 
 class InvoiceDetailResponse(InvoiceSummaryResponse):
     items: list[InvoiceItemResponse]
+    payments: list[InvoicePaymentResponse]
 
 
 class InvoiceUpdate(InvoiceCreate):
-    pass
+    status: StoredInvoiceStatus | None = None
 
 
 class AresCompanyLookupResponse(BaseModel):

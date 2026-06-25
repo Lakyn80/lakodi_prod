@@ -29,8 +29,8 @@ def _login_admin() -> None:
 def _vytvor_fakturu(payload: dict | None = None) -> dict:
     _login_admin()
     invoice_payload = {
-        "issue_date": "2026-04-04",
-        "due_date": "2026-04-18",
+        "issue_date": "2099-04-04",
+        "due_date": "2099-04-18",
         "customer_name": "Jan Novák",
         "customer_email": "jan@example.com",
         "customer_phone": "+420123456789",
@@ -50,6 +50,21 @@ def _vytvor_fakturu(payload: dict | None = None) -> dict:
     if payload:
         invoice_payload.update(payload)
     response = client.post("/api/admin/invoices", json=invoice_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _pridej_platbu(invoice_id: int, payload: dict | None = None) -> dict:
+    _login_admin()
+    payment_payload = {
+        "amount": 1000,
+        "paid_at": "2026-04-10",
+        "payment_method": "Bankovní převod",
+        "note": "Částečná úhrada",
+    }
+    if payload:
+        payment_payload.update(payload)
+    response = client.post(f"/api/admin/invoices/{invoice_id}/payments", json=payment_payload)
     assert response.status_code == 200
     return response.json()
 
@@ -77,10 +92,10 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     invoice_service.get_invoice_cache_service = lambda: FakeCacheService()
     try:
         create_response = client.post(
-            "/api/admin/invoices",
-            json={
-                "issue_date": "2026-04-04",
-                "due_date": "2026-04-18",
+                "/api/admin/invoices",
+                json={
+                    "issue_date": "2099-04-04",
+                    "due_date": "2099-04-18",
                 "customer_name": "Jan Novák",
                 "customer_email": "jan@example.com",
                 "customer_phone": "+420123456789",
@@ -108,7 +123,11 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert invoice["issuer_name"] == "lakodi s.r.o."
     assert invoice["issuer_ico"] == "09695982"
     assert invoice["currency"] == "CZK"
-    assert invoice["status"] == "draft"
+    assert invoice["status"] == "issued"
+    assert invoice["effective_status"] == "issued"
+    assert invoice["payment_status"] == "unpaid"
+    assert invoice["total_paid"] == 0.0
+    assert invoice["remaining_amount"] == 9922.0
     assert invoice["payment_method"] == "Převodem"
     assert invoice["bank_account_number"] == "5997826359"
     assert invoice["bank_code"] == "0800"
@@ -118,6 +137,7 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert invoice["total"] == 9922.0
     assert invoice["reverse_charge_reason"] is None
     assert len(invoice["items"]) == 2
+    assert invoice["payments"] == []
     assert invoice["items"][1]["line_total"] == 7000.0
     assert captured["invoice"] is not None
     assert captured["customer"] is not None
@@ -131,6 +151,8 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert len(listed) == 1
     assert listed[0]["id"] == invoice["id"]
     assert listed[0]["invoice_number"] == "001"
+    assert listed[0]["effective_status"] == "issued"
+    assert listed[0]["payment_status"] == "unpaid"
 
     detail_response = client.get(f"/api/admin/invoices/{invoice['id']}")
     assert detail_response.status_code == 200
@@ -139,6 +161,8 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert detail["customer_name"] == "Jan Novák"
     assert detail["items"][0]["description"] == "Diagnostika"
     assert detail["variable_symbol"] == "001"
+    assert detail["payments"] == []
+    assert detail["remaining_amount"] == 9922.0
 
 
 def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
@@ -477,6 +501,127 @@ def test_detail_neexistujici_faktury_vrati_404() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Faktura nebyla nalezena."}
+
+
+def test_koncept_faktury_zustane_konceptem_bez_plateb() -> None:
+    invoice = _vytvor_fakturu({"status": "draft"})
+
+    assert invoice["status"] == "draft"
+    assert invoice["effective_status"] == "draft"
+    assert invoice["payment_status"] == "unpaid"
+    assert invoice["total_paid"] == 0.0
+    assert invoice["remaining_amount"] == invoice["total"]
+
+
+def test_faktura_po_splatnosti_ma_computed_overdue_status() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "issue_date": "2020-01-01",
+            "due_date": "2020-01-15",
+            "customer_email": "overdue@example.com",
+        }
+    )
+
+    assert invoice["status"] == "issued"
+    assert invoice["effective_status"] == "overdue"
+    assert invoice["payment_status"] == "unpaid"
+
+
+def test_plna_uhrada_oznaci_fakturu_jako_paid_a_zobrazi_platby() -> None:
+    invoice = _vytvor_fakturu()
+
+    updated = _pridej_platbu(
+        invoice["id"],
+        {
+            "amount": 9922.0,
+            "paid_at": "2026-04-11",
+            "payment_method": "Bankovní převod",
+            "note": "Plná úhrada",
+        },
+    )
+
+    assert updated["payment_status"] == "paid"
+    assert updated["effective_status"] == "paid"
+    assert updated["total_paid"] == 9922.0
+    assert updated["remaining_amount"] == 0.0
+    assert len(updated["payments"]) == 1
+    assert updated["payments"][0]["amount"] == 9922.0
+    assert updated["payments"][0]["payment_method"] == "Bankovní převod"
+
+    _login_admin()
+    payments_response = client.get(f"/api/admin/invoices/{invoice['id']}/payments")
+    assert payments_response.status_code == 200
+    assert payments_response.json() == updated["payments"]
+
+
+def test_castecna_uhrada_a_vice_plateb_se_scita_spravne() -> None:
+    invoice = _vytvor_fakturu()
+
+    after_first = _pridej_platbu(
+        invoice["id"],
+        {
+            "amount": 2000,
+            "paid_at": "2026-04-10",
+            "payment_method": "Hotově",
+            "note": "Záloha",
+        },
+    )
+    assert after_first["payment_status"] == "partially_paid"
+    assert after_first["effective_status"] == "partially_paid"
+    assert after_first["total_paid"] == 2000.0
+    assert after_first["remaining_amount"] == 7922.0
+
+    after_second = _pridej_platbu(
+        invoice["id"],
+        {
+            "amount": 3000,
+            "paid_at": "2026-04-12",
+            "payment_method": "Kartou",
+            "note": "Druhá platba",
+        },
+    )
+    assert after_second["payment_status"] == "partially_paid"
+    assert after_second["effective_status"] == "partially_paid"
+    assert after_second["total_paid"] == 5000.0
+    assert after_second["remaining_amount"] == 4922.0
+    assert len(after_second["payments"]) == 2
+
+
+def test_platba_nesmi_prekrocit_celkovou_castku_faktury() -> None:
+    invoice = _vytvor_fakturu()
+    _login_admin()
+
+    response = client.post(
+        f"/api/admin/invoices/{invoice['id']}/payments",
+        json={
+            "amount": 10000,
+            "paid_at": "2026-04-10",
+            "payment_method": "Převodem",
+            "note": "Přeplatek",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Součet plateb nesmí překročit celkovou částku faktury."}
+
+
+def test_smazani_platby_prepocita_payment_summary() -> None:
+    invoice = _vytvor_fakturu()
+    _pridej_platbu(invoice["id"], {"amount": 2000, "paid_at": "2026-04-10"})
+    after_second = _pridej_platbu(invoice["id"], {"amount": 1500, "paid_at": "2026-04-11"})
+    payment_id = after_second["payments"][0]["id"]
+
+    _login_admin()
+    response = client.delete(f"/api/admin/invoices/{invoice['id']}/payments/{payment_id}")
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert len(updated["payments"]) == 1
+    assert updated["payments"][0]["id"] == after_second["payments"][1]["id"]
+    assert updated["payment_status"] == "partially_paid"
+    assert updated["effective_status"] == "partially_paid"
+    assert updated["total_paid"] == 1500.0
+    assert updated["remaining_amount"] == 8422.0
 
 
 def test_lookup_ares_podle_ico_vrati_namapovana_data() -> None:

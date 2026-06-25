@@ -21,6 +21,8 @@ from backend.app.modules.invoices.schemas import (
     InvoiceCreate,
     InvoiceDefaultsResponse,
     InvoiceDetailResponse,
+    InvoicePaymentCreate,
+    InvoicePaymentResponse,
     InvoiceSettingsResponse,
     InvoiceSettingsUpdate,
     InvoiceSendEmailRequest,
@@ -30,12 +32,16 @@ from backend.app.modules.invoices.schemas import (
 )
 from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
+    InvoicePaymentNotFoundError,
     InvoiceValidationError,
+    add_invoice_payment,
     create_invoice,
+    delete_invoice_payment,
     generate_invoice_pdf,
     get_invoice_creation_defaults,
     get_invoice_detail,
     get_invoice_settings,
+    list_invoice_payments,
     list_invoices,
     save_invoice_settings,
     send_invoice_email,
@@ -158,6 +164,48 @@ def admin_list_invoices(
     _: None = Depends(require_admin),
 ):
     return list_invoices(db)
+
+
+@router.get("/{invoice_id}/payments", response_model=list[InvoicePaymentResponse])
+def admin_list_invoice_payments(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_payments(db, invoice_id)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+
+
+@router.post("/{invoice_id}/payments", response_model=InvoiceDetailResponse)
+def admin_add_invoice_payment(
+    invoice_id: int,
+    body: InvoicePaymentCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return add_invoice_payment(db, invoice_id, body)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/{invoice_id}/payments/{payment_id}", response_model=InvoiceDetailResponse)
+def admin_delete_invoice_payment(
+    invoice_id: int,
+    payment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return delete_invoice_payment(db, invoice_id, payment_id)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoicePaymentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/{invoice_id}/pdf")

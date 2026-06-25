@@ -1,0 +1,68 @@
+# Invoicing Progress
+
+## Úkol 1 Invoicing tracking + invoice lifecycle + payments foundation
+
+- Date: 2026-06-25
+- Goal: Add Phase 1 foundations for invoice lifecycle and invoice payments on top of the existing Lakodi invoicing module without rebuilding it.
+- Scope: Existing backend invoice module, existing admin invoice detail/list UI, invoice API contracts, invoice tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+  - `frontend/src/components/admin/invoices/InvoiceDetail.tsx`
+  - `frontend/src/components/admin/invoices/InvoiceList.tsx`
+  - `frontend/src/lib/invoices.ts`
+- Database/schema changes:
+  - Added new SQLAlchemy model/table `invoice_payments`.
+  - Added `Invoice.payments` ORM relation.
+  - Kept existing `invoices.status` field and extended its semantics.
+  - Added payment summary fields to invoice API responses:
+    - `total_paid`
+    - `remaining_amount`
+    - `payment_status`
+    - `effective_status`
+  - Added detail payments collection `payments[]`.
+- Backend changes:
+  - Added invoice payment CRUD foundation in the existing invoice service.
+  - Added admin-only endpoints under the existing invoice route structure:
+    - `GET /api/admin/invoices/{invoice_id}/payments`
+    - `POST /api/admin/invoices/{invoice_id}/payments`
+    - `DELETE /api/admin/invoices/{invoice_id}/payments/{payment_id}`
+  - Centralized payment summary and effective lifecycle computation in `backend/app/modules/invoices/service.py`.
+  - Stored lifecycle state remains on `invoices.status`.
+  - `effective_status` is computed in service from stored status, due date, and payment totals.
+  - New invoices now default to stored status `issued`.
+  - Legacy invoices with stored status `draft` continue to work.
+- Frontend changes:
+  - Extended invoice API types and helpers for payment summary and payment CRUD.
+  - Invoice list now displays `effective_status`.
+  - Invoice detail now shows:
+    - payment status
+    - total paid
+    - remaining amount
+    - effective status
+    - payment list
+    - add payment form
+    - delete payment action
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `npx eslint src/components/admin/invoices/InvoiceDetail.tsx src/components/admin/invoices/InvoiceList.tsx src/lib/invoices.ts`
+  - `npm run build`
+  - `npm run lint`
+- Test results:
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `36 passed`
+  - `python -m pytest -q` -> `44 passed`
+  - `npx eslint src/components/admin/invoices/InvoiceDetail.tsx src/components/admin/invoices/InvoiceList.tsx src/lib/invoices.ts` -> passed
+  - `npm run build` -> passed
+  - `npm run lint` -> failed on pre-existing/global frontend lint issues in generated `.next` / `.next_old` files and other non-invoicing files; no invoicing-file ESLint errors remained after targeted check
+- Commit message: `Add invoicing lifecycle and payments foundation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, tested, ready to commit
+- Notes / risks:
+  - `effective_status` is intentionally computed in one place only: `backend/app/modules/invoices/service.py`.
+  - Stored manual lifecycle remains lightweight for Phase 1; there is no dedicated admin UI yet for explicit `cancelled` / `draft` transitions.
+  - Global frontend lint configuration currently traverses generated `.next` artifacts, which causes unrelated lint failures outside this task scope.

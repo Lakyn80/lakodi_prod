@@ -67,7 +67,7 @@ export function InvoiceList({
                       </p>
                       <p className="mt-1 font-medium text-foreground">{invoice.customer_name}</p>
                     </div>
-                    <Badge variant="outline">{formatInvoiceStatus(invoice.status)}</Badge>
+                    <Badge variant="outline">{formatInvoiceStatus(invoice.effective_status)}</Badge>
                   </div>
 
                   <div className="mt-4 space-y-2 text-sm">
@@ -161,7 +161,7 @@ export function InvoiceList({
                         {formatInvoiceMoney(invoice.total, invoice.currency)}
                       </td>
                       <td className="hidden px-3 py-3 text-muted-foreground sm:table-cell">
-                        {formatInvoiceStatus(invoice.status)}
+                        {formatInvoiceStatus(invoice.effective_status)}
                       </td>
                       <td className="rounded-r-lg px-3 py-3">
                         <Button

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from backend.app.modules.invoices.cache_service import get_invoice_cache_service
 from backend.app.modules.invoices.email_service import InvoiceEmailDeliveryResult, deliver_invoice_email
 from backend.app.modules.invoices.exporters import build_invoice_export
-from backend.app.modules.invoices.models import Invoice, InvoiceItem
+from backend.app.modules.invoices.models import Invoice, InvoiceItem, InvoicePayment
 from backend.app.modules.invoices.numbering_service import (
     InvoiceNumberingError,
     InvoiceSequencePreview,
@@ -25,12 +25,18 @@ from backend.app.modules.invoices.payment_service import (
     update_invoice_settings_profile,
 )
 from backend.app.modules.invoices.pdf_service import InvoicePdfDocument, build_invoice_pdf_document
-from backend.app.modules.invoices.schemas import InvoiceCreate, InvoiceSettingsUpdate, InvoiceUpdate
+from backend.app.modules.invoices.schemas import (
+    InvoiceCreate,
+    InvoicePaymentCreate,
+    InvoiceSettingsUpdate,
+    InvoiceUpdate,
+)
 
 TWOPLACES = Decimal("0.01")
 THREEPLACES = Decimal("0.001")
 DEFAULT_STATUS = "draft"
 DEFAULT_ISSUER_PROFILE_KEY = "default"
+STORED_INVOICE_STATUSES = {"draft", "issued", "cancelled"}
 LOGGER = logging.getLogger(__name__)
 
 
@@ -40,6 +46,10 @@ class InvoiceValidationError(ValueError):
 
 class InvoiceNotFoundError(LookupError):
     """Faktura neexistuje."""
+
+
+class InvoicePaymentNotFoundError(LookupError):
+    """Platba faktury neexistuje."""
 
 
 @dataclass(frozen=True)
@@ -86,19 +96,30 @@ def get_default_issuer_profile() -> IssuerProfile:
 
 
 def list_invoices(db: Session) -> list[Invoice]:
-    return db.query(Invoice).order_by(Invoice.id.desc()).all()
+    invoices = (
+        db.query(Invoice)
+        .options(selectinload(Invoice.payments))
+        .order_by(Invoice.id.desc())
+        .all()
+    )
+    return [_attach_invoice_runtime_state(invoice) for invoice in invoices]
 
 
 def get_invoice_detail(db: Session, invoice_id: int) -> Invoice:
     invoice = (
         db.query(Invoice)
-        .options(selectinload(Invoice.items))
+        .options(selectinload(Invoice.items), selectinload(Invoice.payments))
         .filter(Invoice.id == invoice_id)
         .first()
     )
     if not invoice:
         raise InvoiceNotFoundError("Faktura nebyla nalezena.")
-    return invoice
+    return _attach_invoice_runtime_state(invoice)
+
+
+def list_invoice_payments(db: Session, invoice_id: int) -> list[InvoicePayment]:
+    invoice = get_invoice_detail(db, invoice_id)
+    return list(invoice.payments)
 
 
 def get_invoice_creation_defaults(db: Session) -> InvoiceSequencePreview:
@@ -175,6 +196,42 @@ def update_invoice(db: Session, invoice_id: int, payload: InvoiceUpdate) -> Invo
         raise InvoiceValidationError(str(exc)) from exc
 
 
+def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
+    invoice = get_invoice_detail(db, invoice_id)
+    amount = _quantize_money(Decimal(payload.amount))
+    if amount <= 0:
+        raise InvoiceValidationError("Částka platby musí být větší než nula.")
+    if _normalize_invoice_status(invoice.status) == "cancelled":
+        raise InvoiceValidationError("Ke stornované faktuře nelze přidat platbu.")
+
+    summary = _build_payment_summary(invoice)
+    next_total_paid = _quantize_money(summary.total_paid + amount)
+    invoice_total = _quantize_money(Decimal(invoice.total))
+    if next_total_paid > invoice_total:
+        raise InvoiceValidationError("Součet plateb nesmí překročit celkovou částku faktury.")
+
+    payment = InvoicePayment(
+        invoice_id=invoice.id,
+        amount=amount,
+        paid_at=payload.paid_at,
+        payment_method=payload.payment_method,
+        note=payload.note,
+    )
+    db.add(payment)
+    db.commit()
+    return get_invoice_detail(db, invoice.id)
+
+
+def delete_invoice_payment(db: Session, invoice_id: int, payment_id: int) -> Invoice:
+    invoice = get_invoice_detail(db, invoice_id)
+    payment = next((item for item in invoice.payments if item.id == payment_id), None)
+    if payment is None:
+        raise InvoicePaymentNotFoundError("Platba faktury nebyla nalezena.")
+    db.delete(payment)
+    db.commit()
+    return get_invoice_detail(db, invoice.id)
+
+
 def generate_invoice_pdf(db: Session, invoice_id: int) -> InvoicePdfDocument:
     invoice = get_invoice_detail(db, invoice_id)
     return build_invoice_pdf_document(invoice)
@@ -202,6 +259,81 @@ class InvoiceTotals:
     total: Decimal
     reverse_charge_reason: str | None
     reverse_charge_text: str | None
+
+
+@dataclass(frozen=True)
+class InvoicePaymentSummary:
+    total_paid: Decimal
+    remaining_amount: Decimal
+    payment_status: str
+    effective_status: str
+
+
+def _normalize_invoice_status(value: str | None) -> str:
+    if value in STORED_INVOICE_STATUSES:
+        return value
+    return DEFAULT_STATUS
+
+
+def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:
+    invoice_total = _quantize_money(Decimal(invoice.total))
+    total_paid = _quantize_money(
+        sum((Decimal(payment.amount) for payment in invoice.payments), Decimal("0.00"))
+    )
+    if total_paid >= invoice_total:
+        payment_status = "paid"
+    elif total_paid > Decimal("0.00"):
+        payment_status = "partially_paid"
+    else:
+        payment_status = "unpaid"
+
+    remaining_amount = max(_quantize_money(invoice_total - total_paid), Decimal("0.00"))
+    effective_status = _compute_effective_status(
+        stored_status=_normalize_invoice_status(invoice.status),
+        due_date=invoice.due_date,
+        payment_status=payment_status,
+        total_paid=total_paid,
+        invoice_total=invoice_total,
+        reference_date=reference_date,
+    )
+    return InvoicePaymentSummary(
+        total_paid=total_paid,
+        remaining_amount=remaining_amount,
+        payment_status=payment_status,
+        effective_status=effective_status,
+    )
+
+
+def _compute_effective_status(
+    *,
+    stored_status: str,
+    due_date: date,
+    payment_status: str,
+    total_paid: Decimal,
+    invoice_total: Decimal,
+    reference_date: date | None = None,
+) -> str:
+    if stored_status == "cancelled":
+        return "cancelled"
+    if stored_status == "draft" and total_paid <= Decimal("0.00"):
+        return "draft"
+    if payment_status == "paid" and invoice_total > Decimal("0.00"):
+        return "paid"
+    if payment_status == "partially_paid" and total_paid > Decimal("0.00"):
+        return "partially_paid"
+    today = reference_date or date.today()
+    if due_date < today:
+        return "overdue"
+    return "issued"
+
+
+def _attach_invoice_runtime_state(invoice: Invoice) -> Invoice:
+    summary = _build_payment_summary(invoice)
+    setattr(invoice, "total_paid", summary.total_paid)
+    setattr(invoice, "remaining_amount", summary.remaining_amount)
+    setattr(invoice, "payment_status", summary.payment_status)
+    setattr(invoice, "effective_status", summary.effective_status)
+    return invoice
 
 
 def _prepare_invoice_item(item) -> PreparedInvoiceItem:
@@ -319,7 +451,7 @@ def _create_invoice_with_reserved_sequence(
                 vat_rate=totals.vat_rate,
                 vat_amount=totals.vat_amount,
                 total=totals.total,
-                status=DEFAULT_STATUS,
+                status=_normalize_invoice_status(payload.status),
                 reverse_charge_reason=totals.reverse_charge_reason,
                 reverse_charge_text=totals.reverse_charge_text,
                 payment_method=payment_settings.payment_profile.payment_method,
@@ -383,6 +515,8 @@ def _update_existing_invoice(
         invoice.vat_rate = totals.vat_rate
         invoice.vat_amount = totals.vat_amount
         invoice.total = totals.total
+        if payload.status is not None:
+            invoice.status = _normalize_invoice_status(payload.status)
         invoice.reverse_charge_reason = totals.reverse_charge_reason
         invoice.reverse_charge_text = totals.reverse_charge_text
         invoice.items = [
