@@ -84,6 +84,65 @@ def _ensure_invoice_columns():
         )
 
 
+def _ensure_invoice_settings_columns():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_settings'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_settings)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "issuer_name": "ALTER TABLE invoice_settings ADD COLUMN issuer_name VARCHAR(256)",
+            "issuer_address": "ALTER TABLE invoice_settings ADD COLUMN issuer_address VARCHAR(256)",
+            "issuer_city": "ALTER TABLE invoice_settings ADD COLUMN issuer_city VARCHAR(128)",
+            "issuer_zip": "ALTER TABLE invoice_settings ADD COLUMN issuer_zip VARCHAR(32)",
+            "issuer_ico": "ALTER TABLE invoice_settings ADD COLUMN issuer_ico VARCHAR(32)",
+            "issuer_dic": "ALTER TABLE invoice_settings ADD COLUMN issuer_dic VARCHAR(32)",
+            "issuer_data_box": "ALTER TABLE invoice_settings ADD COLUMN issuer_data_box VARCHAR(64)",
+            "issuer_email": "ALTER TABLE invoice_settings ADD COLUMN issuer_email VARCHAR(256)",
+            "issuer_phone": "ALTER TABLE invoice_settings ADD COLUMN issuer_phone VARCHAR(64)",
+            "default_currency": "ALTER TABLE invoice_settings ADD COLUMN default_currency VARCHAR(8)",
+            "default_due_days": "ALTER TABLE invoice_settings ADD COLUMN default_due_days INTEGER",
+            "default_note": "ALTER TABLE invoice_settings ADD COLUMN default_note TEXT",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+
+def _ensure_invoice_sequence_state_columns():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_sequence_states'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_sequence_states)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "document_kind": "ALTER TABLE invoice_sequence_states ADD COLUMN document_kind VARCHAR(32)",
+            "sequence_year": "ALTER TABLE invoice_sequence_states ADD COLUMN sequence_year INTEGER",
+            "prefix": "ALTER TABLE invoice_sequence_states ADD COLUMN prefix VARCHAR(32)",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(
+            text(
+                "UPDATE invoice_sequence_states "
+                "SET document_kind = 'invoice' "
+                "WHERE sequence_key = 'default' AND document_kind IS NULL"
+            )
+        )
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -99,6 +158,8 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     _ensure_zakazky_columns()
     _ensure_invoice_columns()
+    _ensure_invoice_settings_columns()
+    _ensure_invoice_sequence_state_columns()
 
 
 def get_db():

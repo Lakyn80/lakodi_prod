@@ -1,6 +1,9 @@
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.db import SessionLocal
 from backend.app.main import app
 from backend.app.modules.invoices import ares_service
 from backend.app.modules.invoices.ares_service import (
@@ -13,6 +16,11 @@ from backend.app.modules.invoices.ares_service import (
 )
 from backend.app.modules.invoices.cache_service import InvoiceCacheService
 from backend.app.modules.invoices.email_service import InvoiceEmailSendError
+from backend.app.modules.invoices.models import InvoiceSequenceState
+from backend.app.modules.invoices.numbering_service import (
+    get_document_sequence_preview,
+    reserve_document_sequence,
+)
 from backend.app.modules.invoices.pdf_service import InvoicePdfDocument
 
 client = TestClient(app)
@@ -218,6 +226,18 @@ def test_nastaveni_fakturace_vraci_defaultni_hodnoty() -> None:
     assert response.status_code == 200
     assert response.json() == {
         "owner_email": "lakodi@seznam.cz",
+        "issuer_name": "lakodi s.r.o.",
+        "issuer_address": "Jaurisova 515/4, Michle, 140 00 Praha",
+        "issuer_city": "Praha",
+        "issuer_zip": "140 00",
+        "issuer_ico": "09695982",
+        "issuer_dic": "CZ09695982",
+        "issuer_data_box": "wzzs5bi",
+        "issuer_email": None,
+        "issuer_phone": None,
+        "default_currency": "CZK",
+        "default_due_days": 14,
+        "default_note": None,
         "payment_method": "Převodem",
         "bank_account_number": "5997826359",
         "bank_account_prefix": None,
@@ -234,6 +254,18 @@ def test_ulozeni_nastaveni_fakturace_se_propise_do_novych_faktur() -> None:
         "/api/admin/invoices/settings",
         json={
             "owner_email": "ucetni@lakodi.cz",
+            "issuer_name": "Novy Lakodi s.r.o.",
+            "issuer_address": "Nova 1",
+            "issuer_city": "Brno",
+            "issuer_zip": "60200",
+            "issuer_ico": "12345678",
+            "issuer_dic": "CZ12345678",
+            "issuer_data_box": "newdb01",
+            "issuer_email": "faktury@lakodi.cz",
+            "issuer_phone": "+420777111222",
+            "default_currency": "EUR",
+            "default_due_days": 21,
+            "default_note": "Výchozí poznámka k faktuře",
             "payment_method": "Bankovním převodem",
             "bank_account_number": "1234567890",
             "bank_account_prefix": "19",
@@ -245,6 +277,18 @@ def test_ulozeni_nastaveni_fakturace_se_propise_do_novych_faktur() -> None:
     assert save_response.status_code == 200
     saved = save_response.json()
     assert saved["owner_email"] == "ucetni@lakodi.cz"
+    assert saved["issuer_name"] == "Novy Lakodi s.r.o."
+    assert saved["issuer_address"] == "Nova 1"
+    assert saved["issuer_city"] == "Brno"
+    assert saved["issuer_zip"] == "60200"
+    assert saved["issuer_ico"] == "12345678"
+    assert saved["issuer_dic"] == "CZ12345678"
+    assert saved["issuer_data_box"] == "newdb01"
+    assert saved["issuer_email"] == "faktury@lakodi.cz"
+    assert saved["issuer_phone"] == "+420777111222"
+    assert saved["default_currency"] == "EUR"
+    assert saved["default_due_days"] == 21
+    assert saved["default_note"] == "Výchozí poznámka k faktuře"
     assert saved["payment_method"] == "Bankovním převodem"
     assert saved["bank_account_number"] == "1234567890"
     assert saved["bank_account_prefix"] == "19"
@@ -253,11 +297,20 @@ def test_ulozeni_nastaveni_fakturace_se_propise_do_novych_faktur() -> None:
     assert saved["bank_iban"].startswith("CZ")
 
     invoice = _vytvor_fakturu()
+    assert invoice["issuer_name"] == "Novy Lakodi s.r.o."
+    assert invoice["issuer_address"] == "Nova 1"
+    assert invoice["issuer_city"] == "Brno"
+    assert invoice["issuer_zip"] == "60200"
+    assert invoice["issuer_ico"] == "12345678"
+    assert invoice["issuer_dic"] == "CZ12345678"
+    assert invoice["issuer_data_box"] == "newdb01"
+    assert invoice["currency"] == "CZK"
     assert invoice["payment_method"] == "Bankovním převodem"
     assert invoice["bank_account_number"] == "1234567890"
     assert invoice["bank_account_prefix"] == "19"
     assert invoice["bank_code"] == "0800"
     assert invoice["bank_iban"] == saved["bank_iban"]
+    assert invoice["note"] == "Ruční servisní faktura"
 
 
 def test_rucne_nastavene_cislo_faktury_posune_dalsi_automatickou_radu() -> None:
@@ -278,6 +331,59 @@ def test_rucne_nastavene_cislo_faktury_posune_dalsi_automatickou_radu() -> None:
     }
 
 
+def test_stara_faktura_si_po_zmene_settings_necha_puvodni_issuer_snapshot() -> None:
+    original = _vytvor_fakturu({"customer_email": "puvodni@example.com"})
+
+    _login_admin()
+    save_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "ucetni@lakodi.cz",
+            "issuer_name": "Druhy Dodavatel s.r.o.",
+            "issuer_address": "Zmenena 99",
+            "issuer_city": "Ostrava",
+            "issuer_zip": "70030",
+            "issuer_ico": "87654321",
+            "issuer_dic": "CZ87654321",
+            "issuer_data_box": "newbox22",
+            "issuer_email": "office@dodavatel.cz",
+            "issuer_phone": "+420777999000",
+            "default_currency": "CZK",
+            "default_due_days": 30,
+            "default_note": "Novy default note",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert save_response.status_code == 200
+
+    detail_response = client.get(f"/api/admin/invoices/{original['id']}")
+    assert detail_response.status_code == 200
+    unchanged = detail_response.json()
+    assert unchanged["issuer_name"] == "lakodi s.r.o."
+    assert unchanged["issuer_address"] == "Jaurisova 515/4, Michle, 140 00 Praha"
+    assert unchanged["issuer_city"] == "Praha"
+    assert unchanged["issuer_zip"] == "140 00"
+    assert unchanged["issuer_ico"] == "09695982"
+    assert unchanged["issuer_dic"] == "CZ09695982"
+    assert unchanged["issuer_data_box"] == "wzzs5bi"
+
+
+def test_vytvoreni_faktury_bez_persisted_settings_funguje_s_fallback_company_snapshotem() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "fallback@example.com"})
+
+    assert invoice["issuer_name"] == "lakodi s.r.o."
+    assert invoice["issuer_address"] == "Jaurisova 515/4, Michle, 140 00 Praha"
+    assert invoice["issuer_city"] == "Praha"
+    assert invoice["issuer_zip"] == "140 00"
+    assert invoice["issuer_ico"] == "09695982"
+    assert invoice["issuer_dic"] == "CZ09695982"
+    assert invoice["issuer_data_box"] == "wzzs5bi"
+
+
 def test_rucne_nizsi_volne_cislo_faktury_je_povoleno() -> None:
     _vytvor_fakturu({"invoice_number": "024"})
     _vytvor_fakturu({"customer_email": "druhy@example.com"})
@@ -293,6 +399,49 @@ def test_rucne_nizsi_volne_cislo_faktury_je_povoleno() -> None:
         "suggested_invoice_number": "026",
         "suggested_variable_symbol": "026",
     }
+
+
+def test_numbering_foundation_pripravi_nezavisle_dokladove_rady_podle_typu_a_roku() -> None:
+    with SessionLocal() as db:
+        invoice_preview = get_document_sequence_preview(db, document_kind="invoice", reference_date=date(2026, 1, 1))
+        proforma_preview = get_document_sequence_preview(db, document_kind="proforma", reference_date=date(2026, 1, 1))
+        next_proforma = reserve_document_sequence(db, document_kind="proforma", reference_date=date(2026, 1, 1))
+        next_quote = reserve_document_sequence(db, document_kind="quote", reference_date=date(2026, 1, 1))
+        future_proforma = get_document_sequence_preview(db, document_kind="proforma", reference_date=date(2027, 1, 1))
+
+        assert invoice_preview.sequence_key == "invoice:2026"
+        assert invoice_preview.sequence_year == 2026
+        assert invoice_preview.invoice_number == "2026001"
+        assert invoice_preview.variable_symbol == "2026001"
+
+        assert proforma_preview.sequence_key == "proforma:2026"
+        assert proforma_preview.sequence_year == 2026
+        assert proforma_preview.invoice_number == "2026001"
+        assert next_proforma.invoice_number == "2026001"
+
+        assert next_quote.sequence_key == "quote:2026"
+        assert next_quote.invoice_number == "2026001"
+
+        assert future_proforma.sequence_key == "proforma:2027"
+        assert future_proforma.sequence_year == 2027
+        assert future_proforma.invoice_number == "2027001"
+
+
+def test_invoice_sequence_state_zustava_zpetne_kompatibilni_s_default_klicem() -> None:
+    created = _vytvor_fakturu()
+    assert created["invoice_number"] == "001"
+
+    with SessionLocal() as db:
+        state = (
+            db.query(InvoiceSequenceState)
+            .filter(InvoiceSequenceState.sequence_key == "default")
+            .first()
+        )
+        assert state is not None
+        assert state.document_kind == "invoice"
+        assert state.sequence_year is None
+        assert state.last_number == 1
+        assert state.padding == 3
 
 
 def test_standardni_faktura_bez_sazby_dph_je_odmitnuta() -> None:

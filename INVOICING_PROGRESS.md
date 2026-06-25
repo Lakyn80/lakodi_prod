@@ -66,3 +66,68 @@
   - `effective_status` is intentionally computed in one place only: `backend/app/modules/invoices/service.py`.
   - Stored manual lifecycle remains lightweight for Phase 1; there is no dedicated admin UI yet for explicit `cancelled` / `draft` transitions.
   - Global frontend lint configuration currently traverses generated `.next` artifacts, which causes unrelated lint failures outside this task scope.
+
+## Úkol 2 Backend company/account settings + numbering foundation
+
+- Date: 2026-06-25
+- Goal: Move issuer/company invoice defaults into persistent backend settings and prepare safe backend numbering foundations for multiple document kinds and year-based series.
+- Scope: Backend invoicing settings persistence, backend numbering foundation, SQLite backfill, backend invoice integration, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/numbering_service.py`
+  - `backend/app/modules/invoices/payment_service.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Extended `invoice_settings` with persistent issuer/company defaults:
+    - `issuer_name`
+    - `issuer_address`
+    - `issuer_city`
+    - `issuer_zip`
+    - `issuer_ico`
+    - `issuer_dic`
+    - `issuer_data_box`
+    - `issuer_email`
+    - `issuer_phone`
+    - `default_currency`
+    - `default_due_days`
+    - `default_note`
+  - Extended `invoice_sequence_states` with numbering foundation metadata:
+    - `document_kind`
+    - `sequence_year`
+    - `prefix`
+  - Added SQLite backfill helpers for both extended tables without destructive migration.
+- Backend changes:
+  - Moved issuer/company invoice defaults out of hardcoded service constants into persistent invoice settings with safe fallback defaults.
+  - Kept existing invoice snapshot fields unchanged for historical invoices.
+  - Extended the existing settings API response/update flow with issuer/company and invoice-default fields while preserving existing payment fields.
+  - Updated invoice creation to use persistent issuer snapshot data from settings.
+  - Kept payment settings, payment summary, PDF, email, and export behavior compatible.
+  - Added backend-only numbering foundation for document kinds:
+    - `invoice`
+    - `proforma`
+    - `tax_document`
+    - `correction`
+    - `final_invoice`
+    - `quote`
+  - Kept current invoice numbering compatible on the legacy `default` sequence key.
+  - Added year-based sequence previews/reservations for future document kinds without changing current invoice API behavior.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `40 passed`
+  - `python -m pytest -q` -> `48 passed`
+  - Both runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice settings and numbering foundation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - Existing frontend still only edits the legacy payment settings subset; the new issuer/company settings are backend-ready and exposed by the API.
+  - Current invoice creation continues to accept explicit `currency` and `due_date`, so `default_currency` and `default_due_days` mainly prepare future backend/frontend use.
+  - Legacy invoice numbering remains on `sequence_key = "default"` by design to preserve compatibility; year-based series are enabled as backend foundation for future document workflows.

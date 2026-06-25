@@ -21,6 +21,7 @@ from backend.app.modules.invoices.numbering_service import (
 from backend.app.modules.invoices.payment_service import (
     InvoicePaymentError,
     InvoicePaymentSettingsProfile,
+    IssuerProfile,
     get_invoice_settings_profile,
     update_invoice_settings_profile,
 )
@@ -35,7 +36,6 @@ from backend.app.modules.invoices.schemas import (
 TWOPLACES = Decimal("0.01")
 THREEPLACES = Decimal("0.001")
 DEFAULT_STATUS = "draft"
-DEFAULT_ISSUER_PROFILE_KEY = "default"
 STORED_INVOICE_STATUSES = {"draft", "issued", "cancelled"}
 LOGGER = logging.getLogger(__name__)
 
@@ -53,35 +53,9 @@ class InvoicePaymentNotFoundError(LookupError):
 
 
 @dataclass(frozen=True)
-class IssuerProfile:
-    key: str
-    company_name: str
-    company_address: str
-    company_city: str
-    company_zip: str
-    company_ico: str
-    company_dic: str
-    company_data_box: str | None
-
-
-@dataclass(frozen=True)
 class ReverseChargeTexts:
     reason: str
     text: str
-
-
-ISSUER_PROFILES: dict[str, IssuerProfile] = {
-    DEFAULT_ISSUER_PROFILE_KEY: IssuerProfile(
-        key=DEFAULT_ISSUER_PROFILE_KEY,
-        company_name="lakodi s.r.o.",
-        company_address="Jaurisova 515/4, Michle, 140 00 Praha",
-        company_city="Praha",
-        company_zip="140 00",
-        company_ico="09695982",
-        company_dic="CZ09695982",
-        company_data_box="wzzs5bi",
-    )
-}
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
@@ -89,10 +63,6 @@ REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
         text="Daň odvede zákazník v režimu přenesené daňové povinnosti.",
     )
 }
-
-
-def get_default_issuer_profile() -> IssuerProfile:
-    return ISSUER_PROFILES[DEFAULT_ISSUER_PROFILE_KEY]
 
 
 def list_invoices(db: Session) -> list[Invoice]:
@@ -146,6 +116,18 @@ def save_invoice_settings(db: Session, payload: InvoiceSettingsUpdate) -> Invoic
             account_prefix=payload.bank_account_prefix,
             bank_code=payload.bank_code,
             iban=payload.bank_iban,
+            issuer_name=payload.issuer_name,
+            issuer_address=payload.issuer_address,
+            issuer_city=payload.issuer_city,
+            issuer_zip=payload.issuer_zip,
+            issuer_ico=payload.issuer_ico,
+            issuer_dic=payload.issuer_dic,
+            issuer_data_box=payload.issuer_data_box,
+            issuer_email=payload.issuer_email,
+            issuer_phone=payload.issuer_phone,
+            default_currency=payload.default_currency,
+            default_due_days=payload.default_due_days,
+            default_note=payload.default_note,
         )
     except InvoicePaymentError as exc:
         db.rollback()
@@ -153,8 +135,7 @@ def save_invoice_settings(db: Session, payload: InvoiceSettingsUpdate) -> Invoic
 
 
 def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
-    issuer = get_default_issuer_profile()
-    payment_settings = get_invoice_settings(db)
+    settings = get_invoice_settings(db)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
     totals = _calculate_totals(
         tax_mode=payload.tax_mode,
@@ -165,8 +146,8 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
         return _create_invoice_with_reserved_sequence(
             db=db,
             payload=payload,
-            issuer=issuer,
-            payment_settings=payment_settings,
+            issuer=settings.issuer_profile,
+            payment_settings=settings,
             prepared_items=prepared_items,
             totals=totals,
         )
@@ -422,6 +403,8 @@ def _create_invoice_with_reserved_sequence(
     prepared_items: list[PreparedInvoiceItem],
     totals: InvoiceTotals,
 ) -> Invoice:
+    resolved_currency = (payload.currency or payment_settings.invoice_defaults.default_currency).strip().upper()
+    resolved_note = payload.note if payload.note is not None else payment_settings.invoice_defaults.default_note
     for attempt in range(2):
         try:
             reserved_sequence = reserve_invoice_sequence(db, payload.invoice_number)
@@ -443,10 +426,10 @@ def _create_invoice_with_reserved_sequence(
                 customer_address=payload.customer_address,
                 customer_ico=payload.customer_ico,
                 customer_dic=payload.customer_dic,
-                note=payload.note,
+                note=resolved_note,
                 business_mode=payload.business_mode,
                 tax_mode=payload.tax_mode,
-                currency=payload.currency,
+                currency=resolved_currency,
                 subtotal=totals.subtotal,
                 vat_rate=totals.vat_rate,
                 vat_amount=totals.vat_amount,

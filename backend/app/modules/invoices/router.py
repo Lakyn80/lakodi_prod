@@ -273,6 +273,18 @@ def admin_get_invoice(
 def _build_settings_response(settings) -> dict:
     return {
         "owner_email": settings.owner_email,
+        "issuer_name": settings.issuer_profile.company_name,
+        "issuer_address": settings.issuer_profile.company_address,
+        "issuer_city": settings.issuer_profile.company_city,
+        "issuer_zip": settings.issuer_profile.company_zip,
+        "issuer_ico": settings.issuer_profile.company_ico,
+        "issuer_dic": settings.issuer_profile.company_dic,
+        "issuer_data_box": settings.issuer_profile.company_data_box,
+        "issuer_email": settings.issuer_profile.company_email,
+        "issuer_phone": settings.issuer_profile.company_phone,
+        "default_currency": settings.invoice_defaults.default_currency,
+        "default_due_days": settings.invoice_defaults.default_due_days,
+        "default_note": settings.invoice_defaults.default_note,
         "payment_method": settings.payment_profile.payment_method,
         "bank_account_number": settings.payment_profile.account_number,
         "bank_account_prefix": settings.payment_profile.account_prefix,

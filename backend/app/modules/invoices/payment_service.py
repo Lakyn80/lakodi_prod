@@ -1,4 +1,4 @@
-"""Platební nastavení, snapshoty a QR Platba/SPAYD generátor pro faktury."""
+"""Platební, firemní a výchozí invoice settings + QR Platba/SPAYD generátor."""
 from __future__ import annotations
 
 import os
@@ -21,11 +21,26 @@ DEFAULT_BANK_ACCOUNT_NUMBER = os.getenv("INVOICE_BANK_ACCOUNT_NUMBER", "59978263
 DEFAULT_BANK_ACCOUNT_PREFIX = os.getenv("INVOICE_BANK_ACCOUNT_PREFIX", "").strip() or None
 DEFAULT_BANK_CODE = os.getenv("INVOICE_BANK_CODE", "0800").strip() or "0800"
 DEFAULT_BANK_IBAN = os.getenv("INVOICE_BANK_IBAN", "").strip()
+DEFAULT_ISSUER_NAME = os.getenv("INVOICE_ISSUER_NAME", "lakodi s.r.o.").strip() or "lakodi s.r.o."
+DEFAULT_ISSUER_ADDRESS = os.getenv(
+    "INVOICE_ISSUER_ADDRESS",
+    "Jaurisova 515/4, Michle, 140 00 Praha",
+).strip() or "Jaurisova 515/4, Michle, 140 00 Praha"
+DEFAULT_ISSUER_CITY = os.getenv("INVOICE_ISSUER_CITY", "Praha").strip() or "Praha"
+DEFAULT_ISSUER_ZIP = os.getenv("INVOICE_ISSUER_ZIP", "140 00").strip() or "140 00"
+DEFAULT_ISSUER_ICO = os.getenv("INVOICE_ISSUER_ICO", "09695982").strip() or "09695982"
+DEFAULT_ISSUER_DIC = os.getenv("INVOICE_ISSUER_DIC", "CZ09695982").strip() or "CZ09695982"
+DEFAULT_ISSUER_DATA_BOX = os.getenv("INVOICE_ISSUER_DATA_BOX", "wzzs5bi").strip() or None
+DEFAULT_ISSUER_EMAIL = os.getenv("INVOICE_ISSUER_EMAIL", "").strip() or None
+DEFAULT_ISSUER_PHONE = os.getenv("INVOICE_ISSUER_PHONE", "").strip() or None
+DEFAULT_CURRENCY = os.getenv("INVOICE_DEFAULT_CURRENCY", "CZK").strip() or "CZK"
+DEFAULT_DUE_DAYS = int(os.getenv("INVOICE_DEFAULT_DUE_DAYS", "14") or "14")
+DEFAULT_NOTE = os.getenv("INVOICE_DEFAULT_NOTE", "").strip() or None
 SETTINGS_ROW_ID = 1
 
 
 class InvoicePaymentError(ValueError):
-    """Neplatná platební konfigurace pro fakturu."""
+    """Neplatná fakturační konfigurace."""
 
 
 @dataclass(frozen=True)
@@ -44,9 +59,31 @@ class PaymentProfile:
 
 
 @dataclass(frozen=True)
+class IssuerProfile:
+    company_name: str
+    company_address: str
+    company_city: str
+    company_zip: str
+    company_ico: str
+    company_dic: str
+    company_data_box: str | None
+    company_email: str | None
+    company_phone: str | None
+
+
+@dataclass(frozen=True)
+class InvoiceDefaultsProfile:
+    default_currency: str
+    default_due_days: int
+    default_note: str | None
+
+
+@dataclass(frozen=True)
 class InvoicePaymentSettingsProfile:
     owner_email: str
     payment_profile: PaymentProfile
+    issuer_profile: IssuerProfile
+    invoice_defaults: InvoiceDefaultsProfile
 
 
 def get_default_payment_profile() -> PaymentProfile:
@@ -59,10 +96,34 @@ def get_default_payment_profile() -> PaymentProfile:
     )
 
 
+def get_default_issuer_profile() -> IssuerProfile:
+    return _build_issuer_profile(
+        issuer_name=DEFAULT_ISSUER_NAME,
+        issuer_address=DEFAULT_ISSUER_ADDRESS,
+        issuer_city=DEFAULT_ISSUER_CITY,
+        issuer_zip=DEFAULT_ISSUER_ZIP,
+        issuer_ico=DEFAULT_ISSUER_ICO,
+        issuer_dic=DEFAULT_ISSUER_DIC,
+        issuer_data_box=DEFAULT_ISSUER_DATA_BOX,
+        issuer_email=DEFAULT_ISSUER_EMAIL,
+        issuer_phone=DEFAULT_ISSUER_PHONE,
+    )
+
+
+def get_default_invoice_defaults_profile() -> InvoiceDefaultsProfile:
+    return InvoiceDefaultsProfile(
+        default_currency=_normalize_currency(DEFAULT_CURRENCY),
+        default_due_days=_normalize_due_days(DEFAULT_DUE_DAYS),
+        default_note=_normalize_optional_text(DEFAULT_NOTE, "Výchozí poznámka", max_length=4000),
+    )
+
+
 def get_default_payment_settings_profile() -> InvoicePaymentSettingsProfile:
     return InvoicePaymentSettingsProfile(
         owner_email=_normalize_email(DEFAULT_OWNER_EMAIL, "E-mail majitele"),
         payment_profile=get_default_payment_profile(),
+        issuer_profile=get_default_issuer_profile(),
+        invoice_defaults=get_default_invoice_defaults_profile(),
     )
 
 
@@ -82,8 +143,21 @@ def update_invoice_settings_profile(
     account_prefix: str | None,
     bank_code: str,
     iban: str | None,
+    issuer_name: str | None = None,
+    issuer_address: str | None = None,
+    issuer_city: str | None = None,
+    issuer_zip: str | None = None,
+    issuer_ico: str | None = None,
+    issuer_dic: str | None = None,
+    issuer_data_box: str | None = None,
+    issuer_email: str | None = None,
+    issuer_phone: str | None = None,
+    default_currency: str | None = None,
+    default_due_days: int | None = None,
+    default_note: str | None = None,
 ) -> InvoicePaymentSettingsProfile:
     settings_row = _get_settings_row(db)
+    current_profile = _map_settings_row(settings_row) if settings_row is not None else get_default_payment_settings_profile()
     if settings_row is None:
         settings_row = InvoiceSettings(id=SETTINGS_ROW_ID)
         db.add(settings_row)
@@ -97,8 +171,42 @@ def update_invoice_settings_profile(
             bank_code=bank_code,
             iban=iban,
         ),
+        issuer_profile=_build_issuer_profile(
+            issuer_name=issuer_name or current_profile.issuer_profile.company_name,
+            issuer_address=issuer_address or current_profile.issuer_profile.company_address,
+            issuer_city=issuer_city or current_profile.issuer_profile.company_city,
+            issuer_zip=issuer_zip or current_profile.issuer_profile.company_zip,
+            issuer_ico=issuer_ico or current_profile.issuer_profile.company_ico,
+            issuer_dic=issuer_dic or current_profile.issuer_profile.company_dic,
+            issuer_data_box=issuer_data_box if issuer_data_box is not None else current_profile.issuer_profile.company_data_box,
+            issuer_email=issuer_email if issuer_email is not None else current_profile.issuer_profile.company_email,
+            issuer_phone=issuer_phone if issuer_phone is not None else current_profile.issuer_profile.company_phone,
+        ),
+        invoice_defaults=InvoiceDefaultsProfile(
+            default_currency=_normalize_currency(default_currency or current_profile.invoice_defaults.default_currency),
+            default_due_days=_normalize_due_days(
+                default_due_days if default_due_days is not None else current_profile.invoice_defaults.default_due_days
+            ),
+            default_note=(
+                _normalize_optional_text(default_note, "Výchozí poznámka", max_length=4000)
+                if default_note is not None
+                else current_profile.invoice_defaults.default_note
+            ),
+        ),
     )
     settings_row.owner_email = normalized_profile.owner_email
+    settings_row.issuer_name = normalized_profile.issuer_profile.company_name
+    settings_row.issuer_address = normalized_profile.issuer_profile.company_address
+    settings_row.issuer_city = normalized_profile.issuer_profile.company_city
+    settings_row.issuer_zip = normalized_profile.issuer_profile.company_zip
+    settings_row.issuer_ico = normalized_profile.issuer_profile.company_ico
+    settings_row.issuer_dic = normalized_profile.issuer_profile.company_dic
+    settings_row.issuer_data_box = normalized_profile.issuer_profile.company_data_box
+    settings_row.issuer_email = normalized_profile.issuer_profile.company_email
+    settings_row.issuer_phone = normalized_profile.issuer_profile.company_phone
+    settings_row.default_currency = normalized_profile.invoice_defaults.default_currency
+    settings_row.default_due_days = normalized_profile.invoice_defaults.default_due_days
+    settings_row.default_note = normalized_profile.invoice_defaults.default_note
     settings_row.payment_method = normalized_profile.payment_profile.payment_method
     settings_row.bank_account_number = normalized_profile.payment_profile.account_number
     settings_row.bank_account_prefix = normalized_profile.payment_profile.account_prefix
@@ -164,14 +272,55 @@ def _get_settings_row(db: Session) -> InvoiceSettings | None:
 
 
 def _map_settings_row(settings_row: InvoiceSettings) -> InvoicePaymentSettingsProfile:
+    defaults = get_default_payment_settings_profile()
     return InvoicePaymentSettingsProfile(
-        owner_email=_normalize_email(settings_row.owner_email, "E-mail majitele"),
+        owner_email=_normalize_email(settings_row.owner_email or defaults.owner_email, "E-mail majitele"),
         payment_profile=_build_payment_profile(
-            payment_method=settings_row.payment_method,
-            account_number=settings_row.bank_account_number,
-            account_prefix=settings_row.bank_account_prefix,
-            bank_code=settings_row.bank_code,
-            iban=settings_row.bank_iban,
+            payment_method=settings_row.payment_method or defaults.payment_profile.payment_method,
+            account_number=settings_row.bank_account_number or defaults.payment_profile.account_number,
+            account_prefix=(
+                settings_row.bank_account_prefix
+                if settings_row.bank_account_prefix is not None
+                else defaults.payment_profile.account_prefix
+            ),
+            bank_code=settings_row.bank_code or defaults.payment_profile.bank_code,
+            iban=settings_row.bank_iban or defaults.payment_profile.iban,
+        ),
+        issuer_profile=_build_issuer_profile(
+            issuer_name=settings_row.issuer_name or defaults.issuer_profile.company_name,
+            issuer_address=settings_row.issuer_address or defaults.issuer_profile.company_address,
+            issuer_city=settings_row.issuer_city or defaults.issuer_profile.company_city,
+            issuer_zip=settings_row.issuer_zip or defaults.issuer_profile.company_zip,
+            issuer_ico=settings_row.issuer_ico or defaults.issuer_profile.company_ico,
+            issuer_dic=settings_row.issuer_dic or defaults.issuer_profile.company_dic,
+            issuer_data_box=(
+                settings_row.issuer_data_box
+                if settings_row.issuer_data_box is not None
+                else defaults.issuer_profile.company_data_box
+            ),
+            issuer_email=(
+                settings_row.issuer_email
+                if settings_row.issuer_email is not None
+                else defaults.issuer_profile.company_email
+            ),
+            issuer_phone=(
+                settings_row.issuer_phone
+                if settings_row.issuer_phone is not None
+                else defaults.issuer_profile.company_phone
+            ),
+        ),
+        invoice_defaults=InvoiceDefaultsProfile(
+            default_currency=_normalize_currency(settings_row.default_currency or defaults.invoice_defaults.default_currency),
+            default_due_days=_normalize_due_days(
+                settings_row.default_due_days
+                if settings_row.default_due_days is not None
+                else defaults.invoice_defaults.default_due_days
+            ),
+            default_note=(
+                _normalize_optional_text(settings_row.default_note, "Výchozí poznámka", max_length=4000)
+                if settings_row.default_note is not None
+                else defaults.invoice_defaults.default_note
+            ),
         ),
     )
 
@@ -202,6 +351,31 @@ def _build_payment_profile(
     )
 
 
+def _build_issuer_profile(
+    *,
+    issuer_name: str,
+    issuer_address: str,
+    issuer_city: str,
+    issuer_zip: str,
+    issuer_ico: str,
+    issuer_dic: str,
+    issuer_data_box: str | None,
+    issuer_email: str | None,
+    issuer_phone: str | None,
+) -> IssuerProfile:
+    return IssuerProfile(
+        company_name=_normalize_required_text(issuer_name, "Název dodavatele", max_length=256),
+        company_address=_normalize_required_text(issuer_address, "Adresa dodavatele", max_length=256),
+        company_city=_normalize_required_text(issuer_city, "Město dodavatele", max_length=128),
+        company_zip=_normalize_required_text(issuer_zip, "PSČ dodavatele", max_length=32),
+        company_ico=_normalize_required_text(issuer_ico, "IČO dodavatele", max_length=32),
+        company_dic=_normalize_required_text(issuer_dic, "DIČ dodavatele", max_length=32),
+        company_data_box=_normalize_optional_text(issuer_data_box, "Datová schránka dodavatele", max_length=64),
+        company_email=_normalize_optional_email(issuer_email, "E-mail dodavatele"),
+        company_phone=_normalize_optional_text(issuer_phone, "Telefon dodavatele", max_length=64),
+    )
+
+
 def _compute_iban_check_digits(*, country_code: str, bban: str) -> str:
     rearranged = f"{bban}{country_code}00"
     converted = "".join(
@@ -229,6 +403,15 @@ def _normalize_email(value: str, label: str) -> str:
     return cleaned
 
 
+def _normalize_optional_email(value: str | None, label: str) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None
+    return _normalize_email(cleaned, label)
+
+
 def _normalize_required_text(value: str, label: str, *, max_length: int) -> str:
     cleaned = (value or "").strip()
     if not cleaned:
@@ -236,6 +419,35 @@ def _normalize_required_text(value: str, label: str, *, max_length: int) -> str:
     if len(cleaned) > max_length:
         raise InvoicePaymentError(f"{label} může mít maximálně {max_length} znaků.")
     return cleaned
+
+
+def _normalize_optional_text(value: str | None, label: str, *, max_length: int) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > max_length:
+        raise InvoicePaymentError(f"{label} může mít maximálně {max_length} znaků.")
+    return cleaned
+
+
+def _normalize_currency(value: str) -> str:
+    cleaned = (value or "").strip().upper()
+    if not cleaned:
+        raise InvoicePaymentError("Výchozí měna chybí.")
+    if len(cleaned) < 3 or len(cleaned) > 8:
+        raise InvoicePaymentError("Výchozí měna musí mít 3 až 8 znaků.")
+    return cleaned
+
+
+def _normalize_due_days(value: int) -> int:
+    normalized = int(value)
+    if normalized <= 0:
+        raise InvoicePaymentError("Výchozí splatnost musí být větší než nula.")
+    if normalized > 365:
+        raise InvoicePaymentError("Výchozí splatnost může být maximálně 365 dnů.")
+    return normalized
 
 
 def _normalize_iban(value: str | None) -> str:

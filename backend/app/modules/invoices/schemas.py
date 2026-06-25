@@ -300,6 +300,18 @@ class InvoiceDefaultsResponse(BaseModel):
 
 class InvoiceSettingsUpdate(BaseModel):
     owner_email: str = Field(min_length=3, max_length=256)
+    issuer_name: str | None = Field(default=None, max_length=256)
+    issuer_address: str | None = Field(default=None, max_length=256)
+    issuer_city: str | None = Field(default=None, max_length=128)
+    issuer_zip: str | None = Field(default=None, max_length=32)
+    issuer_ico: str | None = Field(default=None, max_length=32)
+    issuer_dic: str | None = Field(default=None, max_length=32)
+    issuer_data_box: str | None = Field(default=None, max_length=64)
+    issuer_email: str | None = Field(default=None, max_length=256)
+    issuer_phone: str | None = Field(default=None, max_length=64)
+    default_currency: str | None = Field(default=None, min_length=3, max_length=8)
+    default_due_days: int | None = Field(default=None)
+    default_note: str | None = None
     payment_method: str = Field(min_length=1, max_length=64)
     bank_account_number: str = Field(min_length=1, max_length=32)
     bank_account_prefix: str | None = Field(default=None, max_length=16)
@@ -314,7 +326,20 @@ class InvoiceSettingsUpdate(BaseModel):
             raise ValueError("Toto pole je povinné.")
         return cleaned
 
-    @field_validator("bank_account_prefix", "bank_iban")
+    @field_validator(
+        "issuer_name",
+        "issuer_address",
+        "issuer_city",
+        "issuer_zip",
+        "issuer_ico",
+        "issuer_dic",
+        "issuer_data_box",
+        "issuer_email",
+        "issuer_phone",
+        "bank_account_prefix",
+        "bank_iban",
+        "default_note",
+    )
     @classmethod
     def normalize_optional_setting(cls, value: str | None) -> str | None:
         if value is None:
@@ -322,9 +347,40 @@ class InvoiceSettingsUpdate(BaseModel):
         cleaned = value.strip()
         return cleaned or None
 
+    @field_validator("default_currency")
+    @classmethod
+    def normalize_optional_currency(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip().upper()
+        return cleaned or None
+
+    @field_validator("default_due_days")
+    @classmethod
+    def validate_default_due_days(cls, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("Výchozí splatnost musí být větší než nula.")
+        if value > 365:
+            raise ValueError("Výchozí splatnost může být maximálně 365 dnů.")
+        return value
+
 
 class InvoiceSettingsResponse(BaseModel):
     owner_email: str
+    issuer_name: str
+    issuer_address: str
+    issuer_city: str
+    issuer_zip: str
+    issuer_ico: str
+    issuer_dic: str
+    issuer_data_box: str | None
+    issuer_email: str | None
+    issuer_phone: str | None
+    default_currency: str
+    default_due_days: int
+    default_note: str | None
     payment_method: str
     bank_account_number: str
     bank_account_prefix: str | None
