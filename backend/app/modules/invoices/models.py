@@ -173,3 +173,76 @@ class InvoiceSubject(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     invoices = relationship("Invoice", back_populates="subject")
+
+
+class InvoiceExpense(Base):
+    __tablename__ = "invoice_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_name = Column(String(256), nullable=False)
+    supplier_email = Column(String(256), nullable=False, index=True)
+    supplier_phone = Column(String(64), nullable=True)
+    supplier_address = Column(String(256), nullable=False)
+    supplier_ico = Column(String(32), nullable=True)
+    supplier_dic = Column(String(32), nullable=True)
+    supplier_data_box = Column(String(64), nullable=True)
+    expense_number = Column(String(64), nullable=False, unique=True, index=True)
+    variable_symbol = Column(String(9), nullable=False, unique=True, index=True)
+    issue_date = Column(Date, nullable=False, index=True)
+    received_date = Column(Date, nullable=False, index=True)
+    due_date = Column(Date, nullable=False, index=True)
+    taxable_supply_date = Column(Date, nullable=False, index=True)
+    currency = Column(String(8), nullable=False, default="CZK")
+    subtotal = Column(Numeric(12, 2), nullable=False)
+    vat_rate = Column(Numeric(5, 2), nullable=True)
+    vat_amount = Column(Numeric(12, 2), nullable=False)
+    total = Column(Numeric(12, 2), nullable=False)
+    status = Column(String(64), nullable=False, default="open", index=True)
+    note = Column(Text, nullable=True)
+    payment_method = Column(String(64), nullable=False)
+    bank_account_number = Column(String(32), nullable=False)
+    bank_account_prefix = Column(String(16), nullable=True)
+    bank_code = Column(String(16), nullable=False)
+    bank_iban = Column(String(34), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    items = relationship(
+        "InvoiceExpenseItem",
+        back_populates="expense",
+        cascade="all, delete-orphan",
+        order_by="InvoiceExpenseItem.id",
+    )
+    payments = relationship(
+        "InvoiceExpensePayment",
+        back_populates="expense",
+        cascade="all, delete-orphan",
+        order_by="InvoiceExpensePayment.paid_at, InvoiceExpensePayment.id",
+    )
+
+
+class InvoiceExpenseItem(Base):
+    __tablename__ = "invoice_expense_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="CASCADE"), nullable=False, index=True)
+    description = Column(String(512), nullable=False)
+    quantity = Column(Numeric(12, 3), nullable=False)
+    unit_price = Column(Numeric(12, 2), nullable=False)
+    line_total = Column(Numeric(12, 2), nullable=False)
+
+    expense = relationship("InvoiceExpense", back_populates="items")
+
+
+class InvoiceExpensePayment(Base):
+    __tablename__ = "invoice_expense_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    paid_at = Column(Date, nullable=False, index=True)
+    payment_method = Column(String(64), nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    expense = relationship("InvoiceExpense", back_populates="payments")

@@ -427,3 +427,71 @@
   - Subject master records are reusable convenience data only; issued invoice customer snapshot fields remain the historical source of truth.
   - The current invoice model does not store subject `country`, `data_box`, or subject-level notes in invoice snapshots, so those values remain on the master record only.
   - `subject_id wins` is intentionally enforced for safe deterministic behavior when both subject and manual customer fields are sent together.
+
+## Úkol 9 Backend expenses / received invoices foundation
+
+- Date: 2026-06-27
+- Goal: Add a backend-only foundation for incoming expenses / received invoices, including expense items, expense payments, payment summary, and independent expense numbering, without changing the frontend and without breaking existing outgoing invoicing behavior.
+- Scope: Backend invoice expense persistence, backend SQLite safe schema helpers, backend expense schemas/service/router logic, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added new table `invoice_expenses` for incoming supplier expenses / received invoices.
+  - Added new table `invoice_expense_items` with one-to-many relation to `invoice_expenses`.
+  - Added new table `invoice_expense_payments` with one-to-many relation to `invoice_expenses`.
+  - Added safe SQLite helper/backfill support for the three new expense tables and their indexes.
+  - Reused `invoice_sequence_states` with independent sequence key `expense`, so expense numbering does not consume outgoing invoice/proforma/tax/final/correction sequences.
+- Backend changes:
+  - Added persistent backend expense model `InvoiceExpense` with supplier snapshot fields, dates, totals, payment info, and minimal stored lifecycle status.
+  - Added persistent backend expense item and expense payment models.
+  - Added admin-only backend endpoints:
+    - `GET /api/admin/invoices/expenses`
+    - `POST /api/admin/invoices/expenses`
+    - `GET /api/admin/invoices/expenses/{expense_id}`
+    - `PUT /api/admin/invoices/expenses/{expense_id}`
+    - `DELETE /api/admin/invoices/expenses/{expense_id}`
+    - `GET /api/admin/invoices/expenses/{expense_id}/payments`
+    - `POST /api/admin/invoices/expenses/{expense_id}/payments`
+    - `DELETE /api/admin/invoices/expenses/{expense_id}/payments/{payment_id}`
+  - Expense create/update now calculate subtotal / VAT / total server-side from item rows.
+  - Expense payment summary now exposes:
+    - `total_paid`
+    - `remaining_amount`
+    - `payment_status`
+    - `payments[]`
+    - computed effective expense `status`
+  - Added safe overpayment validation and blocked deletion of expenses that already have recorded payments.
+  - Added independent expense numbering with sequence key `expense`.
+  - Supplier data remains stored as per-expense snapshot only; reusable supplier registry remains intentionally out of scope for a later task.
+  - No expense PDF, email, or export endpoint was added in this task.
+  - Preserved outgoing invoice, proforma, tax_document, final_invoice, correction, payment, numbering, settings, and subject registry behavior.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "vydaj or prijaty_doklad or prijateho_dokladu or expenses" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "rada_prijatych_dokladu_je_nezavisla_na_fakturach or vytvoreni_prijateho_dokladu_nezmeni_invoice_radu_a_naopak" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest backend/tests/test_health.py backend/tests/test_convertor.py backend/tests/test_admin_recovery.py backend/tests/test_zakazky.py -q`
+  - `python -m pytest --collect-only -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "vydaj or prijaty_doklad or prijateho_dokladu or expenses" -x` -> `10 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "rada_prijatych_dokladu_je_nezavisla_na_fakturach or vytvoreni_prijateho_dokladu_nezmeni_invoice_radu_a_naopak" -x` -> `2 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `111 passed`
+  - `python -m pytest backend/tests/test_health.py backend/tests/test_convertor.py backend/tests/test_admin_recovery.py backend/tests/test_zakazky.py -q` -> `8 passed`
+  - `python -m pytest --collect-only -q` -> `119 collected`
+  - `python -m pytest -q` -> `119 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend expense tracking foundation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - Expense status is exposed as computed effective status (`open`, `partially_paid`, `paid`, `overdue`, `cancelled`) while persistence remains intentionally minimal.
+  - VAT handling for expenses is currently a simple subtotal-plus-one-rate backend foundation; advanced incoming-tax cases remain a later accounting task.
+  - Supplier data is stored directly as historical per-expense snapshot; reusable supplier registry remains intentionally deferred.
+  - Expense PDF/email/export generation remains intentionally out of scope in this backend phase.

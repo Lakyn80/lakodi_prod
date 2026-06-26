@@ -21,6 +21,7 @@ from backend.app.modules.invoices.models import (
     RELATION_TYPE_CORRECTION_FOR_INVOICE,
     RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+    InvoiceExpense,
     InvoiceDocumentRelation,
     InvoiceSequenceState,
 )
@@ -124,6 +125,55 @@ def _vytvor_subjekt(payload: dict | None = None) -> dict:
     if payload:
         subject_payload.update(payload)
     response = client.post("/api/admin/invoices/subjects", json=subject_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vytvor_vydaj(payload: dict | None = None) -> dict:
+    _login_admin()
+    expense_payload = {
+        "issue_date": "2099-05-01",
+        "received_date": "2099-05-02",
+        "due_date": "2099-05-16",
+        "taxable_supply_date": "2099-05-01",
+        "supplier_name": "Dodavatel s.r.o.",
+        "supplier_email": "dodavatel@example.com",
+        "supplier_phone": "+420987654321",
+        "supplier_address": "Brno 5",
+        "supplier_ico": "87654321",
+        "supplier_dic": "CZ87654321",
+        "supplier_data_box": "exp1234",
+        "currency": "CZK",
+        "vat_rate": 21,
+        "note": "Přijatá faktura za materiál",
+        "payment_method": "Bankovní převod",
+        "bank_account_number": "123456789",
+        "bank_account_prefix": "19",
+        "bank_code": "0800",
+        "bank_iban": "CZ6508000000001234567899",
+        "items": [
+            {"description": "Materiál", "quantity": 2, "unit_price": 1500},
+            {"description": "Doprava", "quantity": 1, "unit_price": 500},
+        ],
+    }
+    if payload:
+        expense_payload.update(payload)
+    response = client.post("/api/admin/invoices/expenses", json=expense_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _pridej_platbu_vydaje(expense_id: int, payload: dict | None = None) -> dict:
+    _login_admin()
+    payment_payload = {
+        "amount": 1000,
+        "paid_at": "2026-05-10",
+        "payment_method": "Bankovní převod",
+        "note": "Částečná úhrada dodavateli",
+    }
+    if payload:
+        payment_payload.update(payload)
+    response = client.post(f"/api/admin/invoices/expenses/{expense_id}/payments", json=payment_payload)
     assert response.status_code == 200
     return response.json()
 
@@ -2207,6 +2257,268 @@ def test_smazani_platby_prepocita_payment_summary() -> None:
     assert updated["effective_status"] == "partially_paid"
     assert updated["total_paid"] == 1500.0
     assert updated["remaining_amount"] == 8422.0
+
+
+def test_vytvoreni_prijateho_dokladu_spocita_soucet_a_dph() -> None:
+    expense = _vytvor_vydaj()
+
+    assert expense["expense_number"] == "001"
+    assert expense["variable_symbol"] == "001"
+    assert expense["subtotal"] == 3500.0
+    assert expense["vat_amount"] == 735.0
+    assert expense["total"] == 4235.0
+    assert expense["status"] == "open"
+    assert expense["payment_status"] == "unpaid"
+    assert expense["total_paid"] == 0.0
+    assert expense["remaining_amount"] == 4235.0
+    assert len(expense["items"]) == 2
+    assert expense["payments"] == []
+
+
+def test_seznam_a_detail_prijatych_dokladu_funguji() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "seznam-expense@example.com"})
+    _login_admin()
+
+    list_response = client.get("/api/admin/invoices/expenses")
+    detail_response = client.get(f"/api/admin/invoices/expenses/{expense['id']}")
+
+    assert list_response.status_code == 200
+    assert detail_response.status_code == 200
+    listed = list_response.json()
+    detail = detail_response.json()
+    assert listed[0]["id"] == expense["id"]
+    assert listed[0]["status"] == "open"
+    assert detail["id"] == expense["id"]
+    assert detail["supplier_name"] == "Dodavatel s.r.o."
+    assert detail["payments"] == []
+
+
+def test_uprava_prijateho_dokladu_prepocita_hodnoty() -> None:
+    expense = _vytvor_vydaj({"expense_number": "015"})
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/expenses/{expense['id']}",
+        json={
+            "expense_number": "010",
+            "issue_date": "2026-05-03",
+            "received_date": "2026-05-04",
+            "due_date": "2026-05-20",
+            "taxable_supply_date": "2026-05-03",
+            "supplier_name": "Upravený dodavatel",
+            "supplier_email": "upraveny-dodavatel@example.com",
+            "supplier_phone": "+420111111111",
+            "supplier_address": "Ostrava 2",
+            "supplier_ico": "11112222",
+            "supplier_dic": "CZ11112222",
+            "supplier_data_box": "newbox12",
+            "currency": "EUR",
+            "vat_rate": 12,
+            "status": "open",
+            "note": "Upravený přijatý doklad",
+            "payment_method": "Hotově",
+            "bank_account_number": "777888999",
+            "bank_account_prefix": None,
+            "bank_code": "2010",
+            "bank_iban": None,
+            "items": [
+                {"description": "Služba", "quantity": 3, "unit_price": 100},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["expense_number"] == "010"
+    assert updated["variable_symbol"] == "010"
+    assert updated["currency"] == "EUR"
+    assert updated["subtotal"] == 300.0
+    assert updated["vat_amount"] == 36.0
+    assert updated["total"] == 336.0
+    assert updated["supplier_name"] == "Upravený dodavatel"
+
+
+def test_smazani_neuhrazeneho_prijateho_dokladu_funguje() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "delete-expense@example.com"})
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/expenses/{expense['id']}")
+    detail_response = client.get(f"/api/admin/invoices/expenses/{expense['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "expense_id": expense["id"]}
+    assert detail_response.status_code == 404
+
+
+def test_smazani_uhrazeneho_nebo_castecne_uhrazeneho_prijateho_dokladu_je_blokovano() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "paid-delete@example.com"})
+    _pridej_platbu_vydaje(expense["id"], {"amount": 1000})
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/expenses/{expense['id']}")
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Přijatý doklad s evidovanými platbami nelze smazat."}
+
+
+def test_castecna_a_plna_uhrada_prijateho_dokladu_funguji() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "payment-expense@example.com"})
+
+    after_first = _pridej_platbu_vydaje(
+        expense["id"],
+        {"amount": 1000, "paid_at": "2026-05-10", "payment_method": "Bankovní převod"},
+    )
+    assert after_first["payment_status"] == "partially_paid"
+    assert after_first["status"] == "partially_paid"
+    assert after_first["total_paid"] == 1000.0
+    assert after_first["remaining_amount"] == 3235.0
+
+    after_second = _pridej_platbu_vydaje(
+        expense["id"],
+        {"amount": 3235.0, "paid_at": "2026-05-11", "payment_method": "Kartou"},
+    )
+    assert after_second["payment_status"] == "paid"
+    assert after_second["status"] == "paid"
+    assert after_second["total_paid"] == 4235.0
+    assert after_second["remaining_amount"] == 0.0
+    assert len(after_second["payments"]) == 2
+
+    _login_admin()
+    payments_response = client.get(f"/api/admin/invoices/expenses/{expense['id']}/payments")
+    assert payments_response.status_code == 200
+    assert payments_response.json() == after_second["payments"]
+
+
+def test_preplatek_u_prijateho_dokladu_je_odmitnut() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "overpay-expense@example.com"})
+    _login_admin()
+
+    response = client.post(
+        f"/api/admin/invoices/expenses/{expense['id']}/payments",
+        json={
+            "amount": 5000,
+            "paid_at": "2026-05-10",
+            "payment_method": "Převodem",
+            "note": "Přeplatek",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Součet plateb nesmí překročit celkovou částku přijatého dokladu."}
+
+
+def test_smazani_platby_prijateho_dokladu_prepocita_summary() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "delete-payment-expense@example.com"})
+    _pridej_platbu_vydaje(expense["id"], {"amount": 1000, "paid_at": "2026-05-10"})
+    after_second = _pridej_platbu_vydaje(expense["id"], {"amount": 500, "paid_at": "2026-05-11"})
+    payment_id = after_second["payments"][0]["id"]
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/expenses/{expense['id']}/payments/{payment_id}")
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert len(updated["payments"]) == 1
+    assert updated["payments"][0]["amount"] == 500.0
+    assert updated["payment_status"] == "partially_paid"
+    assert updated["status"] == "partially_paid"
+    assert updated["total_paid"] == 500.0
+    assert updated["remaining_amount"] == 3735.0
+
+
+def test_prijaty_doklad_po_splatnosti_ma_status_overdue() -> None:
+    expense = _vytvor_vydaj(
+        {
+            "supplier_email": "overdue-expense@example.com",
+            "issue_date": "2020-01-01",
+            "received_date": "2020-01-02",
+            "due_date": "2020-01-15",
+            "taxable_supply_date": "2020-01-01",
+        }
+    )
+
+    assert expense["status"] == "overdue"
+    assert expense["payment_status"] == "unpaid"
+
+
+def test_rada_prijatych_dokladu_je_nezavisla_na_fakturach() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "expense-sequence-invoice@example.com"})
+    expense = _vytvor_vydaj({"supplier_email": "expense-sequence@example.com"})
+
+    assert invoice["invoice_number"] == "001"
+    assert expense["expense_number"] == "001"
+
+    with SessionLocal() as db:
+        invoice_state = (
+            db.query(InvoiceSequenceState)
+            .filter(InvoiceSequenceState.sequence_key == "default")
+            .first()
+        )
+        expense_state = (
+            db.query(InvoiceSequenceState)
+            .filter(InvoiceSequenceState.sequence_key == "expense")
+            .first()
+        )
+        assert invoice_state is not None
+        assert expense_state is not None
+        assert invoice_state.document_kind == "invoice"
+        assert expense_state.document_kind == "expense"
+        assert invoice_state.last_number == 1
+        assert expense_state.last_number == 1
+
+
+def test_vytvoreni_prijateho_dokladu_nezmeni_invoice_radu_a_naopak() -> None:
+    first_expense = _vytvor_vydaj({"supplier_email": "independent-expense-1@example.com"})
+    first_invoice = _vytvor_fakturu({"customer_email": "independent-invoice-1@example.com"})
+    second_expense = _vytvor_vydaj({"supplier_email": "independent-expense-2@example.com"})
+    second_invoice = _vytvor_fakturu({"customer_email": "independent-invoice-2@example.com"})
+
+    assert first_expense["expense_number"] == "001"
+    assert second_expense["expense_number"] == "002"
+    assert first_invoice["invoice_number"] == "001"
+    assert second_invoice["invoice_number"] == "002"
+
+    with SessionLocal() as db:
+        expense_count = db.query(InvoiceExpense).count()
+        assert expense_count == 2
+
+
+def test_uprava_prijateho_dokladu_nepovoli_snizit_total_pod_soucet_plateb() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "update-paid-expense@example.com"})
+    _pridej_platbu_vydaje(expense["id"], {"amount": 1500})
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/expenses/{expense['id']}",
+        json={
+            "issue_date": "2026-05-01",
+            "received_date": "2026-05-02",
+            "due_date": "2026-05-16",
+            "taxable_supply_date": "2026-05-01",
+            "supplier_name": "Dodavatel s.r.o.",
+            "supplier_email": "update-paid-expense@example.com",
+            "supplier_phone": "+420987654321",
+            "supplier_address": "Brno 5",
+            "supplier_ico": "87654321",
+            "supplier_dic": "CZ87654321",
+            "supplier_data_box": "exp1234",
+            "currency": "CZK",
+            "vat_rate": 0,
+            "status": "open",
+            "note": "Pokus o zmenšení totalu",
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_account_prefix": "19",
+            "bank_code": "0800",
+            "bank_iban": "CZ6508000000001234567899",
+            "items": [
+                {"description": "Drobná položka", "quantity": 1, "unit_price": 1000},
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Součet plateb nesmí překročit novou celkovou částku přijatého dokladu."}
 
 
 def test_lookup_ares_podle_ico_vrati_namapovana_data() -> None:

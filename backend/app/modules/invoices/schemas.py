@@ -12,6 +12,8 @@ TaxMode = Literal["standard", "reverse_charge"]
 StoredInvoiceStatus = Literal["draft", "issued", "cancelled"]
 EffectiveInvoiceStatus = Literal["draft", "issued", "partially_paid", "paid", "overdue", "cancelled"]
 InvoicePaymentStatus = Literal["unpaid", "partially_paid", "paid"]
+StoredExpenseStatus = Literal["open", "cancelled"]
+EffectiveExpenseStatus = Literal["open", "partially_paid", "paid", "overdue", "cancelled"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -379,6 +381,236 @@ class InvoiceSubjectResponse(InvoiceSubjectBase):
 class InvoiceSubjectDeleteResponse(BaseModel):
     ok: Literal[True]
     subject_id: int
+
+
+class InvoiceExpenseItemCreate(InvoiceItemCreate):
+    pass
+
+
+class InvoiceExpenseItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    description: str
+    quantity: Decimal
+    unit_price: Decimal
+    line_total: Decimal
+
+    @field_serializer("quantity", "unit_price", "line_total", when_used="json")
+    def serialize_decimal(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceExpensePaymentCreate(BaseModel):
+    amount: Decimal
+    paid_at: date
+    payment_method: str = Field(min_length=1, max_length=64)
+    note: str | None = None
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Částka platby musí být větší než nula.")
+        return value
+
+    @field_validator("payment_method")
+    @classmethod
+    def validate_payment_method(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Způsob platby je povinný.")
+        return cleaned
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceExpensePaymentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    expense_id: int
+    amount: Decimal
+    paid_at: date
+    payment_method: str
+    note: str | None
+    created_at: datetime
+
+    @field_serializer("amount", when_used="json")
+    def serialize_amount(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceExpenseBase(BaseModel):
+    expense_number: str | None = Field(default=None, min_length=1, max_length=9)
+    supplier_name: str = Field(min_length=1, max_length=256)
+    supplier_email: str = Field(min_length=1, max_length=256)
+    supplier_phone: str | None = Field(default=None, max_length=64)
+    supplier_address: str = Field(min_length=1, max_length=256)
+    supplier_ico: str | None = Field(default=None, max_length=32)
+    supplier_dic: str | None = Field(default=None, max_length=32)
+    supplier_data_box: str | None = Field(default=None, max_length=64)
+    issue_date: date
+    received_date: date
+    due_date: date
+    taxable_supply_date: date
+    currency: str = Field(default="CZK", min_length=3, max_length=8)
+    vat_rate: Decimal | None = None
+    note: str | None = None
+    payment_method: str = Field(min_length=1, max_length=64)
+    bank_account_number: str = Field(min_length=1, max_length=32)
+    bank_account_prefix: str | None = Field(default=None, max_length=16)
+    bank_code: str = Field(min_length=1, max_length=16)
+    bank_iban: str | None = Field(default=None, max_length=34)
+    items: list[InvoiceExpenseItemCreate]
+
+    @field_validator("expense_number")
+    @classmethod
+    def validate_expense_number(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if not cleaned.isdigit():
+            raise ValueError("Číslo přijatého dokladu může obsahovat pouze číslice.")
+        if len(cleaned) > 9:
+            raise ValueError("Číslo přijatého dokladu může mít maximálně 9 číslic.")
+        if int(cleaned) <= 0:
+            raise ValueError("Číslo přijatého dokladu musí být větší než nula.")
+        return cleaned
+
+    @field_validator(
+        "supplier_name",
+        "supplier_email",
+        "supplier_address",
+        "payment_method",
+        "bank_account_number",
+        "bank_code",
+    )
+    @classmethod
+    def validate_required_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Toto pole je povinné.")
+        return cleaned
+
+    @field_validator(
+        "supplier_phone",
+        "supplier_ico",
+        "supplier_dic",
+        "supplier_data_box",
+        "note",
+        "bank_account_prefix",
+        "bank_iban",
+    )
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @field_validator("currency")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @field_validator("vat_rate")
+    @classmethod
+    def validate_vat_rate(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value < 0:
+            raise ValueError("Sazba DPH nemůže být záporná.")
+        return value
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, value: list[InvoiceExpenseItemCreate]) -> list[InvoiceExpenseItemCreate]:
+        if not value:
+            raise ValueError("Přijatý doklad musí obsahovat alespoň jednu položku.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "InvoiceExpenseBase":
+        if self.due_date < self.issue_date:
+            raise ValueError("Datum splatnosti nemůže být dříve než datum vystavení.")
+        if self.received_date < self.issue_date:
+            raise ValueError("Datum přijetí nemůže být dříve než datum vystavení.")
+        return self
+
+
+class InvoiceExpenseCreate(InvoiceExpenseBase):
+    status: StoredExpenseStatus = "open"
+
+
+class InvoiceExpenseUpdate(InvoiceExpenseBase):
+    status: StoredExpenseStatus = "open"
+
+
+class InvoiceExpenseSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    expense_number: str
+    variable_symbol: str
+    supplier_name: str
+    supplier_email: str
+    supplier_phone: str | None
+    supplier_address: str
+    supplier_ico: str | None
+    supplier_dic: str | None
+    supplier_data_box: str | None
+    issue_date: date
+    received_date: date
+    due_date: date
+    taxable_supply_date: date
+    currency: str
+    subtotal: Decimal
+    vat_rate: Decimal | None
+    vat_amount: Decimal
+    total: Decimal
+    status: EffectiveExpenseStatus = Field(validation_alias="effective_status")
+    note: str | None
+    payment_method: str
+    bank_account_number: str
+    bank_account_prefix: str | None
+    bank_code: str
+    bank_iban: str | None
+    total_paid: Decimal
+    remaining_amount: Decimal
+    payment_status: InvoicePaymentStatus
+    created_at: datetime
+    updated_at: datetime
+
+    @field_serializer(
+        "subtotal",
+        "vat_rate",
+        "vat_amount",
+        "total",
+        "total_paid",
+        "remaining_amount",
+        when_used="json",
+    )
+    def serialize_decimal(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class InvoiceExpenseDetailResponse(InvoiceExpenseSummaryResponse):
+    items: list[InvoiceExpenseItemResponse]
+    payments: list[InvoiceExpensePaymentResponse]
+
+
+class InvoiceExpenseDeleteResponse(BaseModel):
+    ok: Literal[True]
+    expense_id: int
 
 
 class FinalInvoiceCreateRequest(BaseModel):

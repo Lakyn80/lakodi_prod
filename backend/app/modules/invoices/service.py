@@ -22,15 +22,22 @@ from backend.app.modules.invoices.models import (
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     Invoice,
     InvoiceDocumentRelation,
+    InvoiceExpense,
+    InvoiceExpenseItem,
+    InvoiceExpensePayment,
     InvoiceItem,
     InvoicePayment,
+    InvoiceSequenceState,
     InvoiceSubject,
 )
 from backend.app.modules.invoices.numbering_service import (
+    DEFAULT_PADDING,
+    MAX_SEQUENCE_DIGITS,
     InvoiceNumberingError,
     InvoiceSequencePreview,
     get_document_sequence_preview,
     get_invoice_sequence_preview,
+    normalize_invoice_number,
     reserve_invoice_sequence,
     resolve_invoice_sequence_for_update,
 )
@@ -46,6 +53,9 @@ from backend.app.modules.invoices.schemas import (
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
     InvoiceCreate,
+    InvoiceExpenseCreate,
+    InvoiceExpensePaymentCreate,
+    InvoiceExpenseUpdate,
     InvoicePaymentCreate,
     InvoiceSubjectCreate,
     InvoiceSubjectUpdate,
@@ -57,6 +67,9 @@ TWOPLACES = Decimal("0.01")
 THREEPLACES = Decimal("0.001")
 DEFAULT_STATUS = "draft"
 STORED_INVOICE_STATUSES = {"draft", "issued", "cancelled"}
+DEFAULT_EXPENSE_STATUS = "open"
+STORED_EXPENSE_STATUSES = {"open", "cancelled"}
+EXPENSE_SEQUENCE_KEY = "expense"
 LOGGER = logging.getLogger(__name__)
 
 
@@ -70,6 +83,14 @@ class InvoiceNotFoundError(LookupError):
 
 class InvoicePaymentNotFoundError(LookupError):
     """Platba faktury neexistuje."""
+
+
+class InvoiceExpenseNotFoundError(LookupError):
+    """Přijatý doklad neexistuje."""
+
+
+class InvoiceExpensePaymentNotFoundError(LookupError):
+    """Platba přijatého dokladu neexistuje."""
 
 
 class InvoiceSubjectNotFoundError(LookupError):
@@ -233,6 +254,183 @@ def delete_invoice_subject(db: Session, subject_id: int) -> int:
     db.delete(subject)
     db.commit()
     return subject_id
+
+
+def list_invoice_expenses(db: Session) -> list[InvoiceExpense]:
+    expenses = (
+        db.query(InvoiceExpense)
+        .options(selectinload(InvoiceExpense.payments))
+        .order_by(InvoiceExpense.id.desc())
+        .all()
+    )
+    return [_attach_expense_runtime_state(expense) for expense in expenses]
+
+
+def get_invoice_expense_detail(db: Session, expense_id: int) -> InvoiceExpense:
+    expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True)
+    return _attach_expense_runtime_state(expense)
+
+
+def list_invoice_expense_payments(db: Session, expense_id: int) -> list[InvoiceExpensePayment]:
+    expense = get_invoice_expense_detail(db, expense_id)
+    return list(expense.payments)
+
+
+def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> InvoiceExpense:
+    prepared_items = [_prepare_invoice_item(item) for item in payload.items]
+    totals = _calculate_expense_totals(
+        vat_rate=payload.vat_rate,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    try:
+        sequence = _reserve_expense_sequence(db, requested_expense_number=payload.expense_number)
+        expense = InvoiceExpense(
+            supplier_name=payload.supplier_name,
+            supplier_email=payload.supplier_email,
+            supplier_phone=payload.supplier_phone,
+            supplier_address=payload.supplier_address,
+            supplier_ico=payload.supplier_ico,
+            supplier_dic=payload.supplier_dic,
+            supplier_data_box=payload.supplier_data_box,
+            expense_number=sequence.expense_number,
+            variable_symbol=sequence.variable_symbol,
+            issue_date=payload.issue_date,
+            received_date=payload.received_date,
+            due_date=payload.due_date,
+            taxable_supply_date=payload.taxable_supply_date,
+            currency=payload.currency,
+            subtotal=totals.subtotal,
+            vat_rate=totals.vat_rate,
+            vat_amount=totals.vat_amount,
+            total=totals.total,
+            status=_normalize_expense_status(payload.status),
+            note=payload.note,
+            payment_method=payload.payment_method,
+            bank_account_number=payload.bank_account_number,
+            bank_account_prefix=payload.bank_account_prefix,
+            bank_code=payload.bank_code,
+            bank_iban=payload.bank_iban,
+        )
+        expense.items = [
+            InvoiceExpenseItem(
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                line_total=item.line_total,
+            )
+            for item in prepared_items
+        ]
+        db.add(expense)
+        db.commit()
+        return get_invoice_expense_detail(db, expense.id)
+    except (IntegrityError, InvoiceNumberingError) as exc:
+        db.rollback()
+        raise InvoiceValidationError("Číslo přijatého dokladu nebo variabilní symbol už existuje.") from exc
+
+
+def update_invoice_expense(db: Session, expense_id: int, payload: InvoiceExpenseUpdate) -> InvoiceExpense:
+    expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True)
+    prepared_items = [_prepare_invoice_item(item) for item in payload.items]
+    totals = _calculate_expense_totals(
+        vat_rate=payload.vat_rate,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    summary = _build_expense_payment_summary(expense)
+    if summary.total_paid > totals.total:
+        raise InvoiceValidationError("Součet plateb nesmí překročit novou celkovou částku přijatého dokladu.")
+
+    try:
+        sequence = _resolve_expense_sequence_for_update(
+            db,
+            expense_id=expense.id,
+            current_expense_number=expense.expense_number,
+            requested_expense_number=payload.expense_number,
+        )
+        expense.supplier_name = payload.supplier_name
+        expense.supplier_email = payload.supplier_email
+        expense.supplier_phone = payload.supplier_phone
+        expense.supplier_address = payload.supplier_address
+        expense.supplier_ico = payload.supplier_ico
+        expense.supplier_dic = payload.supplier_dic
+        expense.supplier_data_box = payload.supplier_data_box
+        expense.expense_number = sequence.expense_number
+        expense.variable_symbol = sequence.variable_symbol
+        expense.issue_date = payload.issue_date
+        expense.received_date = payload.received_date
+        expense.due_date = payload.due_date
+        expense.taxable_supply_date = payload.taxable_supply_date
+        expense.currency = payload.currency
+        expense.subtotal = totals.subtotal
+        expense.vat_rate = totals.vat_rate
+        expense.vat_amount = totals.vat_amount
+        expense.total = totals.total
+        expense.status = _normalize_expense_status(payload.status)
+        expense.note = payload.note
+        expense.payment_method = payload.payment_method
+        expense.bank_account_number = payload.bank_account_number
+        expense.bank_account_prefix = payload.bank_account_prefix
+        expense.bank_code = payload.bank_code
+        expense.bank_iban = payload.bank_iban
+        expense.items = [
+            InvoiceExpenseItem(
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                line_total=item.line_total,
+            )
+            for item in prepared_items
+        ]
+        db.add(expense)
+        db.commit()
+        return get_invoice_expense_detail(db, expense.id)
+    except (IntegrityError, InvoiceNumberingError) as exc:
+        db.rollback()
+        raise InvoiceValidationError("Číslo přijatého dokladu nebo variabilní symbol už existuje.") from exc
+
+
+def delete_invoice_expense(db: Session, expense_id: int) -> int:
+    expense = _get_invoice_expense_or_raise(db, expense_id, include_payments=True)
+    if expense.payments:
+        raise InvoiceValidationError("Přijatý doklad s evidovanými platbami nelze smazat.")
+    db.delete(expense)
+    db.commit()
+    return expense_id
+
+
+def add_invoice_expense_payment(db: Session, expense_id: int, payload: InvoiceExpensePaymentCreate) -> InvoiceExpense:
+    expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True, include_payments=True)
+    amount = _quantize_money(Decimal(payload.amount))
+    if amount <= 0:
+        raise InvoiceValidationError("Částka platby musí být větší než nula.")
+    if _normalize_expense_status(expense.status) == "cancelled":
+        raise InvoiceValidationError("Ke stornovanému přijatému dokladu nelze přidat platbu.")
+
+    summary = _build_expense_payment_summary(expense)
+    next_total_paid = _quantize_money(summary.total_paid + amount)
+    expense_total = _quantize_money(Decimal(expense.total))
+    if next_total_paid > expense_total:
+        raise InvoiceValidationError("Součet plateb nesmí překročit celkovou částku přijatého dokladu.")
+
+    payment = InvoiceExpensePayment(
+        expense_id=expense.id,
+        amount=amount,
+        paid_at=payload.paid_at,
+        payment_method=payload.payment_method,
+        note=payload.note,
+    )
+    db.add(payment)
+    db.commit()
+    return get_invoice_expense_detail(db, expense.id)
+
+
+def delete_invoice_expense_payment(db: Session, expense_id: int, payment_id: int) -> InvoiceExpense:
+    expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True, include_payments=True)
+    payment = next((item for item in expense.payments if item.id == payment_id), None)
+    if payment is None:
+        raise InvoiceExpensePaymentNotFoundError("Platba přijatého dokladu nebyla nalezena.")
+    db.delete(payment)
+    db.commit()
+    return get_invoice_expense_detail(db, expense.id)
 
 
 def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
@@ -664,6 +862,23 @@ class InvoicePaymentSummary:
 
 
 @dataclass(frozen=True)
+class ExpenseSequencePreview:
+    expense_number: str
+    variable_symbol: str
+    next_numeric_value: int
+    padding: int
+    sequence_key: str
+
+
+@dataclass(frozen=True)
+class InvoiceExpensePaymentSummary:
+    total_paid: Decimal
+    remaining_amount: Decimal
+    payment_status: str
+    effective_status: str
+
+
+@dataclass(frozen=True)
 class CustomerSnapshot:
     subject_id: int | None
     name: str
@@ -678,6 +893,12 @@ def _normalize_invoice_status(value: str | None) -> str:
     if value in STORED_INVOICE_STATUSES:
         return value
     return DEFAULT_STATUS
+
+
+def _normalize_expense_status(value: str | None) -> str:
+    if value in STORED_EXPENSE_STATUSES:
+        return value
+    return DEFAULT_EXPENSE_STATUS
 
 
 def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:
@@ -713,6 +934,38 @@ def _build_payment_summary(invoice: Invoice, reference_date: date | None = None)
     )
 
 
+def _build_expense_payment_summary(
+    expense: InvoiceExpense,
+    reference_date: date | None = None,
+) -> InvoiceExpensePaymentSummary:
+    expense_total = _quantize_money(Decimal(expense.total))
+    total_paid = _quantize_money(
+        sum((Decimal(payment.amount) for payment in expense.payments), Decimal("0.00"))
+    )
+    if total_paid >= expense_total and expense_total > Decimal("0.00"):
+        payment_status = "paid"
+    elif total_paid > Decimal("0.00"):
+        payment_status = "partially_paid"
+    else:
+        payment_status = "unpaid"
+
+    remaining_amount = max(_quantize_money(expense_total - total_paid), Decimal("0.00"))
+    effective_status = _compute_expense_effective_status(
+        stored_status=_normalize_expense_status(expense.status),
+        due_date=expense.due_date,
+        payment_status=payment_status,
+        total_paid=total_paid,
+        expense_total=expense_total,
+        reference_date=reference_date,
+    )
+    return InvoiceExpensePaymentSummary(
+        total_paid=total_paid,
+        remaining_amount=remaining_amount,
+        payment_status=payment_status,
+        effective_status=effective_status,
+    )
+
+
 def _compute_effective_status(
     *,
     stored_status: str,
@@ -736,6 +989,27 @@ def _compute_effective_status(
     return "issued"
 
 
+def _compute_expense_effective_status(
+    *,
+    stored_status: str,
+    due_date: date,
+    payment_status: str,
+    total_paid: Decimal,
+    expense_total: Decimal,
+    reference_date: date | None = None,
+) -> str:
+    if stored_status == "cancelled":
+        return "cancelled"
+    if payment_status == "paid" and expense_total > Decimal("0.00"):
+        return "paid"
+    if payment_status == "partially_paid" and total_paid > Decimal("0.00"):
+        return "partially_paid"
+    today = reference_date or date.today()
+    if due_date < today:
+        return "overdue"
+    return "open"
+
+
 def _compute_non_payment_effective_status(stored_status: str) -> str:
     if stored_status == "cancelled":
         return "cancelled"
@@ -754,6 +1028,33 @@ def _attach_invoice_runtime_state(invoice: Invoice) -> Invoice:
     setattr(invoice, "effective_status", summary.effective_status)
     setattr(invoice, "subject_id", getattr(invoice, "subject_id", None))
     return invoice
+
+
+def _attach_expense_runtime_state(expense: InvoiceExpense) -> InvoiceExpense:
+    summary = _build_expense_payment_summary(expense)
+    setattr(expense, "total_paid", summary.total_paid)
+    setattr(expense, "remaining_amount", summary.remaining_amount)
+    setattr(expense, "payment_status", summary.payment_status)
+    setattr(expense, "effective_status", summary.effective_status)
+    return expense
+
+
+def _get_invoice_expense_or_raise(
+    db: Session,
+    expense_id: int,
+    *,
+    include_items: bool = False,
+    include_payments: bool = True,
+) -> InvoiceExpense:
+    query = db.query(InvoiceExpense)
+    if include_items:
+        query = query.options(selectinload(InvoiceExpense.items))
+    if include_payments:
+        query = query.options(selectinload(InvoiceExpense.payments))
+    expense = query.filter(InvoiceExpense.id == expense_id).first()
+    if expense is None:
+        raise InvoiceExpenseNotFoundError("Přijatý doklad nebyl nalezen.")
+    return expense
 
 
 def _resolve_invoice_subject(db: Session, subject_id: int | None) -> InvoiceSubject | None:
@@ -1017,6 +1318,24 @@ def _calculate_totals(
     raise InvoiceValidationError("Neznámý režim DPH.")
 
 
+def _calculate_expense_totals(*, vat_rate: Decimal | None, line_totals: list[Decimal]) -> InvoiceTotals:
+    subtotal = _quantize_money(sum(line_totals, Decimal("0.00")))
+    normalized_vat_rate = _normalize_vat_rate(vat_rate) if vat_rate is not None else None
+    vat_amount = (
+        _quantize_money(subtotal * normalized_vat_rate / Decimal("100"))
+        if normalized_vat_rate is not None
+        else Decimal("0.00")
+    )
+    return InvoiceTotals(
+        subtotal=subtotal,
+        vat_rate=normalized_vat_rate,
+        vat_amount=vat_amount,
+        total=_quantize_money(subtotal + vat_amount),
+        reverse_charge_reason=None,
+        reverse_charge_text=None,
+    )
+
+
 def _normalize_vat_rate(value: Decimal) -> Decimal:
     normalized = Decimal(value).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
     if normalized < 0:
@@ -1040,6 +1359,160 @@ def _cache_invoice_nonfatal(invoice: Invoice) -> None:
         cache_service.cache_customer_profile(export_dto)
     except Exception:
         LOGGER.warning("Synchronizace cache faktury %s selhala.", invoice.id, exc_info=True)
+
+
+def _reserve_expense_sequence(
+    db: Session,
+    *,
+    requested_expense_number: str | None = None,
+) -> ExpenseSequencePreview:
+    state = _get_or_create_expense_sequence_state(db)
+    requested_number = normalize_invoice_number(requested_expense_number)
+
+    if requested_number is None:
+        next_numeric_value = state.last_number + 1
+        padding = max(state.padding, DEFAULT_PADDING)
+    else:
+        next_numeric_value = int(requested_number)
+        padding = max(state.padding, len(requested_number), DEFAULT_PADDING)
+
+    preview = _build_expense_sequence_preview(
+        next_numeric_value=next_numeric_value,
+        padding=padding,
+        sequence_key=state.sequence_key,
+    )
+    if _expense_number_exists(db, preview.expense_number):
+        raise InvoiceNumberingError(f"Číslo přijatého dokladu {preview.expense_number} už existuje.")
+    if _expense_variable_symbol_exists(db, preview.variable_symbol):
+        raise InvoiceNumberingError(f"Variabilní symbol {preview.variable_symbol} už existuje.")
+
+    state.last_number = max(state.last_number, next_numeric_value)
+    state.padding = max(state.padding, padding)
+    return preview
+
+
+def _resolve_expense_sequence_for_update(
+    db: Session,
+    *,
+    expense_id: int,
+    current_expense_number: str,
+    requested_expense_number: str | None,
+) -> ExpenseSequencePreview:
+    state = _get_or_create_expense_sequence_state(db)
+    normalized_requested_number = normalize_invoice_number(requested_expense_number)
+    resolved_expense_number = normalized_requested_number or current_expense_number
+    next_numeric_value = int(resolved_expense_number)
+    padding = max(state.padding, len(resolved_expense_number), DEFAULT_PADDING)
+
+    preview = _build_expense_sequence_preview(
+        next_numeric_value=next_numeric_value,
+        padding=padding,
+        sequence_key=state.sequence_key,
+    )
+    if _expense_number_exists(db, preview.expense_number, exclude_expense_id=expense_id):
+        raise InvoiceNumberingError(f"Číslo přijatého dokladu {preview.expense_number} už existuje.")
+    if _expense_variable_symbol_exists(db, preview.variable_symbol, exclude_expense_id=expense_id):
+        raise InvoiceNumberingError(f"Variabilní symbol {preview.variable_symbol} už existuje.")
+
+    state.last_number = max(state.last_number, next_numeric_value)
+    state.padding = max(state.padding, padding)
+    return preview
+
+
+def _get_or_create_expense_sequence_state(db: Session) -> InvoiceSequenceState:
+    state = (
+        db.query(InvoiceSequenceState)
+        .filter(InvoiceSequenceState.sequence_key == EXPENSE_SEQUENCE_KEY)
+        .first()
+    )
+    if state is not None:
+        if state.document_kind is None:
+            state.document_kind = "expense"
+        return state
+
+    inferred_last_number, inferred_padding = _infer_expense_sequence_state(db)
+    state = InvoiceSequenceState(
+        sequence_key=EXPENSE_SEQUENCE_KEY,
+        document_kind="expense",
+        sequence_year=None,
+        prefix=None,
+        last_number=inferred_last_number,
+        padding=inferred_padding,
+    )
+    db.add(state)
+    db.flush()
+    return state
+
+
+def _infer_expense_sequence_state(db: Session) -> tuple[int, int]:
+    inferred_last_number = 0
+    inferred_padding = DEFAULT_PADDING
+    existing_numbers = db.query(InvoiceExpense.expense_number, InvoiceExpense.variable_symbol).all()
+    for expense_number, variable_symbol in existing_numbers:
+        if expense_number and expense_number.isdigit():
+            inferred_last_number = max(inferred_last_number, int(expense_number))
+            inferred_padding = max(inferred_padding, len(expense_number))
+        if variable_symbol and variable_symbol.isdigit():
+            inferred_last_number = max(inferred_last_number, int(variable_symbol))
+            inferred_padding = max(inferred_padding, len(variable_symbol))
+    return inferred_last_number, inferred_padding
+
+
+def _build_expense_sequence_preview(
+    *,
+    next_numeric_value: int,
+    padding: int,
+    sequence_key: str,
+) -> ExpenseSequencePreview:
+    if next_numeric_value <= 0:
+        raise InvoiceNumberingError("Číslo přijatého dokladu musí být větší než nula.")
+
+    resolved_padding = max(padding, DEFAULT_PADDING)
+    expense_number = f"{next_numeric_value:0{max(resolved_padding, len(str(next_numeric_value)))}d}"
+    if len(expense_number) > MAX_SEQUENCE_DIGITS:
+        raise InvoiceNumberingError("Vyčerpala se číselná řada přijatých dokladů (max. 9 číslic).")
+
+    return ExpenseSequencePreview(
+        expense_number=expense_number,
+        variable_symbol=expense_number,
+        next_numeric_value=next_numeric_value,
+        padding=resolved_padding,
+        sequence_key=sequence_key,
+    )
+
+
+def _expense_number_exists(
+    db: Session,
+    expense_number: str,
+    *,
+    exclude_expense_id: int | None = None,
+) -> bool:
+    normalized_value = int(expense_number)
+    query = db.query(InvoiceExpense.id, InvoiceExpense.expense_number)
+    if exclude_expense_id is not None:
+        query = query.filter(InvoiceExpense.id != exclude_expense_id)
+    existing_numbers = query.all()
+    return any(
+        stored_number and stored_number.isdigit() and int(stored_number) == normalized_value
+        for _, stored_number in existing_numbers
+    )
+
+
+def _expense_variable_symbol_exists(
+    db: Session,
+    variable_symbol: str,
+    *,
+    exclude_expense_id: int | None = None,
+) -> bool:
+    normalized_value = int(variable_symbol)
+    query = db.query(InvoiceExpense.id, InvoiceExpense.variable_symbol).filter(InvoiceExpense.variable_symbol.isnot(None))
+    if exclude_expense_id is not None:
+        query = query.filter(InvoiceExpense.id != exclude_expense_id)
+    existing_symbols = query.all()
+    return any(
+        stored_symbol and stored_symbol.isdigit() and int(stored_symbol) == normalized_value
+        for _, stored_symbol in existing_symbols
+    )
 
 
 def _create_invoice_with_reserved_sequence(

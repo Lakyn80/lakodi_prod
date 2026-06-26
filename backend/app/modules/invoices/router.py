@@ -23,6 +23,13 @@ from backend.app.modules.invoices.schemas import (
     InvoiceCreate,
     InvoiceDefaultsResponse,
     InvoiceDetailResponse,
+    InvoiceExpenseCreate,
+    InvoiceExpenseDeleteResponse,
+    InvoiceExpenseDetailResponse,
+    InvoiceExpensePaymentCreate,
+    InvoiceExpensePaymentResponse,
+    InvoiceExpenseSummaryResponse,
+    InvoiceExpenseUpdate,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
     InvoiceSubjectCreate,
@@ -37,28 +44,38 @@ from backend.app.modules.invoices.schemas import (
     InvoiceUpdate,
 )
 from backend.app.modules.invoices.service import (
+    InvoiceExpenseNotFoundError,
+    InvoiceExpensePaymentNotFoundError,
     InvoiceNotFoundError,
     InvoicePaymentNotFoundError,
     InvoiceSubjectNotFoundError,
     InvoiceValidationError,
+    add_invoice_expense_payment,
     add_invoice_payment,
+    create_invoice_expense,
     create_invoice_subject,
     create_correction_from_invoice,
     create_invoice,
     create_final_invoice_from_proformas,
     create_tax_document_from_proforma_payment,
+    delete_invoice_expense,
+    delete_invoice_expense_payment,
     delete_invoice_subject,
     delete_invoice_payment,
     get_document_creation_defaults,
+    get_invoice_expense_detail,
     generate_invoice_pdf,
     get_invoice_detail,
     get_invoice_settings,
     get_invoice_subject_detail,
+    list_invoice_expense_payments,
+    list_invoice_expenses,
     list_invoice_subjects,
     list_invoice_payments,
     list_invoices,
     save_invoice_settings,
     send_invoice_email,
+    update_invoice_expense,
     update_invoice_subject,
     update_invoice,
 )
@@ -179,6 +196,110 @@ def admin_delete_invoice_subject(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/expenses", response_model=list[InvoiceExpenseSummaryResponse])
+def admin_list_invoice_expenses(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    return list_invoice_expenses(db)
+
+
+@router.post("/expenses", response_model=InvoiceExpenseDetailResponse)
+def admin_create_invoice_expense(
+    body: InvoiceExpenseCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_invoice_expense(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/expenses/{expense_id}", response_model=InvoiceExpenseDetailResponse)
+def admin_get_invoice_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_expense_detail(db, expense_id)
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/expenses/{expense_id}", response_model=InvoiceExpenseDetailResponse)
+def admin_update_invoice_expense(
+    expense_id: int,
+    body: InvoiceExpenseUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return update_invoice_expense(db, expense_id, body)
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/expenses/{expense_id}", response_model=InvoiceExpenseDeleteResponse)
+def admin_delete_invoice_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        deleted_expense_id = delete_invoice_expense(db, expense_id)
+        return {"ok": True, "expense_id": deleted_expense_id}
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/expenses/{expense_id}/payments", response_model=list[InvoiceExpensePaymentResponse])
+def admin_list_invoice_expense_payments(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_expense_payments(db, expense_id)
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/expenses/{expense_id}/payments", response_model=InvoiceExpenseDetailResponse)
+def admin_add_invoice_expense_payment(
+    expense_id: int,
+    body: InvoiceExpensePaymentCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return add_invoice_expense_payment(db, expense_id, body)
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/expenses/{expense_id}/payments/{payment_id}", response_model=InvoiceExpenseDetailResponse)
+def admin_delete_invoice_expense_payment(
+    expense_id: int,
+    payment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return delete_invoice_expense_payment(db, expense_id, payment_id)
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceExpensePaymentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/defaults", response_model=InvoiceDefaultsResponse)
