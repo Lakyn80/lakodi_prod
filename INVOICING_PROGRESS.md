@@ -332,3 +332,52 @@
   - Generated final invoices currently reuse the generic PDF/email wording (`Faktura`) and existing layout.
   - Advance settlement is represented through one generated negative item, which is compatible with the current backend model but may need richer legal formatting later.
   - Automatic final-invoice generation remains intentionally disabled; generation happens only through the explicit admin endpoint.
+
+## Úkol 7 Backend correction / credit note foundation
+
+- Date: 2026-06-26
+- Goal: Add a safe backend-only foundation for explicit creation of `document_kind = correction` from an existing invoice, final invoice, or tax document without changing the frontend and without breaking existing invoice/proforma/tax/final flows.
+- Scope: Backend invoice relation/index handling, backend document-kind metadata, backend invoice schemas/service/router logic, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/document_types.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added duplicate-prevention unique index for correction relations on `(source_invoice_id, relation_type)` for `relation_type = correction_for_invoice`.
+  - Reused the existing `invoice_document_relations` nullable `source_payment_id` foundation from Úkol 6.
+- Backend changes:
+  - Added explicit admin-only endpoint:
+    - `POST /api/admin/invoices/{source_invoice_id}/correction`
+  - Added backend request schema for correction generation with optional `issue_date`, `reason`, and `note`.
+  - Correction generation now:
+    - validates that the source document exists
+    - allows only `invoice`, `final_invoice`, or `tax_document` as correction sources
+    - blocks `proforma`, `quote`, and `correction` as correction sources
+    - uses its own independent `correction` numbering sequence
+    - snapshots issuer/customer/payment data from the source document
+    - creates full negative item rows from the source document items
+    - persists a `correction_for_invoice` relation row to the source document
+  - Blocked generic manual create of `document_kind = correction`; it must now be created through the explicit correction endpoint.
+  - Preserved existing invoice, proforma, tax_document, final_invoice, numbering, PDF, and email behavior.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "correction or opravny or opravneho or correction_" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "correction or opravny or opravneho or correction_" -x` -> `13 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `87 passed`
+  - `python -m pytest -q` -> `95 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend correction document generation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - This is a minimal backend correction foundation, not a full legal/accounting implementation of partial or jurisdiction-specific correction rules.
+  - Generated correction documents currently reuse the generic PDF/email wording (`Faktura`) and existing layout.
+  - Correction content is implemented as a full-document negative reversal only; partial corrections remain intentionally unsupported in this phase.

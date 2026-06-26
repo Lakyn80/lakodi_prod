@@ -226,6 +226,14 @@ def _ensure_invoice_document_relations_table():
                 "WHERE relation_type = 'final_invoice_for_proforma'"
             )
         )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ux_invoice_document_relations_source_invoice_correction "
+                "ON invoice_document_relations (source_invoice_id, relation_type) "
+                "WHERE relation_type = 'correction_for_invoice'"
+            )
+        )
 
 
 def init_db():

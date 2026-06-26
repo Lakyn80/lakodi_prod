@@ -343,6 +343,20 @@ class FinalInvoiceCreateRequest(BaseModel):
         return self
 
 
+class CorrectionInvoiceCreateRequest(BaseModel):
+    issue_date: date | None = None
+    reason: str | None = None
+    note: str | None = None
+
+    @field_validator("reason", "note")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
 class InvoiceDefaultsResponse(BaseModel):
     document_kind: str
     suggested_invoice_number: str

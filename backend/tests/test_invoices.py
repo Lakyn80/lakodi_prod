@@ -18,6 +18,7 @@ from backend.app.modules.invoices.cache_service import InvoiceCacheService
 from backend.app.modules.invoices.email_service import InvoiceEmailSendError
 from backend.app.modules.invoices.document_types import get_document_kind_metadata
 from backend.app.modules.invoices.models import (
+    RELATION_TYPE_CORRECTION_FOR_INVOICE,
     RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     InvoiceDocumentRelation,
@@ -96,6 +97,13 @@ def _vytvor_konecnou_fakturu(source_proforma_ids: list[int], payload: dict | Non
     if payload:
         request_payload.update(payload)
     response = client.post("/api/admin/invoices/final-invoice", json=request_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vytvor_opravny_doklad(source_invoice_id: int, payload: dict | None = None) -> dict:
+    _login_admin()
+    response = client.post(f"/api/admin/invoices/{source_invoice_id}/correction", json=payload or {})
     assert response.status_code == 200
     return response.json()
 
@@ -525,6 +533,29 @@ def test_defaults_preview_pro_final_invoice_je_oddeleny_od_ostatnich_rad() -> No
     }
 
 
+def test_defaults_preview_pro_correction_je_oddeleny_od_ostatnich_rad() -> None:
+    _login_admin()
+
+    correction_response = client.get("/api/admin/invoices/defaults?document_kind=correction")
+    invoice_response = client.get("/api/admin/invoices/defaults")
+
+    assert correction_response.status_code == 200
+    assert invoice_response.status_code == 200
+
+    correction_defaults = correction_response.json()
+    invoice_defaults = invoice_response.json()
+    assert correction_defaults["document_kind"] == "correction"
+    assert correction_defaults["suggested_invoice_number"].isdigit()
+    assert correction_defaults["suggested_variable_symbol"].isdigit()
+    assert correction_defaults["suggested_invoice_number"].startswith("3")
+    assert correction_defaults["suggested_variable_symbol"] == correction_defaults["suggested_invoice_number"]
+    assert invoice_defaults == {
+        "document_kind": "invoice",
+        "suggested_invoice_number": "001",
+        "suggested_variable_symbol": "001",
+    }
+
+
 def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
     proforma = _vytvor_fakturu(
         {
@@ -549,6 +580,7 @@ def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_wo
     proforma_metadata = get_document_kind_metadata("proforma")
     tax_document_metadata = get_document_kind_metadata("tax_document")
     final_invoice_metadata = get_document_kind_metadata("final_invoice")
+    correction_metadata = get_document_kind_metadata("correction")
 
     assert proforma_metadata.machine_value == "proforma"
     assert proforma_metadata.allows_payment_tracking is True
@@ -577,6 +609,15 @@ def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_wo
     assert final_invoice_metadata.supports_tax_document_generation is False
     assert final_invoice_metadata.supports_final_invoice_settlement is False
 
+    assert correction_metadata.machine_value == "correction"
+    assert correction_metadata.allows_payment_tracking is False
+    assert correction_metadata.allows_pdf_email is True
+    assert correction_metadata.participates_in_total_calculation is True
+    assert correction_metadata.allows_manual_create is False
+    assert correction_metadata.requires_source_relation is True
+    assert correction_metadata.supports_tax_document_generation is False
+    assert correction_metadata.supports_final_invoice_settlement is False
+
 
 def test_neplatny_document_kind_je_odmitnut() -> None:
     _login_admin()
@@ -604,11 +645,10 @@ def test_neplatny_document_kind_je_odmitnut() -> None:
     assert "Neplatný typ dokladu." in response.text
 
 
-def test_vsechny_bezne_supported_document_kinds_krome_tax_document_a_final_invoice_jdou_vytvorit_generic_create() -> None:
+def test_vsechny_bezne_supported_document_kinds_krome_tax_document_final_invoice_a_correction_jdou_vytvorit_generic_create() -> None:
     supported_document_kinds = [
         "invoice",
         "proforma",
-        "correction",
         "quote",
     ]
 
@@ -677,6 +717,34 @@ def test_final_invoice_generic_create_je_blokovan_s_jasnou_chybou() -> None:
     assert response.status_code == 400
     assert response.json() == {
         "detail": "Konečnou fakturu nelze vytvořit ručně. Vytvořte ji ze zdrojových proforem."
+    }
+
+
+def test_correction_generic_create_je_blokovan_s_jasnou_chybou() -> None:
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices",
+        json={
+            "document_kind": "correction",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+            "customer_name": "Jan Novák",
+            "customer_email": "manual-correction@example.com",
+            "customer_address": "Praha 10",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Ruční opravný doklad", "quantity": 1, "unit_price": 1200},
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Opravný doklad nelze vytvořit ručně. Vytvořte jej ze zdrojového dokladu."
     }
 
 
@@ -1254,6 +1322,188 @@ def test_duplicitni_konecna_faktura_pro_stejnou_proformu_je_blokovana() -> None:
     assert first_final_invoice["document_kind"] == "final_invoice"
     assert response.status_code == 400
     assert response.json() == {"detail": "K některé z vybraných proforem už byla vytvořena konečná faktura."}
+
+
+def test_vytvoreni_opravneho_dokladu_z_faktury_funguje() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "correction-invoice@example.com"})
+
+    correction = _vytvor_opravny_doklad(
+        invoice["id"],
+        {"issue_date": "2099-05-05", "reason": "Storno celé faktury", "note": "Vystaven opravný doklad"},
+    )
+
+    assert correction["document_kind"] == "correction"
+    assert correction["invoice_number"] == "32099001"
+    assert correction["variable_symbol"] == "32099001"
+    assert correction["issue_date"] == "2099-05-05"
+    assert correction["due_date"] == "2099-05-05"
+    assert correction["customer_name"] == invoice["customer_name"]
+    assert correction["customer_email"] == invoice["customer_email"]
+    assert correction["issuer_name"] == invoice["issuer_name"]
+    assert correction["issuer_ico"] == invoice["issuer_ico"]
+    assert correction["currency"] == invoice["currency"]
+    assert correction["payment_method"] == invoice["payment_method"]
+    assert correction["bank_account_number"] == invoice["bank_account_number"]
+    assert correction["status"] == "issued"
+    assert correction["effective_status"] == "issued"
+    assert correction["payment_status"] == "unpaid"
+    assert correction["total_paid"] == 0.0
+    assert correction["remaining_amount"] == 0.0
+    assert correction["subtotal"] == -8200.0
+    assert correction["vat_amount"] == -1722.0
+    assert correction["total"] == -9922.0
+    assert "Storno celé faktury" in correction["note"]
+    assert "Vystaven opravný doklad" in correction["note"]
+    assert len(correction["items"]) == 2
+    assert correction["items"][0]["description"] == "Diagnostika"
+    assert correction["items"][0]["quantity"] == 1.0
+    assert correction["items"][0]["unit_price"] == -1200.0
+    assert correction["items"][0]["line_total"] == -1200.0
+    assert correction["items"][1]["unit_price"] == -3500.0
+    assert correction["items"][1]["line_total"] == -7000.0
+
+    detail_response = client.get(f"/api/admin/invoices/{invoice['id']}")
+    assert detail_response.status_code == 200
+    source_detail = detail_response.json()
+    assert source_detail["total"] == 9922.0
+    assert source_detail["subtotal"] == 8200.0
+    assert source_detail["document_kind"] == "invoice"
+
+    with SessionLocal() as db:
+        relation = (
+            db.query(InvoiceDocumentRelation)
+            .filter(
+                InvoiceDocumentRelation.source_invoice_id == invoice["id"],
+                InvoiceDocumentRelation.target_invoice_id == correction["id"],
+                InvoiceDocumentRelation.relation_type == RELATION_TYPE_CORRECTION_FOR_INVOICE,
+            )
+            .first()
+        )
+        assert relation is not None
+        assert relation.source_payment_id is None
+
+
+def test_vytvoreni_opravneho_dokladu_z_konecne_faktury_funguje() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "correction-final-proforma@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _pridej_platbu(proforma["id"], {"amount": 2000, "paid_at": "2099-04-10"})
+    final_invoice = _vytvor_konecnou_fakturu([proforma["id"]], {"issue_date": "2099-05-01", "due_date": "2099-05-15"})
+
+    correction = _vytvor_opravny_doklad(final_invoice["id"], {"issue_date": "2099-05-20", "reason": "Storno vyúčtování"})
+
+    assert correction["document_kind"] == "correction"
+    assert correction["invoice_number"] == "32099001"
+    assert correction["total"] == -7922.0
+    assert correction["subtotal"] == -6547.11
+    assert correction["vat_amount"] == -1374.89
+    assert len(correction["items"]) == 3
+    assert correction["items"][0]["line_total"] == -1200.0
+    assert correction["items"][1]["line_total"] == -7000.0
+    assert correction["items"][2]["line_total"] == 1652.89
+    assert "Storno vyúčtování" in correction["note"]
+
+
+def test_vytvoreni_opravneho_dokladu_z_danoveho_dokladu_funguje() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "correction-taxdoc-proforma@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    paid_proforma = _pridej_platbu(proforma["id"], {"amount": 2000, "paid_at": "2099-04-10"})
+    payment_id = paid_proforma["payments"][0]["id"]
+    tax_document = _vytvor_danovy_doklad_z_platby(proforma["id"], payment_id)
+
+    correction = _vytvor_opravny_doklad(tax_document["id"], {"issue_date": "2099-05-20"})
+
+    assert correction["document_kind"] == "correction"
+    assert correction["invoice_number"] == "32099001"
+    assert correction["subtotal"] == -1652.89
+    assert correction["vat_amount"] == -347.11
+    assert correction["total"] == -2000.0
+    assert len(correction["items"]) == 1
+    assert correction["items"][0]["description"] == f"Přijatá platba k proformě {proforma['invoice_number']}"
+    assert correction["items"][0]["unit_price"] == -1652.89
+
+
+def test_opravny_doklad_nejde_vytvorit_z_proformy() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "correction-proforma@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _login_admin()
+
+    response = client.post(f"/api/admin/invoices/{proforma['id']}/correction", json={"issue_date": "2099-05-05"})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Opravný doklad lze vytvořit pouze z faktury, konečné faktury nebo daňového dokladu."
+    }
+
+
+def test_opravny_doklad_nejde_vytvorit_z_quote() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "correction-quote@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _login_admin()
+
+    response = client.post(f"/api/admin/invoices/{quote['id']}/correction", json={"issue_date": "2099-05-05"})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Opravný doklad lze vytvořit pouze z faktury, konečné faktury nebo daňového dokladu."
+    }
+
+
+def test_opravny_doklad_nejde_vytvorit_z_opravneho_dokladu() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "correction-source-invoice@example.com"})
+    correction = _vytvor_opravny_doklad(invoice["id"], {"issue_date": "2099-05-05"})
+    _login_admin()
+
+    response = client.post(f"/api/admin/invoices/{correction['id']}/correction", json={"issue_date": "2099-05-06"})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Opravný doklad lze vytvořit pouze z faktury, konečné faktury nebo daňového dokladu."
+    }
+
+
+def test_opravny_doklad_endpoint_vrati_404_pro_neexistujici_zdroj() -> None:
+    _login_admin()
+
+    response = client.post("/api/admin/invoices/999999/correction", json={"issue_date": "2099-05-05"})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Faktura nebyla nalezena."}
+
+
+def test_duplicitni_opravny_doklad_pro_stejny_zdroj_je_blokovan() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "duplicate-correction@example.com"})
+    first_correction = _vytvor_opravny_doklad(invoice["id"], {"issue_date": "2099-05-05"})
+    _login_admin()
+
+    response = client.post(f"/api/admin/invoices/{invoice['id']}/correction", json={"issue_date": "2099-05-06"})
+
+    assert first_correction["document_kind"] == "correction"
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Pro tento doklad už byl vytvořen opravný doklad."}
 
 
 def test_invoice_sequence_state_zustava_zpetne_kompatibilni_s_default_klicem() -> None:
@@ -1877,6 +2127,18 @@ def test_pdf_endpoint_funguje_i_pro_final_invoice() -> None:
     assert response.content.startswith(b"%PDF")
 
 
+def test_pdf_endpoint_funguje_i_pro_correction() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "correction-pdf@example.com"})
+    correction = _vytvor_opravny_doklad(invoice["id"], {"issue_date": "2099-05-05"})
+
+    response = client.get(f"/api/admin/invoices/{correction['id']}/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert f'{correction["invoice_number"]}.pdf' in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+
+
 def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
     _login_admin()
     settings_response = client.put(
@@ -2168,6 +2430,73 @@ def test_odeslani_konecne_faktury_e_mailem_prilozi_pdf() -> None:
     assert attachments[0].filename == f"{final_invoice['invoice_number']}.pdf"
     assert attachments[0].content_type == "application/pdf"
     assert attachments[0].content == b"%PDF-test-final-invoice"
+
+
+def test_odeslani_opravneho_dokladu_e_mailem_prilozi_pdf() -> None:
+    _login_admin()
+    settings_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "kopie@lakodi.cz",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert settings_response.status_code == 200
+
+    invoice = _vytvor_fakturu({"customer_email": "correction-mail@example.com"})
+    correction = _vytvor_opravny_doklad(invoice["id"], {"issue_date": "2099-05-05"})
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+    captured = {}
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{correction['invoice_number']}.pdf",
+        content=b"%PDF-test-correction",
+    )
+
+    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None, bcc=None, cc=None) -> bool:
+        captured["to_email"] = to_email
+        captured["subject"] = subject
+        captured["html"] = html
+        captured["attachments"] = attachments
+        captured["bcc"] = bcc
+        return True
+
+    invoice_email_service.send_html_email = fake_send_html_email
+    try:
+        response = client.post(f"/api/admin/invoices/{correction['id']}/send-email")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "invoice_id": correction["id"],
+        "invoice_number": correction["invoice_number"],
+        "sent_to": "correction-mail@example.com",
+        "copied_to": ["kopie@lakodi.cz"],
+    }
+    assert captured["to_email"] == "correction-mail@example.com"
+    assert captured["subject"] == f"Faktura {correction['invoice_number']}"
+    assert "Jan Novák" in captured["html"]
+    assert correction["invoice_number"] in captured["html"]
+    attachments = captured["attachments"]
+    assert attachments is not None
+    assert len(attachments) == 1
+    assert attachments[0].filename == f"{correction['invoice_number']}.pdf"
+    assert attachments[0].content_type == "application/pdf"
+    assert attachments[0].content == b"%PDF-test-correction"
 
 
 def test_odeslani_faktury_vrati_503_kdyz_neni_email_nakonfigurovany() -> None:

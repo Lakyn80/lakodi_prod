@@ -18,6 +18,7 @@ from backend.app.modules.invoices.email_service import InvoiceEmailConfiguration
 from backend.app.modules.invoices.pdf_service import InvoicePdfGenerationError
 from backend.app.modules.invoices.schemas import (
     AresCompanyLookupResponse,
+    CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
     InvoiceCreate,
     InvoiceDefaultsResponse,
@@ -36,6 +37,7 @@ from backend.app.modules.invoices.service import (
     InvoicePaymentNotFoundError,
     InvoiceValidationError,
     add_invoice_payment,
+    create_correction_from_invoice,
     create_invoice,
     create_final_invoice_from_proformas,
     create_tax_document_from_proforma_payment,
@@ -156,6 +158,22 @@ def admin_create_final_invoice(
 ):
     try:
         return create_final_invoice_from_proformas(db, body)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{invoice_id}/correction", response_model=InvoiceDetailResponse)
+def admin_create_correction_invoice(
+    invoice_id: int,
+    body: CorrectionInvoiceCreateRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        payload = body or CorrectionInvoiceCreateRequest()
+        return create_correction_from_invoice(db, invoice_id, payload)
     except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
     except InvoiceValidationError as exc:

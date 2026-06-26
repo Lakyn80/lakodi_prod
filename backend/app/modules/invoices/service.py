@@ -16,6 +16,7 @@ from backend.app.modules.invoices.cache_service import get_invoice_cache_service
 from backend.app.modules.invoices.email_service import InvoiceEmailDeliveryResult, deliver_invoice_email
 from backend.app.modules.invoices.exporters import build_invoice_export
 from backend.app.modules.invoices.models import (
+    RELATION_TYPE_CORRECTION_FOR_INVOICE,
     RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     Invoice,
@@ -40,6 +41,7 @@ from backend.app.modules.invoices.payment_service import (
 )
 from backend.app.modules.invoices.pdf_service import InvoicePdfDocument, build_invoice_pdf_document
 from backend.app.modules.invoices.schemas import (
+    CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
     InvoiceCreate,
     InvoicePaymentCreate,
@@ -404,6 +406,105 @@ def create_final_invoice_from_proformas(db: Session, payload: FinalInvoiceCreate
     raise InvoiceValidationError("Konečnou fakturu se nepodařilo bezpečně vytvořit.")
 
 
+def create_correction_from_invoice(
+    db: Session,
+    source_invoice_id: int,
+    payload: CorrectionInvoiceCreateRequest,
+) -> Invoice:
+    source_invoice = get_invoice_detail(db, source_invoice_id)
+    _validate_correction_source_invoice(source_invoice)
+    if _correction_relation_exists(db, source_invoice_id=source_invoice.id):
+        raise InvoiceValidationError("Pro tento doklad už byl vytvořen opravný doklad.")
+
+    prepared_items = [_build_negative_item_from_snapshot(item) for item in source_invoice.items]
+    totals = _calculate_totals(
+        tax_mode=source_invoice.tax_mode,
+        vat_rate=Decimal(source_invoice.vat_rate) if source_invoice.vat_rate is not None else None,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    if totals.total >= Decimal("0.00"):
+        raise InvoiceValidationError("Opravný doklad lze vytvořit jen z dokladu s kladnou částkou.")
+
+    issue_date = payload.issue_date or date.today()
+    due_date = issue_date
+    resolved_note = _compose_correction_note(source_invoice, reason=payload.reason, note=payload.note)
+
+    for attempt in range(2):
+        try:
+            reserved_sequence = reserve_invoice_sequence(
+                db,
+                document_kind="correction",
+                reference_date=issue_date,
+            )
+            generated_invoice = Invoice(
+                invoice_number=reserved_sequence.invoice_number,
+                variable_symbol=reserved_sequence.variable_symbol,
+                issue_date=issue_date,
+                due_date=due_date,
+                issuer_name=source_invoice.issuer_name,
+                issuer_address=source_invoice.issuer_address,
+                issuer_city=source_invoice.issuer_city,
+                issuer_zip=source_invoice.issuer_zip,
+                issuer_ico=source_invoice.issuer_ico,
+                issuer_dic=source_invoice.issuer_dic,
+                issuer_data_box=source_invoice.issuer_data_box,
+                customer_name=source_invoice.customer_name,
+                customer_email=source_invoice.customer_email,
+                customer_phone=source_invoice.customer_phone,
+                customer_address=source_invoice.customer_address,
+                customer_ico=source_invoice.customer_ico,
+                customer_dic=source_invoice.customer_dic,
+                note=resolved_note,
+                document_kind="correction",
+                business_mode=source_invoice.business_mode,
+                tax_mode=source_invoice.tax_mode,
+                currency=source_invoice.currency,
+                subtotal=totals.subtotal,
+                vat_rate=totals.vat_rate,
+                vat_amount=totals.vat_amount,
+                total=totals.total,
+                status="issued",
+                reverse_charge_reason=totals.reverse_charge_reason,
+                reverse_charge_text=totals.reverse_charge_text,
+                payment_method=source_invoice.payment_method,
+                bank_account_number=source_invoice.bank_account_number,
+                bank_account_prefix=source_invoice.bank_account_prefix,
+                bank_code=source_invoice.bank_code,
+                bank_iban=source_invoice.bank_iban,
+            )
+            generated_invoice.items = [
+                InvoiceItem(
+                    description=item.description,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    line_total=item.line_total,
+                )
+                for item in prepared_items
+            ]
+            db.add(generated_invoice)
+            db.flush()
+            db.add(
+                InvoiceDocumentRelation(
+                    source_invoice_id=source_invoice.id,
+                    target_invoice_id=generated_invoice.id,
+                    source_payment_id=None,
+                    relation_type=RELATION_TYPE_CORRECTION_FOR_INVOICE,
+                )
+            )
+            db.commit()
+            created_invoice = get_invoice_detail(db, generated_invoice.id)
+            _cache_invoice_nonfatal(created_invoice)
+            return created_invoice
+        except IntegrityError as exc:
+            db.rollback()
+            if _correction_relation_exists(db, source_invoice_id=source_invoice.id):
+                raise InvoiceValidationError("Pro tento doklad už byl vytvořen opravný doklad.") from exc
+            if attempt > 0:
+                raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc
+
+    raise InvoiceValidationError("Opravný doklad se nepodařilo bezpečně vytvořit.")
+
+
 def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
     invoice = get_invoice_detail(db, invoice_id)
     amount = _quantize_money(Decimal(payload.amount))
@@ -581,6 +682,18 @@ def _build_prepared_item_from_snapshot(item: InvoiceItem) -> PreparedInvoiceItem
         quantity=_quantize_quantity(Decimal(item.quantity)),
         unit_price=_quantize_money(Decimal(item.unit_price)),
         line_total=_quantize_money(Decimal(item.line_total)),
+    )
+
+
+def _build_negative_item_from_snapshot(item: InvoiceItem) -> PreparedInvoiceItem:
+    quantity = _quantize_quantity(Decimal(item.quantity))
+    unit_price = _quantize_money(Decimal(item.unit_price) * Decimal("-1"))
+    line_total = _quantize_money(Decimal(item.line_total) * Decimal("-1"))
+    return PreparedInvoiceItem(
+        description=item.description.strip(),
+        quantity=quantity,
+        unit_price=unit_price,
+        line_total=line_total,
     )
 
 
@@ -856,6 +969,8 @@ def _ensure_manual_document_creation_allowed(document_kind: str) -> None:
         raise InvoiceValidationError("Daňový doklad nelze vytvořit ručně. Vytvořte jej z platby proformy.")
     if document_kind == "final_invoice":
         raise InvoiceValidationError("Konečnou fakturu nelze vytvořit ručně. Vytvořte ji ze zdrojových proforem.")
+    if document_kind == "correction":
+        raise InvoiceValidationError("Opravný doklad nelze vytvořit ručně. Vytvořte jej ze zdrojového dokladu.")
     raise InvoiceValidationError(f"Typ dokladu {metadata.internal_label} nelze vytvořit ručně.")
 
 
@@ -877,6 +992,18 @@ def _final_invoice_relation_exists(db: Session, *, source_invoice_id: int) -> bo
         .filter(
             InvoiceDocumentRelation.source_invoice_id == source_invoice_id,
             InvoiceDocumentRelation.relation_type == RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+        )
+        .first()
+    )
+    return relation is not None
+
+
+def _correction_relation_exists(db: Session, *, source_invoice_id: int) -> bool:
+    relation = (
+        db.query(InvoiceDocumentRelation.id)
+        .filter(
+            InvoiceDocumentRelation.source_invoice_id == source_invoice_id,
+            InvoiceDocumentRelation.relation_type == RELATION_TYPE_CORRECTION_FOR_INVOICE,
         )
         .first()
     )
@@ -961,6 +1088,23 @@ def _build_invoice_payment_signature(invoice: Invoice) -> tuple[str | None, ...]
         invoice.bank_code,
         invoice.bank_iban,
     )
+
+
+def _validate_correction_source_invoice(source_invoice: Invoice) -> None:
+    source_document_kind = normalize_document_kind(source_invoice.document_kind)
+    if source_document_kind not in {"invoice", "final_invoice", "tax_document"}:
+        raise InvoiceValidationError("Opravný doklad lze vytvořit pouze z faktury, konečné faktury nebo daňového dokladu.")
+
+
+def _compose_correction_note(source_invoice: Invoice, *, reason: str | None, note: str | None) -> str | None:
+    parts: list[str] = []
+    if reason:
+        parts.append(f"Důvod opravy: {reason}")
+    if note:
+        parts.append(note)
+    if parts:
+        return "\n\n".join(parts)
+    return source_invoice.note
 
 
 def _update_existing_invoice(
