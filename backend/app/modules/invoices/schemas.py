@@ -307,6 +307,42 @@ class InvoiceSendEmailResponse(BaseModel):
     copied_to: list[str] = Field(default_factory=list)
 
 
+class FinalInvoiceCreateRequest(BaseModel):
+    source_proforma_ids: list[int]
+    issue_date: date | None = None
+    due_date: date | None = None
+    note: str | None = None
+
+    @field_validator("source_proforma_ids")
+    @classmethod
+    def validate_source_proforma_ids(cls, value: list[int]) -> list[int]:
+        if not value:
+            raise ValueError("Vyberte alespoň jednu zdrojovou proformu.")
+        if any(item <= 0 for item in value):
+            raise ValueError("ID zdrojových proforem musí být kladná čísla.")
+        deduplicated: list[int] = []
+        seen: set[int] = set()
+        for item in value:
+            if item not in seen:
+                seen.add(item)
+                deduplicated.append(item)
+        return deduplicated
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "FinalInvoiceCreateRequest":
+        if self.issue_date is not None and self.due_date is not None and self.due_date < self.issue_date:
+            raise ValueError("Datum splatnosti nemůže být dříve než datum vystavení.")
+        return self
+
+
 class InvoiceDefaultsResponse(BaseModel):
     document_kind: str
     suggested_invoice_number: str

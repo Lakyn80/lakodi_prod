@@ -162,6 +162,44 @@ def _ensure_invoice_document_relations_table():
             return
         rows = conn.execute(text("PRAGMA table_info(invoice_document_relations)")).fetchall()
         columns = {row[1] for row in rows}
+        row_map = {row[1]: row for row in rows}
+        source_payment_row = row_map.get("source_payment_id")
+        needs_recreate = bool(source_payment_row and source_payment_row[3] == 1)
+
+        if needs_recreate:
+            conn.execute(text("PRAGMA foreign_keys=OFF"))
+            conn.execute(text("ALTER TABLE invoice_document_relations RENAME TO invoice_document_relations_legacy"))
+            conn.execute(
+                text(
+                    "CREATE TABLE invoice_document_relations ("
+                    "id INTEGER NOT NULL PRIMARY KEY, "
+                    "source_invoice_id INTEGER NOT NULL, "
+                    "target_invoice_id INTEGER NOT NULL, "
+                    "source_payment_id INTEGER, "
+                    "relation_type VARCHAR(64) NOT NULL, "
+                    "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                    "FOREIGN KEY(source_invoice_id) REFERENCES invoices (id) ON DELETE CASCADE, "
+                    "FOREIGN KEY(target_invoice_id) REFERENCES invoices (id) ON DELETE CASCADE, "
+                    "FOREIGN KEY(source_payment_id) REFERENCES invoice_payments (id) ON DELETE CASCADE"
+                    ")"
+                )
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO invoice_document_relations ("
+                    "id, source_invoice_id, target_invoice_id, source_payment_id, relation_type, created_at"
+                    ") "
+                    "SELECT "
+                    "id, source_invoice_id, target_invoice_id, source_payment_id, relation_type, "
+                    "COALESCE(created_at, CURRENT_TIMESTAMP) "
+                    "FROM invoice_document_relations_legacy"
+                )
+            )
+            conn.execute(text("DROP TABLE invoice_document_relations_legacy"))
+            conn.execute(text("PRAGMA foreign_keys=ON"))
+            rows = conn.execute(text("PRAGMA table_info(invoice_document_relations)")).fetchall()
+            columns = {row[1] for row in rows}
+
         add_map = {
             "source_invoice_id": "ALTER TABLE invoice_document_relations ADD COLUMN source_invoice_id INTEGER",
             "target_invoice_id": "ALTER TABLE invoice_document_relations ADD COLUMN target_invoice_id INTEGER",
@@ -178,6 +216,14 @@ def _ensure_invoice_document_relations_table():
                 "CREATE UNIQUE INDEX IF NOT EXISTS "
                 "ux_invoice_document_relations_source_payment_relation_type "
                 "ON invoice_document_relations (source_payment_id, relation_type)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ux_invoice_document_relations_source_invoice_final_invoice "
+                "ON invoice_document_relations (source_invoice_id, relation_type) "
+                "WHERE relation_type = 'final_invoice_for_proforma'"
             )
         )
 

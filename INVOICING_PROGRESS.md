@@ -276,3 +276,59 @@
   - Generated tax documents currently reuse the generic PDF/email wording (`Faktura`) and existing layouts.
   - Tax-document item content is represented as one generated payment-based item, which is sufficient for this backend phase but may need richer legal formatting later.
   - Automatic tax-document creation on payment add remains intentionally disabled; generation happens only through the explicit admin endpoint.
+
+## Úkol 6 Backend final invoice from proforma foundation
+
+- Date: 2026-06-26
+- Goal: Add a safe backend-only foundation for explicit creation of `document_kind = final_invoice` from one or more source proformas without changing the frontend and without breaking invoice, proforma, or tax-document behavior.
+- Scope: Backend invoice relation persistence, backend document-kind metadata, backend invoice schemas/service/router logic, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/document_types.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Extended `invoice_document_relations` to support invoice-to-invoice relations without a payment by allowing `source_payment_id` to be nullable.
+  - Added safe SQLite table-recreate migration for older `invoice_document_relations` tables that still required non-null `source_payment_id`.
+  - Added duplicate-prevention unique index for final-invoice relations on `(source_invoice_id, relation_type)` for `relation_type = final_invoice_for_proforma`.
+  - Preserved the existing tax-document relation table and duplicate-prevention behavior from Úkol 5.
+- Backend changes:
+  - Added explicit admin-only endpoint:
+    - `POST /api/admin/invoices/final-invoice`
+  - Added backend request schema for final-invoice generation from one or more source proformas.
+  - Final invoice generation now:
+    - validates that all source documents exist and are `proforma`
+    - validates compatible customer/currency data and safe compatible tax/issuer/payment settings
+    - uses its own independent `final_invoice` numbering sequence
+    - snapshots issuer/customer/payment data from the source proforma set
+    - copies original proforma items and appends one negative advance-settlement item when paid advances exist
+    - sets the final invoice total to source total minus paid advances
+    - creates relation rows `final_invoice_for_proforma` for every linked source proforma
+  - Blocked generic manual create of `document_kind = final_invoice`; it must now be generated through the explicit endpoint.
+  - Preserved existing invoice, proforma, tax-document, numbering, PDF, and email behavior.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "tax_document or danovy" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "test_defaults_preview_pro_final_invoice_je_oddeleny_od_ostatnich_rad or test_final_invoice_generic_create_je_blokovan_s_jasnou_chybou or test_vytvoreni_konecne_faktury_z_jedne_proformy_funguje" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest backend/tests/test_health.py backend/tests/test_convertor.py backend/tests/test_admin_recovery.py backend/tests/test_zakazky.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "tax_document or danovy" -x` -> `9 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "test_defaults_preview_pro_final_invoice_je_oddeleny_od_ostatnich_rad or test_final_invoice_generic_create_je_blokovan_s_jasnou_chybou or test_vytvoreni_konecne_faktury_z_jedne_proformy_funguje" -x` -> `3 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `75 passed`
+  - `python -m pytest backend/tests/test_health.py backend/tests/test_convertor.py backend/tests/test_admin_recovery.py backend/tests/test_zakazky.py -q` -> `8 passed`
+  - `python -m pytest -q` -> `83 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend final invoice generation from proformas`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - This is still a minimal backend settlement foundation, not a complete legal/accounting implementation of all final-invoice scenarios.
+  - Generated final invoices currently reuse the generic PDF/email wording (`Faktura`) and existing layout.
+  - Advance settlement is represented through one generated negative item, which is compatible with the current backend model but may need richer legal formatting later.
+  - Automatic final-invoice generation remains intentionally disabled; generation happens only through the explicit admin endpoint.

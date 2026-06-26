@@ -18,6 +18,7 @@ from backend.app.modules.invoices.cache_service import InvoiceCacheService
 from backend.app.modules.invoices.email_service import InvoiceEmailSendError
 from backend.app.modules.invoices.document_types import get_document_kind_metadata
 from backend.app.modules.invoices.models import (
+    RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     InvoiceDocumentRelation,
     InvoiceSequenceState,
@@ -85,6 +86,16 @@ def _pridej_platbu(invoice_id: int, payload: dict | None = None) -> dict:
 def _vytvor_danovy_doklad_z_platby(invoice_id: int, payment_id: int) -> dict:
     _login_admin()
     response = client.post(f"/api/admin/invoices/{invoice_id}/payments/{payment_id}/tax-document")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vytvor_konecnou_fakturu(source_proforma_ids: list[int], payload: dict | None = None) -> dict:
+    _login_admin()
+    request_payload = {"source_proforma_ids": source_proforma_ids}
+    if payload:
+        request_payload.update(payload)
+    response = client.post("/api/admin/invoices/final-invoice", json=request_payload)
     assert response.status_code == 200
     return response.json()
 
@@ -491,6 +502,29 @@ def test_defaults_preview_pro_tax_document_je_oddeleny_od_ostatnich_rad() -> Non
     }
 
 
+def test_defaults_preview_pro_final_invoice_je_oddeleny_od_ostatnich_rad() -> None:
+    _login_admin()
+
+    final_invoice_response = client.get("/api/admin/invoices/defaults?document_kind=final_invoice")
+    invoice_response = client.get("/api/admin/invoices/defaults")
+
+    assert final_invoice_response.status_code == 200
+    assert invoice_response.status_code == 200
+
+    final_invoice_defaults = final_invoice_response.json()
+    invoice_defaults = invoice_response.json()
+    assert final_invoice_defaults["document_kind"] == "final_invoice"
+    assert final_invoice_defaults["suggested_invoice_number"].isdigit()
+    assert final_invoice_defaults["suggested_variable_symbol"].isdigit()
+    assert final_invoice_defaults["suggested_invoice_number"].startswith("4")
+    assert final_invoice_defaults["suggested_variable_symbol"] == final_invoice_defaults["suggested_invoice_number"]
+    assert invoice_defaults == {
+        "document_kind": "invoice",
+        "suggested_invoice_number": "001",
+        "suggested_variable_symbol": "001",
+    }
+
+
 def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
     proforma = _vytvor_fakturu(
         {
@@ -514,6 +548,7 @@ def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
 def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_workflow() -> None:
     proforma_metadata = get_document_kind_metadata("proforma")
     tax_document_metadata = get_document_kind_metadata("tax_document")
+    final_invoice_metadata = get_document_kind_metadata("final_invoice")
 
     assert proforma_metadata.machine_value == "proforma"
     assert proforma_metadata.allows_payment_tracking is True
@@ -522,7 +557,7 @@ def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_wo
     assert proforma_metadata.allows_manual_create is True
     assert proforma_metadata.requires_source_relation is False
     assert proforma_metadata.supports_tax_document_generation is True
-    assert proforma_metadata.supports_final_invoice_settlement is False
+    assert proforma_metadata.supports_final_invoice_settlement is True
 
     assert tax_document_metadata.machine_value == "tax_document"
     assert tax_document_metadata.allows_payment_tracking is False
@@ -532,6 +567,15 @@ def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_wo
     assert tax_document_metadata.requires_source_relation is True
     assert tax_document_metadata.supports_tax_document_generation is False
     assert tax_document_metadata.supports_final_invoice_settlement is False
+
+    assert final_invoice_metadata.machine_value == "final_invoice"
+    assert final_invoice_metadata.allows_payment_tracking is False
+    assert final_invoice_metadata.allows_pdf_email is True
+    assert final_invoice_metadata.participates_in_total_calculation is True
+    assert final_invoice_metadata.allows_manual_create is False
+    assert final_invoice_metadata.requires_source_relation is True
+    assert final_invoice_metadata.supports_tax_document_generation is False
+    assert final_invoice_metadata.supports_final_invoice_settlement is False
 
 
 def test_neplatny_document_kind_je_odmitnut() -> None:
@@ -560,12 +604,11 @@ def test_neplatny_document_kind_je_odmitnut() -> None:
     assert "Neplatný typ dokladu." in response.text
 
 
-def test_vsechny_bezne_supported_document_kinds_krome_tax_document_jdou_vytvorit_generic_create() -> None:
+def test_vsechny_bezne_supported_document_kinds_krome_tax_document_a_final_invoice_jdou_vytvorit_generic_create() -> None:
     supported_document_kinds = [
         "invoice",
         "proforma",
         "correction",
-        "final_invoice",
         "quote",
     ]
 
@@ -606,6 +649,34 @@ def test_tax_document_generic_create_je_blokovan_s_jasnou_chybou() -> None:
     assert response.status_code == 400
     assert response.json() == {
         "detail": "Daňový doklad nelze vytvořit ručně. Vytvořte jej z platby proformy."
+    }
+
+
+def test_final_invoice_generic_create_je_blokovan_s_jasnou_chybou() -> None:
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices",
+        json={
+            "document_kind": "final_invoice",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+            "customer_name": "Jan Novák",
+            "customer_email": "manual-final-invoice@example.com",
+            "customer_address": "Praha 10",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Ruční konečná faktura", "quantity": 1, "unit_price": 1200},
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Konečnou fakturu nelze vytvořit ručně. Vytvořte ji ze zdrojových proforem."
     }
 
 
@@ -905,6 +976,284 @@ def test_danovy_doklad_endpoint_vrati_404_pro_neexistujici_platbu() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Platba faktury nebyla nalezena."}
+
+
+def test_vytvoreni_konecne_faktury_z_jedne_proformy_funguje() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "final-single@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _pridej_platbu(
+        proforma["id"],
+        {
+            "amount": 2000,
+            "paid_at": "2099-04-10",
+            "payment_method": "Bankovní převod",
+        },
+    )
+
+    final_invoice = _vytvor_konecnou_fakturu(
+        [proforma["id"]],
+        {"issue_date": "2099-05-01", "due_date": "2099-05-15", "note": "Konečné vyúčtování zakázky"},
+    )
+    next_proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "final-single-2@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    invoice = _vytvor_fakturu({"customer_email": "final-single-invoice@example.com"})
+
+    assert final_invoice["document_kind"] == "final_invoice"
+    assert final_invoice["invoice_number"] == "42099001"
+    assert final_invoice["variable_symbol"] == "42099001"
+    assert final_invoice["issue_date"] == "2099-05-01"
+    assert final_invoice["due_date"] == "2099-05-15"
+    assert final_invoice["customer_name"] == proforma["customer_name"]
+    assert final_invoice["customer_email"] == proforma["customer_email"]
+    assert final_invoice["issuer_name"] == proforma["issuer_name"]
+    assert final_invoice["issuer_ico"] == proforma["issuer_ico"]
+    assert final_invoice["currency"] == proforma["currency"]
+    assert final_invoice["payment_method"] == proforma["payment_method"]
+    assert final_invoice["bank_account_number"] == proforma["bank_account_number"]
+    assert final_invoice["status"] == "issued"
+    assert final_invoice["effective_status"] == "issued"
+    assert final_invoice["payment_status"] == "unpaid"
+    assert final_invoice["total_paid"] == 0.0
+    assert final_invoice["remaining_amount"] == 7922.0
+    assert final_invoice["subtotal"] == 6547.11
+    assert final_invoice["vat_amount"] == 1374.89
+    assert final_invoice["total"] == 7922.0
+    assert final_invoice["note"] == "Konečné vyúčtování zakázky"
+    assert len(final_invoice["items"]) == 3
+    assert final_invoice["items"][0]["description"] == "Diagnostika"
+    assert final_invoice["items"][1]["description"] == "Oprava převodovky"
+    assert final_invoice["items"][2]["description"] == f"Odečtené uhrazené zálohy k proformám {proforma['invoice_number']}"
+    assert final_invoice["items"][2]["unit_price"] == -1652.89
+    assert next_proforma["invoice_number"] == "12099002"
+    assert invoice["invoice_number"] == "001"
+
+    with SessionLocal() as db:
+        relation = (
+            db.query(InvoiceDocumentRelation)
+            .filter(
+                InvoiceDocumentRelation.source_invoice_id == proforma["id"],
+                InvoiceDocumentRelation.target_invoice_id == final_invoice["id"],
+                InvoiceDocumentRelation.relation_type == RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+            )
+            .first()
+        )
+        assert relation is not None
+        assert relation.source_payment_id is None
+
+
+def test_vytvoreni_konecne_faktury_z_vice_kompatibilnich_proforem_funguje() -> None:
+    first = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "multi-final@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    second = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "multi-final@example.com",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+            "note": "Druhá část zakázky",
+            "items": [
+                {"description": "Lakování", "quantity": 1, "unit_price": 1000},
+                {"description": "Montáž", "quantity": 2, "unit_price": 500},
+            ],
+        }
+    )
+    _pridej_platbu(first["id"], {"amount": 1000, "paid_at": "2099-04-10"})
+    _pridej_platbu(second["id"], {"amount": 500, "paid_at": "2099-04-11"})
+
+    final_invoice = _vytvor_konecnou_fakturu(
+        [first["id"], second["id"]],
+        {"issue_date": "2099-05-02", "due_date": "2099-05-16"},
+    )
+
+    assert final_invoice["document_kind"] == "final_invoice"
+    assert final_invoice["invoice_number"] == "42099001"
+    assert final_invoice["total"] == 10842.0
+    assert final_invoice["remaining_amount"] == 10842.0
+    assert len(final_invoice["items"]) == 5
+    assert final_invoice["items"][0]["description"] == "Diagnostika"
+    assert final_invoice["items"][1]["description"] == "Oprava převodovky"
+    assert final_invoice["items"][2]["description"] == "Lakování"
+    assert final_invoice["items"][3]["description"] == "Montáž"
+    assert final_invoice["items"][4]["description"] == f"Odečtené uhrazené zálohy k proformám {first['invoice_number']}, {second['invoice_number']}"
+
+    with SessionLocal() as db:
+        relations = (
+            db.query(InvoiceDocumentRelation)
+            .filter(InvoiceDocumentRelation.target_invoice_id == final_invoice["id"])
+            .order_by(InvoiceDocumentRelation.source_invoice_id)
+            .all()
+        )
+        assert len(relations) == 2
+        assert relations[0].source_invoice_id == first["id"]
+        assert relations[1].source_invoice_id == second["id"]
+        assert all(relation.relation_type == RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA for relation in relations)
+        assert all(relation.source_payment_id is None for relation in relations)
+
+
+def test_konecna_faktura_z_plne_uhrazene_proformy_ma_nulovy_zustatek() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "final-paid@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _pridej_platbu(proforma["id"], {"amount": 9922.0, "paid_at": "2099-04-10"})
+
+    final_invoice = _vytvor_konecnou_fakturu([proforma["id"]], {"issue_date": "2099-05-01", "due_date": "2099-05-15"})
+
+    assert final_invoice["document_kind"] == "final_invoice"
+    assert final_invoice["total"] == 0.0
+    assert final_invoice["remaining_amount"] == 0.0
+    assert final_invoice["subtotal"] == 0.0
+    assert final_invoice["vat_amount"] == 0.0
+
+
+def test_konecnou_fakturu_nejde_vytvorit_z_bezne_faktury() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "not-proforma-final@example.com"})
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/final-invoice",
+        json={"source_proforma_ids": [invoice["id"]], "issue_date": "2099-05-01", "due_date": "2099-05-15"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Konečnou fakturu lze vytvořit pouze z proformy."}
+
+
+def test_konecnou_fakturu_nejde_vytvorit_z_danoveho_dokladu() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "taxdoc-source-final@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    paid_proforma = _pridej_platbu(proforma["id"], {"amount": 2000, "paid_at": "2099-04-10"})
+    payment_id = paid_proforma["payments"][0]["id"]
+    tax_document = _vytvor_danovy_doklad_z_platby(proforma["id"], payment_id)
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/final-invoice",
+        json={"source_proforma_ids": [tax_document["id"]], "issue_date": "2099-05-01", "due_date": "2099-05-15"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Konečnou fakturu lze vytvořit pouze z proformy."}
+
+
+def test_konecna_faktura_endpoint_vrati_404_pro_neexistujici_proformu() -> None:
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/final-invoice",
+        json={"source_proforma_ids": [999999], "issue_date": "2099-05-01", "due_date": "2099-05-15"},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Faktura nebyla nalezena."}
+
+
+def test_konecnou_fakturu_nejde_vytvorit_z_nekompatibilnich_zakazniku() -> None:
+    first = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "customer-a@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    second = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_name": "Petr Svoboda",
+            "customer_email": "customer-b@example.com",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+        }
+    )
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/final-invoice",
+        json={"source_proforma_ids": [first["id"], second["id"]], "issue_date": "2099-05-01", "due_date": "2099-05-15"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Zdrojové proformy musí mít shodného odběratele."}
+
+
+def test_konecnou_fakturu_nejde_vytvorit_z_nekompatibilnich_men() -> None:
+    first = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "currency-final@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    second = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "currency-final@example.com",
+            "currency": "EUR",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+        }
+    )
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/final-invoice",
+        json={"source_proforma_ids": [first["id"], second["id"]], "issue_date": "2099-05-01", "due_date": "2099-05-15"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Zdrojové proformy musí mít shodnou měnu."}
+
+
+def test_duplicitni_konecna_faktura_pro_stejnou_proformu_je_blokovana() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "duplicate-final@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+
+    first_final_invoice = _vytvor_konecnou_fakturu([proforma["id"]], {"issue_date": "2099-05-01", "due_date": "2099-05-15"})
+    _login_admin()
+    response = client.post(
+        "/api/admin/invoices/final-invoice",
+        json={"source_proforma_ids": [proforma["id"]], "issue_date": "2099-05-02", "due_date": "2099-05-16"},
+    )
+
+    assert first_final_invoice["document_kind"] == "final_invoice"
+    assert response.status_code == 400
+    assert response.json() == {"detail": "K některé z vybraných proforem už byla vytvořena konečná faktura."}
 
 
 def test_invoice_sequence_state_zustava_zpetne_kompatibilni_s_default_klicem() -> None:
@@ -1509,6 +1858,25 @@ def test_pdf_endpoint_funguje_i_pro_tax_document() -> None:
     assert response.content.startswith(b"%PDF")
 
 
+def test_pdf_endpoint_funguje_i_pro_final_invoice() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "final-pdf@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    final_invoice = _vytvor_konecnou_fakturu([proforma["id"]], {"issue_date": "2099-05-01", "due_date": "2099-05-15"})
+
+    response = client.get(f"/api/admin/invoices/{final_invoice['id']}/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert f'{final_invoice["invoice_number"]}.pdf' in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+
+
 def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
     _login_admin()
     settings_response = client.put(
@@ -1726,6 +2094,80 @@ def test_odeslani_danoveho_dokladu_e_mailem_prilozi_pdf() -> None:
     assert attachments[0].filename == f"{tax_document['invoice_number']}.pdf"
     assert attachments[0].content_type == "application/pdf"
     assert attachments[0].content == b"%PDF-test-tax-document"
+
+
+def test_odeslani_konecne_faktury_e_mailem_prilozi_pdf() -> None:
+    _login_admin()
+    settings_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "kopie@lakodi.cz",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert settings_response.status_code == 200
+
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "final-mail@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    final_invoice = _vytvor_konecnou_fakturu([proforma["id"]], {"issue_date": "2099-05-01", "due_date": "2099-05-15"})
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+    captured = {}
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{final_invoice['invoice_number']}.pdf",
+        content=b"%PDF-test-final-invoice",
+    )
+
+    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None, bcc=None, cc=None) -> bool:
+        captured["to_email"] = to_email
+        captured["subject"] = subject
+        captured["html"] = html
+        captured["attachments"] = attachments
+        captured["bcc"] = bcc
+        return True
+
+    invoice_email_service.send_html_email = fake_send_html_email
+    try:
+        response = client.post(f"/api/admin/invoices/{final_invoice['id']}/send-email")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "invoice_id": final_invoice["id"],
+        "invoice_number": final_invoice["invoice_number"],
+        "sent_to": "final-mail@example.com",
+        "copied_to": ["kopie@lakodi.cz"],
+    }
+    assert captured["to_email"] == "final-mail@example.com"
+    assert captured["subject"] == f"Faktura {final_invoice['invoice_number']}"
+    assert "Jan Novák" in captured["html"]
+    assert final_invoice["invoice_number"] in captured["html"]
+    attachments = captured["attachments"]
+    assert attachments is not None
+    assert len(attachments) == 1
+    assert attachments[0].filename == f"{final_invoice['invoice_number']}.pdf"
+    assert attachments[0].content_type == "application/pdf"
+    assert attachments[0].content == b"%PDF-test-final-invoice"
 
 
 def test_odeslani_faktury_vrati_503_kdyz_neni_email_nakonfigurovany() -> None:

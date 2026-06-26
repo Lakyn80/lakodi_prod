@@ -1,7 +1,7 @@
 """Aplikační logika pro faktury."""
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.exc import IntegrityError
@@ -16,6 +16,7 @@ from backend.app.modules.invoices.cache_service import get_invoice_cache_service
 from backend.app.modules.invoices.email_service import InvoiceEmailDeliveryResult, deliver_invoice_email
 from backend.app.modules.invoices.exporters import build_invoice_export
 from backend.app.modules.invoices.models import (
+    RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     Invoice,
     InvoiceDocumentRelation,
@@ -39,6 +40,7 @@ from backend.app.modules.invoices.payment_service import (
 )
 from backend.app.modules.invoices.pdf_service import InvoicePdfDocument, build_invoice_pdf_document
 from backend.app.modules.invoices.schemas import (
+    FinalInvoiceCreateRequest,
     InvoiceCreate,
     InvoicePaymentCreate,
     InvoiceSettingsUpdate,
@@ -303,6 +305,105 @@ def create_tax_document_from_proforma_payment(db: Session, proforma_invoice_id: 
     raise InvoiceValidationError("Daňový doklad se nepodařilo bezpečně vytvořit.")
 
 
+def create_final_invoice_from_proformas(db: Session, payload: FinalInvoiceCreateRequest) -> Invoice:
+    settings = get_invoice_settings(db)
+    source_invoices = [get_invoice_detail(db, invoice_id) for invoice_id in payload.source_proforma_ids]
+    _validate_final_invoice_source_invoices(source_invoices)
+    _ensure_final_invoice_sources_are_available(db, [invoice.id for invoice in source_invoices])
+
+    primary_source = source_invoices[0]
+    issue_date = payload.issue_date or date.today()
+    due_date = payload.due_date or issue_date + timedelta(days=settings.invoice_defaults.default_due_days)
+    if due_date < issue_date:
+        raise InvoiceValidationError("Datum splatnosti nemůže být dříve než datum vystavení.")
+
+    prepared_items = _build_final_invoice_items(source_invoices)
+    totals = _calculate_totals(
+        tax_mode=primary_source.tax_mode,
+        vat_rate=Decimal(primary_source.vat_rate) if primary_source.vat_rate is not None else None,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    resolved_note = payload.note if payload.note is not None else primary_source.note
+
+    for attempt in range(2):
+        try:
+            reserved_sequence = reserve_invoice_sequence(
+                db,
+                document_kind="final_invoice",
+                reference_date=issue_date,
+            )
+            generated_invoice = Invoice(
+                invoice_number=reserved_sequence.invoice_number,
+                variable_symbol=reserved_sequence.variable_symbol,
+                issue_date=issue_date,
+                due_date=due_date,
+                issuer_name=primary_source.issuer_name,
+                issuer_address=primary_source.issuer_address,
+                issuer_city=primary_source.issuer_city,
+                issuer_zip=primary_source.issuer_zip,
+                issuer_ico=primary_source.issuer_ico,
+                issuer_dic=primary_source.issuer_dic,
+                issuer_data_box=primary_source.issuer_data_box,
+                customer_name=primary_source.customer_name,
+                customer_email=primary_source.customer_email,
+                customer_phone=primary_source.customer_phone,
+                customer_address=primary_source.customer_address,
+                customer_ico=primary_source.customer_ico,
+                customer_dic=primary_source.customer_dic,
+                note=resolved_note,
+                document_kind="final_invoice",
+                business_mode=primary_source.business_mode,
+                tax_mode=primary_source.tax_mode,
+                currency=primary_source.currency,
+                subtotal=totals.subtotal,
+                vat_rate=totals.vat_rate,
+                vat_amount=totals.vat_amount,
+                total=totals.total,
+                status="issued",
+                reverse_charge_reason=totals.reverse_charge_reason,
+                reverse_charge_text=totals.reverse_charge_text,
+                payment_method=primary_source.payment_method,
+                bank_account_number=primary_source.bank_account_number,
+                bank_account_prefix=primary_source.bank_account_prefix,
+                bank_code=primary_source.bank_code,
+                bank_iban=primary_source.bank_iban,
+            )
+            generated_invoice.items = [
+                InvoiceItem(
+                    description=item.description,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    line_total=item.line_total,
+                )
+                for item in prepared_items
+            ]
+            db.add(generated_invoice)
+            db.flush()
+            db.add_all(
+                [
+                    InvoiceDocumentRelation(
+                        source_invoice_id=source_invoice.id,
+                        target_invoice_id=generated_invoice.id,
+                        source_payment_id=None,
+                        relation_type=RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+                    )
+                    for source_invoice in source_invoices
+                ]
+            )
+            db.commit()
+            created_invoice = get_invoice_detail(db, generated_invoice.id)
+            _cache_invoice_nonfatal(created_invoice)
+            return created_invoice
+        except IntegrityError as exc:
+            db.rollback()
+            if any(_final_invoice_relation_exists(db, source_invoice_id=invoice.id) for invoice in source_invoices):
+                raise InvoiceValidationError("K některé z vybraných proforem už byla vytvořena konečná faktura.") from exc
+            if attempt > 0:
+                raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc
+
+    raise InvoiceValidationError("Konečnou fakturu se nepodařilo bezpečně vytvořit.")
+
+
 def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
     invoice = get_invoice_detail(db, invoice_id)
     amount = _quantize_money(Decimal(payload.amount))
@@ -474,6 +575,15 @@ def _prepare_invoice_item(item) -> PreparedInvoiceItem:
     )
 
 
+def _build_prepared_item_from_snapshot(item: InvoiceItem) -> PreparedInvoiceItem:
+    return PreparedInvoiceItem(
+        description=item.description.strip(),
+        quantity=_quantize_quantity(Decimal(item.quantity)),
+        unit_price=_quantize_money(Decimal(item.unit_price)),
+        line_total=_quantize_money(Decimal(item.line_total)),
+    )
+
+
 def _build_tax_document_item(source_invoice: Invoice, payment_amount: Decimal) -> PreparedInvoiceItem:
     net_amount = _derive_tax_document_net_amount(
         tax_mode=source_invoice.tax_mode,
@@ -485,6 +595,58 @@ def _build_tax_document_item(source_invoice: Invoice, payment_amount: Decimal) -
         quantity=Decimal("1.000"),
         unit_price=net_amount,
         line_total=net_amount,
+    )
+
+
+def _build_final_invoice_items(source_invoices: list[Invoice]) -> list[PreparedInvoiceItem]:
+    prepared_items: list[PreparedInvoiceItem] = []
+    total_gross_amount = Decimal("0.00")
+    total_paid_advances = Decimal("0.00")
+
+    for invoice in source_invoices:
+        total_gross_amount += _quantize_money(Decimal(invoice.total))
+        prepared_items.extend(_build_prepared_item_from_snapshot(item) for item in invoice.items)
+        total_paid_advances += _sum_invoice_payments(invoice)
+
+    total_gross_amount = _quantize_money(total_gross_amount)
+    total_paid_advances = _quantize_money(total_paid_advances)
+    if total_paid_advances > total_gross_amount:
+        raise InvoiceValidationError("Součet uhrazených záloh nesmí překročit celkovou částku zdrojových proforem.")
+
+    if total_paid_advances > Decimal("0.00"):
+        advance_reference = ", ".join(invoice.invoice_number for invoice in source_invoices)
+        prepared_items.append(
+            _build_final_invoice_advance_item(
+                tax_mode=source_invoices[0].tax_mode,
+                vat_rate=Decimal(source_invoices[0].vat_rate) if source_invoices[0].vat_rate is not None else None,
+                paid_advances=total_paid_advances,
+                source_invoice_numbers=advance_reference,
+            )
+        )
+    return prepared_items
+
+
+def _build_final_invoice_advance_item(
+    *,
+    tax_mode: str,
+    vat_rate: Decimal | None,
+    paid_advances: Decimal,
+    source_invoice_numbers: str,
+) -> PreparedInvoiceItem:
+    if tax_mode == "reverse_charge":
+        advance_net_amount = paid_advances
+    else:
+        advance_net_amount = _derive_tax_document_net_amount(
+            tax_mode=tax_mode,
+            vat_rate=vat_rate,
+            payment_amount=paid_advances,
+        )
+    negative_amount = _quantize_money(advance_net_amount * Decimal("-1"))
+    return PreparedInvoiceItem(
+        description=f"Odečtené uhrazené zálohy k proformám {source_invoice_numbers}",
+        quantity=Decimal("1.000"),
+        unit_price=negative_amount,
+        line_total=negative_amount,
     )
 
 
@@ -690,7 +852,11 @@ def _ensure_manual_document_creation_allowed(document_kind: str) -> None:
     metadata = get_document_kind_metadata(document_kind)
     if metadata.allows_manual_create:
         return
-    raise InvoiceValidationError("Daňový doklad nelze vytvořit ručně. Vytvořte jej z platby proformy.")
+    if document_kind == "tax_document":
+        raise InvoiceValidationError("Daňový doklad nelze vytvořit ručně. Vytvořte jej z platby proformy.")
+    if document_kind == "final_invoice":
+        raise InvoiceValidationError("Konečnou fakturu nelze vytvořit ručně. Vytvořte ji ze zdrojových proforem.")
+    raise InvoiceValidationError(f"Typ dokladu {metadata.internal_label} nelze vytvořit ručně.")
 
 
 def _tax_document_relation_exists(db: Session, *, source_payment_id: int) -> bool:
@@ -703,6 +869,98 @@ def _tax_document_relation_exists(db: Session, *, source_payment_id: int) -> boo
         .first()
     )
     return relation is not None
+
+
+def _final_invoice_relation_exists(db: Session, *, source_invoice_id: int) -> bool:
+    relation = (
+        db.query(InvoiceDocumentRelation.id)
+        .filter(
+            InvoiceDocumentRelation.source_invoice_id == source_invoice_id,
+            InvoiceDocumentRelation.relation_type == RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+        )
+        .first()
+    )
+    return relation is not None
+
+
+def _sum_invoice_payments(invoice: Invoice) -> Decimal:
+    return _quantize_money(sum((Decimal(payment.amount) for payment in invoice.payments), Decimal("0.00")))
+
+
+def _validate_final_invoice_source_invoices(source_invoices: list[Invoice]) -> None:
+    primary_source = source_invoices[0]
+    primary_customer_snapshot = _build_customer_snapshot_signature(primary_source)
+    primary_currency = (primary_source.currency or "").strip().upper()
+    primary_tax_signature = _build_invoice_tax_signature(primary_source)
+    primary_issuer_signature = _build_invoice_issuer_signature(primary_source)
+    primary_payment_signature = _build_invoice_payment_signature(primary_source)
+
+    for source_invoice in source_invoices:
+        if normalize_document_kind(source_invoice.document_kind) != "proforma":
+            raise InvoiceValidationError("Konečnou fakturu lze vytvořit pouze z proformy.")
+        if _build_customer_snapshot_signature(source_invoice) != primary_customer_snapshot:
+            raise InvoiceValidationError("Zdrojové proformy musí mít shodného odběratele.")
+        if (source_invoice.currency or "").strip().upper() != primary_currency:
+            raise InvoiceValidationError("Zdrojové proformy musí mít shodnou měnu.")
+        if _build_invoice_tax_signature(source_invoice) != primary_tax_signature:
+            raise InvoiceValidationError("Zdrojové proformy musí mít shodné daňové nastavení.")
+        if _build_invoice_issuer_signature(source_invoice) != primary_issuer_signature:
+            raise InvoiceValidationError("Zdrojové proformy musí mít shodné dodavatelské údaje.")
+        if _build_invoice_payment_signature(source_invoice) != primary_payment_signature:
+            raise InvoiceValidationError("Zdrojové proformy musí mít shodné platební údaje.")
+
+
+def _ensure_final_invoice_sources_are_available(db: Session, source_invoice_ids: list[int]) -> None:
+    already_settled = [
+        source_invoice_id
+        for source_invoice_id in source_invoice_ids
+        if _final_invoice_relation_exists(db, source_invoice_id=source_invoice_id)
+    ]
+    if already_settled:
+        raise InvoiceValidationError("K některé z vybraných proforem už byla vytvořena konečná faktura.")
+
+
+def _build_customer_snapshot_signature(invoice: Invoice) -> tuple[str | None, ...]:
+    return (
+        invoice.customer_name,
+        invoice.customer_email,
+        invoice.customer_phone,
+        invoice.customer_address,
+        invoice.customer_ico,
+        invoice.customer_dic,
+    )
+
+
+def _build_invoice_tax_signature(invoice: Invoice) -> tuple[str | None, ...]:
+    return (
+        invoice.business_mode,
+        invoice.tax_mode,
+        str(invoice.vat_rate) if invoice.vat_rate is not None else None,
+        invoice.reverse_charge_reason,
+        invoice.reverse_charge_text,
+    )
+
+
+def _build_invoice_issuer_signature(invoice: Invoice) -> tuple[str | None, ...]:
+    return (
+        invoice.issuer_name,
+        invoice.issuer_address,
+        invoice.issuer_city,
+        invoice.issuer_zip,
+        invoice.issuer_ico,
+        invoice.issuer_dic,
+        invoice.issuer_data_box,
+    )
+
+
+def _build_invoice_payment_signature(invoice: Invoice) -> tuple[str | None, ...]:
+    return (
+        invoice.payment_method,
+        invoice.bank_account_number,
+        invoice.bank_account_prefix,
+        invoice.bank_code,
+        invoice.bank_iban,
+    )
 
 
 def _update_existing_invoice(

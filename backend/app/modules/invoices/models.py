@@ -6,6 +6,7 @@ from sqlalchemy.sql import func
 from backend.app.db import Base
 
 RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT = "tax_document_for_payment"
+RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA = "final_invoice_for_proforma"
 
 
 class Invoice(Base):
@@ -108,7 +109,7 @@ class InvoiceDocumentRelation(Base):
     id = Column(Integer, primary_key=True, index=True)
     source_invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
     target_invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_payment_id = Column(Integer, ForeignKey("invoice_payments.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_payment_id = Column(Integer, ForeignKey("invoice_payments.id", ondelete="CASCADE"), nullable=True, index=True)
     relation_type = Column(String(64), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
