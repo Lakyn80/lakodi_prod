@@ -108,6 +108,26 @@ def _vytvor_opravny_doklad(source_invoice_id: int, payload: dict | None = None) 
     return response.json()
 
 
+def _vytvor_subjekt(payload: dict | None = None) -> dict:
+    _login_admin()
+    subject_payload = {
+        "name": "Jan Novák",
+        "email": "jan.subject@example.com",
+        "phone": "+420123456789",
+        "address": "Praha 10",
+        "ico": "12345678",
+        "dic": "CZ12345678",
+        "data_box": "abcd123",
+        "country": "Česká republika",
+        "note": "VIP zákazník",
+    }
+    if payload:
+        subject_payload.update(payload)
+    response = client.post("/api/admin/invoices/subjects", json=subject_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
 def test_vytvoreni_seznam_a_detail_faktury() -> None:
     _login_admin()
 
@@ -207,6 +227,72 @@ def test_vytvoreni_seznam_a_detail_faktury() -> None:
     assert detail["remaining_amount"] == 9922.0
 
 
+def test_vytvoreni_faktury_se_subject_id_zkopiruje_snapshot_subjektu() -> None:
+    subject = _vytvor_subjekt(
+        {
+            "name": "Master Subject",
+            "email": "master@example.com",
+            "phone": "+420111222333",
+            "address": "Brno 1",
+            "ico": "99999999",
+            "dic": "CZ99999999",
+        }
+    )
+
+    invoice = _vytvor_fakturu(
+        {
+            "subject_id": subject["id"],
+            "customer_name": None,
+            "customer_email": None,
+            "customer_address": None,
+            "customer_phone": None,
+            "customer_ico": None,
+            "customer_dic": None,
+        }
+    )
+
+    assert invoice["subject_id"] == subject["id"]
+    assert invoice["customer_name"] == "Master Subject"
+    assert invoice["customer_email"] == "master@example.com"
+    assert invoice["customer_phone"] == "+420111222333"
+    assert invoice["customer_address"] == "Brno 1"
+    assert invoice["customer_ico"] == "99999999"
+    assert invoice["customer_dic"] == "CZ99999999"
+
+
+def test_vytvoreni_faktury_se_subject_id_prepise_explicitni_customer_fields_snapshotem_subjektu() -> None:
+    subject = _vytvor_subjekt(
+        {
+            "name": "Registry Winner",
+            "email": "winner@example.com",
+            "phone": "+420555666777",
+            "address": "Ostrava 8",
+            "ico": "55555555",
+            "dic": "CZ55555555",
+        }
+    )
+
+    invoice = _vytvor_fakturu(
+        {
+            "subject_id": subject["id"],
+            "customer_name": "Ignored Name",
+            "customer_email": "ignored@example.com",
+            "customer_phone": "+420000000000",
+            "customer_address": "Ignored Address",
+            "customer_ico": "00000000",
+            "customer_dic": "CZ00000000",
+        }
+    )
+
+    assert invoice["subject_id"] == subject["id"]
+    assert invoice["customer_name"] == "Registry Winner"
+    assert invoice["customer_email"] == "winner@example.com"
+    assert invoice["customer_phone"] == "+420555666777"
+    assert invoice["customer_address"] == "Ostrava 8"
+    assert invoice["customer_ico"] == "55555555"
+    assert invoice["customer_dic"] == "CZ55555555"
+
+
 def test_faktura_v_rezimu_prenesene_danove_povinnosti() -> None:
     _login_admin()
 
@@ -281,6 +367,276 @@ def test_nastaveni_fakturace_vraci_defaultni_hodnoty() -> None:
         "bank_iban": "CZ9108000000005997826359",
         "account_label": "5997826359/0800",
     }
+
+
+def test_vytvoreni_subjektu_funguje() -> None:
+    subject = _vytvor_subjekt()
+
+    assert subject["id"] > 0
+    assert subject["name"] == "Jan Novák"
+    assert subject["email"] == "jan.subject@example.com"
+    assert subject["phone"] == "+420123456789"
+    assert subject["address"] == "Praha 10"
+    assert subject["ico"] == "12345678"
+    assert subject["dic"] == "CZ12345678"
+    assert subject["data_box"] == "abcd123"
+    assert subject["country"] == "Česká republika"
+    assert subject["note"] == "VIP zákazník"
+
+
+def test_list_subjektu_funguje() -> None:
+    first = _vytvor_subjekt({"name": "Jan Novák", "email": "list1@example.com"})
+    second = _vytvor_subjekt({"name": "Petr Svoboda", "email": "list2@example.com"})
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/subjects")
+
+    assert response.status_code == 200
+    listed = response.json()
+    assert len(listed) == 2
+    assert listed[0]["id"] == second["id"]
+    assert listed[1]["id"] == first["id"]
+
+
+def test_search_subjektu_podle_name_email_ico_dic_funguje() -> None:
+    _vytvor_subjekt({"name": "Autoservis Alfa", "email": "alfa@example.com", "ico": "11111111", "dic": "CZ11111111"})
+    _vytvor_subjekt({"name": "Stavby Beta", "email": "beta@example.com", "ico": "22222222", "dic": "CZ22222222"})
+    _login_admin()
+
+    by_name = client.get("/api/admin/invoices/subjects?search=alfa")
+    by_email = client.get("/api/admin/invoices/subjects?search=beta@example.com")
+    by_ico = client.get("/api/admin/invoices/subjects?search=11111111")
+    by_dic = client.get("/api/admin/invoices/subjects?search=CZ22222222")
+
+    assert by_name.status_code == 200
+    assert by_email.status_code == 200
+    assert by_ico.status_code == 200
+    assert by_dic.status_code == 200
+    assert len(by_name.json()) == 1
+    assert by_name.json()[0]["name"] == "Autoservis Alfa"
+    assert len(by_email.json()) == 1
+    assert by_email.json()[0]["email"] == "beta@example.com"
+    assert len(by_ico.json()) == 1
+    assert by_ico.json()[0]["ico"] == "11111111"
+    assert len(by_dic.json()) == 1
+    assert by_dic.json()[0]["dic"] == "CZ22222222"
+
+
+def test_detail_subjektu_funguje() -> None:
+    subject = _vytvor_subjekt({"name": "Detail Subject", "email": "detail@example.com"})
+    _login_admin()
+
+    response = client.get(f"/api/admin/invoices/subjects/{subject['id']}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == subject["id"]
+    assert response.json()["name"] == "Detail Subject"
+
+
+def test_update_subjektu_funguje() -> None:
+    subject = _vytvor_subjekt()
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/subjects/{subject['id']}",
+        json={
+            "name": "Jan Novák Updated",
+            "email": "updated@example.com",
+            "phone": "+420777888999",
+            "address": "Brno 5",
+            "ico": "87654321",
+            "dic": "CZ87654321",
+            "data_box": "newbox22",
+            "country": "Slovensko",
+            "note": "Aktualizovaný subjekt",
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["name"] == "Jan Novák Updated"
+    assert updated["email"] == "updated@example.com"
+    assert updated["phone"] == "+420777888999"
+    assert updated["address"] == "Brno 5"
+    assert updated["ico"] == "87654321"
+    assert updated["dic"] == "CZ87654321"
+    assert updated["data_box"] == "newbox22"
+    assert updated["country"] == "Slovensko"
+    assert updated["note"] == "Aktualizovaný subjekt"
+
+
+def test_smazani_nepouziteho_subjektu_funguje() -> None:
+    subject = _vytvor_subjekt({"email": "delete@example.com"})
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/subjects/{subject['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "subject_id": subject["id"]}
+
+    detail_response = client.get(f"/api/admin/invoices/subjects/{subject['id']}")
+    assert detail_response.status_code == 404
+    assert detail_response.json() == {"detail": "Subjekt nebyl nalezen."}
+
+
+def test_smazani_subjektu_navazaneho_na_fakturu_je_blokovano() -> None:
+    subject = _vytvor_subjekt({"email": "referenced@example.com"})
+    invoice = _vytvor_fakturu(
+        {
+            "subject_id": subject["id"],
+            "customer_name": None,
+            "customer_email": None,
+            "customer_address": None,
+            "customer_phone": None,
+            "customer_ico": None,
+            "customer_dic": None,
+        }
+    )
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/subjects/{subject['id']}")
+
+    assert invoice["subject_id"] == subject["id"]
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Subjekt nelze smazat, protože je navázaný na existující faktury."}
+
+
+def test_update_faktury_se_subject_id_zkopiruje_snapshot_noveho_subjektu() -> None:
+    first_subject = _vytvor_subjekt(
+        {
+            "name": "First Subject",
+            "email": "first.subject@example.com",
+            "address": "Plzeň 3",
+            "ico": "10101010",
+            "dic": "CZ10101010",
+        }
+    )
+    second_subject = _vytvor_subjekt(
+        {
+            "name": "Second Subject",
+            "email": "second.subject@example.com",
+            "phone": "+420999888777",
+            "address": "Liberec 7",
+            "ico": "20202020",
+            "dic": "CZ20202020",
+        }
+    )
+    invoice = _vytvor_fakturu(
+        {
+            "subject_id": first_subject["id"],
+            "customer_name": None,
+            "customer_email": None,
+            "customer_address": None,
+            "customer_phone": None,
+            "customer_ico": None,
+            "customer_dic": None,
+        }
+    )
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/{invoice['id']}",
+        json={
+            "subject_id": second_subject["id"],
+            "invoice_number": invoice["invoice_number"],
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+            "customer_name": None,
+            "customer_email": None,
+            "customer_phone": None,
+            "customer_address": None,
+            "customer_ico": None,
+            "customer_dic": None,
+            "note": "Ruční servisní faktura",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Diagnostika", "quantity": 1, "unit_price": 1200},
+                {"description": "Oprava převodovky", "quantity": 2, "unit_price": 3500},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["subject_id"] == second_subject["id"]
+    assert updated["customer_name"] == "Second Subject"
+    assert updated["customer_email"] == "second.subject@example.com"
+    assert updated["customer_phone"] == "+420999888777"
+    assert updated["customer_address"] == "Liberec 7"
+    assert updated["customer_ico"] == "20202020"
+    assert updated["customer_dic"] == "CZ20202020"
+
+
+def test_uprava_subjektu_po_vystaveni_faktury_nemeni_historicky_snapshot() -> None:
+    subject = _vytvor_subjekt(
+        {
+            "name": "Historic Subject",
+            "email": "historic@example.com",
+            "address": "Praha 1",
+        }
+    )
+    invoice = _vytvor_fakturu(
+        {
+            "subject_id": subject["id"],
+            "customer_name": None,
+            "customer_email": None,
+            "customer_address": None,
+            "customer_phone": None,
+            "customer_ico": None,
+            "customer_dic": None,
+        }
+    )
+    _login_admin()
+
+    update_subject_response = client.put(
+        f"/api/admin/invoices/subjects/{subject['id']}",
+        json={
+            "name": "Historic Subject Updated",
+            "email": "updated-historic@example.com",
+            "phone": "+420777111222",
+            "address": "Brno 9",
+            "ico": "30303030",
+            "dic": "CZ30303030",
+            "data_box": "historic01",
+            "country": "Česká republika",
+            "note": "Updated note",
+        },
+    )
+    assert update_subject_response.status_code == 200
+
+    detail_response = client.get(f"/api/admin/invoices/{invoice['id']}")
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["subject_id"] == subject["id"]
+    assert detail["customer_name"] == "Historic Subject"
+    assert detail["customer_email"] == "historic@example.com"
+    assert detail["customer_address"] == "Praha 1"
+
+
+def test_detail_a_list_faktury_zustavaji_kompatibilni_a_obsahuji_subject_id() -> None:
+    subject = _vytvor_subjekt({"email": "list-detail-subject@example.com"})
+    invoice = _vytvor_fakturu(
+        {
+            "subject_id": subject["id"],
+            "customer_name": None,
+            "customer_email": None,
+            "customer_address": None,
+            "customer_phone": None,
+            "customer_ico": None,
+            "customer_dic": None,
+        }
+    )
+
+    list_response = client.get("/api/admin/invoices")
+    detail_response = client.get(f"/api/admin/invoices/{invoice['id']}")
+
+    assert list_response.status_code == 200
+    assert detail_response.status_code == 200
+    assert list_response.json()[0]["subject_id"] == subject["id"]
+    assert detail_response.json()["subject_id"] == subject["id"]
 
 
 def test_ulozeni_nastaveni_fakturace_se_propise_do_novych_faktur() -> None:

@@ -25,6 +25,10 @@ from backend.app.modules.invoices.schemas import (
     InvoiceDetailResponse,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
+    InvoiceSubjectCreate,
+    InvoiceSubjectDeleteResponse,
+    InvoiceSubjectResponse,
+    InvoiceSubjectUpdate,
     InvoiceSettingsResponse,
     InvoiceSettingsUpdate,
     InvoiceSendEmailRequest,
@@ -35,21 +39,27 @@ from backend.app.modules.invoices.schemas import (
 from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
     InvoicePaymentNotFoundError,
+    InvoiceSubjectNotFoundError,
     InvoiceValidationError,
     add_invoice_payment,
+    create_invoice_subject,
     create_correction_from_invoice,
     create_invoice,
     create_final_invoice_from_proformas,
     create_tax_document_from_proforma_payment,
+    delete_invoice_subject,
     delete_invoice_payment,
     get_document_creation_defaults,
     generate_invoice_pdf,
     get_invoice_detail,
     get_invoice_settings,
+    get_invoice_subject_detail,
+    list_invoice_subjects,
     list_invoice_payments,
     list_invoices,
     save_invoice_settings,
     send_invoice_email,
+    update_invoice_subject,
     update_invoice,
 )
 
@@ -104,6 +114,69 @@ def admin_create_invoice(
 ):
     try:
         return create_invoice(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/subjects", response_model=list[InvoiceSubjectResponse])
+def admin_list_invoice_subjects(
+    search: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    return list_invoice_subjects(db, search=search)
+
+
+@router.post("/subjects", response_model=InvoiceSubjectResponse)
+def admin_create_invoice_subject(
+    body: InvoiceSubjectCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_invoice_subject(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/subjects/{subject_id}", response_model=InvoiceSubjectResponse)
+def admin_get_invoice_subject(
+    subject_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_subject_detail(db, subject_id)
+    except InvoiceSubjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/subjects/{subject_id}", response_model=InvoiceSubjectResponse)
+def admin_update_invoice_subject(
+    subject_id: int,
+    body: InvoiceSubjectUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return update_invoice_subject(db, subject_id, body)
+    except InvoiceSubjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/subjects/{subject_id}", response_model=InvoiceSubjectDeleteResponse)
+def admin_delete_invoice_subject(
+    subject_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        deleted_subject_id = delete_invoice_subject(db, subject_id)
+        return {"ok": True, "subject_id": deleted_subject_id}
+    except InvoiceSubjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

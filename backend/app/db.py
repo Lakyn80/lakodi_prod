@@ -62,6 +62,7 @@ def _ensure_invoice_columns():
             "bank_account_prefix": "ALTER TABLE invoices ADD COLUMN bank_account_prefix VARCHAR(16)",
             "bank_code": "ALTER TABLE invoices ADD COLUMN bank_code VARCHAR(16) NOT NULL DEFAULT '0800'",
             "bank_iban": "ALTER TABLE invoices ADD COLUMN bank_iban VARCHAR(34) NOT NULL DEFAULT 'CZ9108000000005997826359'",
+            "subject_id": "ALTER TABLE invoices ADD COLUMN subject_id INTEGER",
         }
         for col, sql in add_map.items():
             if col not in columns:
@@ -90,6 +91,46 @@ def _ensure_invoice_columns():
                 "ON invoices (variable_symbol)"
             )
         )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoices_subject_id "
+                "ON invoices (subject_id)"
+            )
+        )
+
+
+def _ensure_invoice_subjects_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_subjects'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_subjects)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "name": "ALTER TABLE invoice_subjects ADD COLUMN name VARCHAR(256)",
+            "email": "ALTER TABLE invoice_subjects ADD COLUMN email VARCHAR(256)",
+            "phone": "ALTER TABLE invoice_subjects ADD COLUMN phone VARCHAR(64)",
+            "address": "ALTER TABLE invoice_subjects ADD COLUMN address VARCHAR(256)",
+            "ico": "ALTER TABLE invoice_subjects ADD COLUMN ico VARCHAR(32)",
+            "dic": "ALTER TABLE invoice_subjects ADD COLUMN dic VARCHAR(32)",
+            "data_box": "ALTER TABLE invoice_subjects ADD COLUMN data_box VARCHAR(64)",
+            "country": "ALTER TABLE invoice_subjects ADD COLUMN country VARCHAR(128)",
+            "note": "ALTER TABLE invoice_subjects ADD COLUMN note TEXT",
+            "created_at": "ALTER TABLE invoice_subjects ADD COLUMN created_at DATETIME",
+            "updated_at": "ALTER TABLE invoice_subjects ADD COLUMN updated_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_subjects_name ON invoice_subjects (name)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_subjects_email ON invoice_subjects (email)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_subjects_ico ON invoice_subjects (ico)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_subjects_dic ON invoice_subjects (dic)"))
 
 
 def _ensure_invoice_settings_columns():
@@ -251,6 +292,7 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     _ensure_zakazky_columns()
     _ensure_invoice_columns()
+    _ensure_invoice_subjects_table()
     _ensure_invoice_settings_columns()
     _ensure_invoice_sequence_state_columns()
     _ensure_invoice_document_relations_table()

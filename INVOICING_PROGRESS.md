@@ -381,3 +381,49 @@
   - This is a minimal backend correction foundation, not a full legal/accounting implementation of partial or jurisdiction-specific correction rules.
   - Generated correction documents currently reuse the generic PDF/email wording (`Faktura`) and existing layout.
   - Correction content is implemented as a full-document negative reversal only; partial corrections remain intentionally unsupported in this phase.
+
+## Úkol 8 Backend customer / subject registry
+
+- Date: 2026-06-26
+- Goal: Add a reusable backend customer/subject master registry for invoicing while preserving historical invoice customer snapshots and all existing invoice/proforma/tax/final/correction behavior.
+- Scope: Backend invoice subject persistence, backend invoice schemas/service/router logic, invoice create/update integration, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added new table `invoice_subjects`.
+  - Added nullable foreign key column `invoices.subject_id`.
+  - Added safe SQLite helper/backfill support for the new table and `subject_id` column.
+  - Existing invoice customer snapshot fields remain unchanged and existing invoices keep `subject_id = null`.
+- Backend changes:
+  - Added persistent `InvoiceSubject` registry model for reusable invoice customers/subjects.
+  - Added admin-only subject CRUD endpoints under `/api/admin/invoices/subjects`.
+  - Added optional `subject_id` support to invoice create/update/list/detail schemas.
+  - Invoice create/update now supports a clear rule:
+    - if `subject_id` is provided, subject snapshot wins and is copied into invoice customer snapshot fields
+    - manual customer snapshot creation/update without `subject_id` remains supported
+  - Updating a subject does not retroactively modify existing invoice snapshots.
+  - Subject deletion is blocked when the subject is already referenced by invoices.
+  - Existing ARES, numbering, PDF, email, export, and document-kind behavior remains compatible.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "subjekt or subject" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "subjekt or subject" -x` -> `12 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `99 passed`
+  - `python -m pytest -q` -> `107 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice subject registry`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - Subject master records are reusable convenience data only; issued invoice customer snapshot fields remain the historical source of truth.
+  - The current invoice model does not store subject `country`, `data_box`, or subject-level notes in invoice snapshots, so those values remain on the master record only.
+  - `subject_id wins` is intentionally enforced for safe deterministic behavior when both subject and manual customer fields are sent together.

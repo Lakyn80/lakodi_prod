@@ -49,10 +49,11 @@ class InvoiceCreate(BaseModel):
     issue_date: date
     due_date: date
 
-    customer_name: str = Field(min_length=1, max_length=256)
-    customer_email: str = Field(min_length=1, max_length=256)
+    subject_id: int | None = Field(default=None)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=256)
+    customer_email: str | None = Field(default=None, min_length=1, max_length=256)
     customer_phone: str | None = Field(default=None, max_length=64)
-    customer_address: str = Field(max_length=256)
+    customer_address: str | None = Field(default=None, max_length=256)
     customer_ico: str | None = Field(default=None, max_length=32)
     customer_dic: str | None = Field(default=None, max_length=32)
 
@@ -65,9 +66,20 @@ class InvoiceCreate(BaseModel):
 
     items: list[InvoiceItemCreate]
 
+    @field_validator("subject_id")
+    @classmethod
+    def validate_subject_id(cls, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("ID subjektu musí být kladné číslo.")
+        return value
+
     @field_validator("customer_name", "customer_email", "customer_address")
     @classmethod
-    def validate_required_text(cls, value: str) -> str:
+    def validate_required_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("Toto pole je povinné.")
@@ -132,6 +144,18 @@ class InvoiceCreate(BaseModel):
             raise ValueError("Datum splatnosti nemůže být dříve než datum vystavení.")
         if self.tax_mode == "standard" and self.vat_rate is None:
             raise ValueError("Pro běžný režim DPH musíte vyplnit sazbu DPH.")
+        if self.subject_id is None:
+            missing_fields = [
+                field_name
+                for field_name, field_value in (
+                    ("customer_name", self.customer_name),
+                    ("customer_email", self.customer_email),
+                    ("customer_address", self.customer_address),
+                )
+                if field_value is None
+            ]
+            if missing_fields:
+                raise ValueError("Bez subject_id musíte vyplnit customer_name, customer_email a customer_address.")
         return self
 
 
@@ -219,6 +243,7 @@ class InvoiceSummaryResponse(BaseModel):
     customer_address: str | None
     customer_ico: str | None
     customer_dic: str | None
+    subject_id: int | None
 
     note: str | None
 
@@ -305,6 +330,55 @@ class InvoiceSendEmailResponse(BaseModel):
     invoice_number: str
     sent_to: str
     copied_to: list[str] = Field(default_factory=list)
+
+
+class InvoiceSubjectBase(BaseModel):
+    name: str = Field(min_length=1, max_length=256)
+    email: str = Field(min_length=1, max_length=256)
+    phone: str | None = Field(default=None, max_length=64)
+    address: str = Field(min_length=1, max_length=256)
+    ico: str | None = Field(default=None, max_length=32)
+    dic: str | None = Field(default=None, max_length=32)
+    data_box: str | None = Field(default=None, max_length=64)
+    country: str | None = Field(default=None, max_length=128)
+    note: str | None = None
+
+    @field_validator("name", "email", "address")
+    @classmethod
+    def validate_required_subject_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Toto pole je povinné.")
+        return cleaned
+
+    @field_validator("phone", "ico", "dic", "data_box", "country", "note")
+    @classmethod
+    def normalize_optional_subject_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceSubjectCreate(InvoiceSubjectBase):
+    pass
+
+
+class InvoiceSubjectUpdate(InvoiceSubjectBase):
+    pass
+
+
+class InvoiceSubjectResponse(InvoiceSubjectBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvoiceSubjectDeleteResponse(BaseModel):
+    ok: Literal[True]
+    subject_id: int
 
 
 class FinalInvoiceCreateRequest(BaseModel):

@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from backend.app.modules.invoices.document_types import (
@@ -23,6 +24,7 @@ from backend.app.modules.invoices.models import (
     InvoiceDocumentRelation,
     InvoiceItem,
     InvoicePayment,
+    InvoiceSubject,
 )
 from backend.app.modules.invoices.numbering_service import (
     InvoiceNumberingError,
@@ -45,6 +47,8 @@ from backend.app.modules.invoices.schemas import (
     FinalInvoiceCreateRequest,
     InvoiceCreate,
     InvoicePaymentCreate,
+    InvoiceSubjectCreate,
+    InvoiceSubjectUpdate,
     InvoiceSettingsUpdate,
     InvoiceUpdate,
 )
@@ -68,6 +72,10 @@ class InvoicePaymentNotFoundError(LookupError):
     """Platba faktury neexistuje."""
 
 
+class InvoiceSubjectNotFoundError(LookupError):
+    """Subjekt faktury neexistuje."""
+
+
 @dataclass(frozen=True)
 class ReverseChargeTexts:
     reason: str
@@ -84,7 +92,7 @@ REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
 def list_invoices(db: Session) -> list[Invoice]:
     invoices = (
         db.query(Invoice)
-        .options(selectinload(Invoice.payments))
+        .options(selectinload(Invoice.payments), selectinload(Invoice.subject))
         .order_by(Invoice.id.desc())
         .all()
     )
@@ -94,7 +102,7 @@ def list_invoices(db: Session) -> list[Invoice]:
 def get_invoice_detail(db: Session, invoice_id: int) -> Invoice:
     invoice = (
         db.query(Invoice)
-        .options(selectinload(Invoice.items), selectinload(Invoice.payments))
+        .options(selectinload(Invoice.items), selectinload(Invoice.payments), selectinload(Invoice.subject))
         .filter(Invoice.id == invoice_id)
         .first()
     )
@@ -160,8 +168,77 @@ def save_invoice_settings(db: Session, payload: InvoiceSettingsUpdate) -> Invoic
         raise InvoiceValidationError(str(exc)) from exc
 
 
+def list_invoice_subjects(db: Session, search: str | None = None) -> list[InvoiceSubject]:
+    query = db.query(InvoiceSubject)
+    if search:
+        cleaned = search.strip()
+        if cleaned:
+            pattern = f"%{cleaned}%"
+            query = query.filter(
+                or_(
+                    InvoiceSubject.name.ilike(pattern),
+                    InvoiceSubject.email.ilike(pattern),
+                    InvoiceSubject.ico.ilike(pattern),
+                    InvoiceSubject.dic.ilike(pattern),
+                )
+            )
+    return query.order_by(InvoiceSubject.id.desc()).all()
+
+
+def get_invoice_subject_detail(db: Session, subject_id: int) -> InvoiceSubject:
+    subject = db.query(InvoiceSubject).filter(InvoiceSubject.id == subject_id).first()
+    if subject is None:
+        raise InvoiceSubjectNotFoundError("Subjekt nebyl nalezen.")
+    return subject
+
+
+def create_invoice_subject(db: Session, payload: InvoiceSubjectCreate) -> InvoiceSubject:
+    subject = InvoiceSubject(
+        name=payload.name,
+        email=payload.email,
+        phone=payload.phone,
+        address=payload.address,
+        ico=payload.ico,
+        dic=payload.dic,
+        data_box=payload.data_box,
+        country=payload.country,
+        note=payload.note,
+    )
+    db.add(subject)
+    db.commit()
+    return get_invoice_subject_detail(db, subject.id)
+
+
+def update_invoice_subject(db: Session, subject_id: int, payload: InvoiceSubjectUpdate) -> InvoiceSubject:
+    subject = get_invoice_subject_detail(db, subject_id)
+    subject.name = payload.name
+    subject.email = payload.email
+    subject.phone = payload.phone
+    subject.address = payload.address
+    subject.ico = payload.ico
+    subject.dic = payload.dic
+    subject.data_box = payload.data_box
+    subject.country = payload.country
+    subject.note = payload.note
+    db.add(subject)
+    db.commit()
+    return get_invoice_subject_detail(db, subject.id)
+
+
+def delete_invoice_subject(db: Session, subject_id: int) -> int:
+    subject = get_invoice_subject_detail(db, subject_id)
+    is_referenced = db.query(Invoice.id).filter(Invoice.subject_id == subject.id).first() is not None
+    if is_referenced:
+        raise InvoiceValidationError("Subjekt nelze smazat, protože je navázaný na existující faktury.")
+    db.delete(subject)
+    db.commit()
+    return subject_id
+
+
 def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
     settings = get_invoice_settings(db)
+    subject = _resolve_invoice_subject(db, payload.subject_id)
+    customer_snapshot = _resolve_customer_snapshot_for_create(payload, subject)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
     totals = _calculate_totals(
         tax_mode=payload.tax_mode,
@@ -172,6 +249,8 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
         return _create_invoice_with_reserved_sequence(
             db=db,
             payload=payload,
+            subject=subject,
+            customer_snapshot=customer_snapshot,
             issuer=settings.issuer_profile,
             payment_settings=settings,
             prepared_items=prepared_items,
@@ -184,6 +263,8 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
 
 def update_invoice(db: Session, invoice_id: int, payload: InvoiceUpdate) -> Invoice:
     invoice = get_invoice_detail(db, invoice_id)
+    subject = _resolve_invoice_subject(db, payload.subject_id) if "subject_id" in payload.model_fields_set else None
+    customer_snapshot = _resolve_customer_snapshot_for_update(invoice=invoice, payload=payload, subject=subject)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
     totals = _calculate_totals(
         tax_mode=payload.tax_mode,
@@ -195,6 +276,8 @@ def update_invoice(db: Session, invoice_id: int, payload: InvoiceUpdate) -> Invo
             db=db,
             invoice=invoice,
             payload=payload,
+            subject=subject,
+            customer_snapshot=customer_snapshot,
             prepared_items=prepared_items,
             totals=totals,
         )
@@ -580,6 +663,17 @@ class InvoicePaymentSummary:
     effective_status: str
 
 
+@dataclass(frozen=True)
+class CustomerSnapshot:
+    subject_id: int | None
+    name: str
+    email: str
+    phone: str | None
+    address: str
+    ico: str | None
+    dic: str | None
+
+
 def _normalize_invoice_status(value: str | None) -> str:
     if value in STORED_INVOICE_STATUSES:
         return value
@@ -658,7 +752,73 @@ def _attach_invoice_runtime_state(invoice: Invoice) -> Invoice:
     setattr(invoice, "remaining_amount", summary.remaining_amount)
     setattr(invoice, "payment_status", summary.payment_status)
     setattr(invoice, "effective_status", summary.effective_status)
+    setattr(invoice, "subject_id", getattr(invoice, "subject_id", None))
     return invoice
+
+
+def _resolve_invoice_subject(db: Session, subject_id: int | None) -> InvoiceSubject | None:
+    if subject_id is None:
+        return None
+    subject = db.query(InvoiceSubject).filter(InvoiceSubject.id == subject_id).first()
+    if subject is None:
+        raise InvoiceValidationError("Zvolený subjekt nebyl nalezen.")
+    return subject
+
+
+def _resolve_customer_snapshot_for_create(payload: InvoiceCreate, subject: InvoiceSubject | None) -> CustomerSnapshot:
+    if subject is not None:
+        return _build_customer_snapshot_from_subject(subject)
+    return CustomerSnapshot(
+        subject_id=None,
+        name=payload.customer_name or "",
+        email=payload.customer_email or "",
+        phone=payload.customer_phone,
+        address=payload.customer_address or "",
+        ico=payload.customer_ico,
+        dic=payload.customer_dic,
+    )
+
+
+def _resolve_customer_snapshot_for_update(
+    *,
+    invoice: Invoice,
+    payload: InvoiceUpdate,
+    subject: InvoiceSubject | None,
+) -> CustomerSnapshot:
+    if "subject_id" in payload.model_fields_set and payload.subject_id is not None:
+        assert subject is not None
+        return _build_customer_snapshot_from_subject(subject)
+    if "subject_id" in payload.model_fields_set and payload.subject_id is None:
+        return CustomerSnapshot(
+            subject_id=None,
+            name=payload.customer_name or "",
+            email=payload.customer_email or "",
+            phone=payload.customer_phone,
+            address=payload.customer_address or "",
+            ico=payload.customer_ico,
+            dic=payload.customer_dic,
+        )
+    return CustomerSnapshot(
+        subject_id=invoice.subject_id,
+        name=payload.customer_name or "",
+        email=payload.customer_email or "",
+        phone=payload.customer_phone,
+        address=payload.customer_address or "",
+        ico=payload.customer_ico,
+        dic=payload.customer_dic,
+    )
+
+
+def _build_customer_snapshot_from_subject(subject: InvoiceSubject) -> CustomerSnapshot:
+    return CustomerSnapshot(
+        subject_id=subject.id,
+        name=subject.name,
+        email=subject.email,
+        phone=subject.phone,
+        address=subject.address,
+        ico=subject.ico,
+        dic=subject.dic,
+    )
 
 
 def _prepare_invoice_item(item) -> PreparedInvoiceItem:
@@ -886,6 +1046,8 @@ def _create_invoice_with_reserved_sequence(
     *,
     db: Session,
     payload: InvoiceCreate,
+    subject: InvoiceSubject | None,
+    customer_snapshot: CustomerSnapshot,
     issuer: IssuerProfile,
     payment_settings: InvoicePaymentSettingsProfile,
     prepared_items: list[PreparedInvoiceItem],
@@ -915,12 +1077,13 @@ def _create_invoice_with_reserved_sequence(
                 issuer_ico=issuer.company_ico,
                 issuer_dic=issuer.company_dic,
                 issuer_data_box=issuer.company_data_box,
-                customer_name=payload.customer_name,
-                customer_email=payload.customer_email,
-                customer_phone=payload.customer_phone,
-                customer_address=payload.customer_address,
-                customer_ico=payload.customer_ico,
-                customer_dic=payload.customer_dic,
+                customer_name=customer_snapshot.name,
+                customer_email=customer_snapshot.email,
+                customer_phone=customer_snapshot.phone,
+                customer_address=customer_snapshot.address,
+                customer_ico=customer_snapshot.ico,
+                customer_dic=customer_snapshot.dic,
+                subject_id=subject.id if subject is not None else None,
                 note=resolved_note,
                 document_kind=resolved_document_kind,
                 business_mode=payload.business_mode,
@@ -1112,6 +1275,8 @@ def _update_existing_invoice(
     db: Session,
     invoice: Invoice,
     payload: InvoiceUpdate,
+    subject: InvoiceSubject | None,
+    customer_snapshot: CustomerSnapshot,
     prepared_items: list[PreparedInvoiceItem],
     totals: InvoiceTotals,
 ) -> Invoice:
@@ -1135,14 +1300,16 @@ def _update_existing_invoice(
         invoice.invoice_number = reserved_sequence.invoice_number
         invoice.variable_symbol = reserved_sequence.variable_symbol
         invoice.document_kind = current_document_kind
+        if "subject_id" in payload.model_fields_set:
+            invoice.subject_id = subject.id if subject is not None else None
         invoice.issue_date = payload.issue_date
         invoice.due_date = payload.due_date
-        invoice.customer_name = payload.customer_name
-        invoice.customer_email = payload.customer_email
-        invoice.customer_phone = payload.customer_phone
-        invoice.customer_address = payload.customer_address
-        invoice.customer_ico = payload.customer_ico
-        invoice.customer_dic = payload.customer_dic
+        invoice.customer_name = customer_snapshot.name
+        invoice.customer_email = customer_snapshot.email
+        invoice.customer_phone = customer_snapshot.phone
+        invoice.customer_address = customer_snapshot.address
+        invoice.customer_ico = customer_snapshot.ico
+        invoice.customer_dic = customer_snapshot.dic
         invoice.note = payload.note
         invoice.business_mode = payload.business_mode
         invoice.tax_mode = payload.tax_mode

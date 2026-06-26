@@ -33,6 +33,7 @@ class Invoice(Base):
     customer_address = Column(String(256), nullable=True)
     customer_ico = Column(String(32), nullable=True)
     customer_dic = Column(String(32), nullable=True)
+    subject_id = Column(Integer, ForeignKey("invoice_subjects.id", ondelete="SET NULL"), nullable=True, index=True)
 
     note = Column(Text, nullable=True)
 
@@ -68,6 +69,7 @@ class Invoice(Base):
         cascade="all, delete-orphan",
         order_by="InvoicePayment.paid_at, InvoicePayment.id",
     )
+    subject = relationship("InvoiceSubject", back_populates="invoices")
 
 
 class InvoiceItem(Base):
@@ -152,3 +154,22 @@ class InvoiceSettings(Base):
     bank_iban = Column(String(34), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class InvoiceSubject(Base):
+    __tablename__ = "invoice_subjects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(256), nullable=False, index=True)
+    email = Column(String(256), nullable=False, index=True)
+    phone = Column(String(64), nullable=True)
+    address = Column(String(256), nullable=False)
+    ico = Column(String(32), nullable=True, index=True)
+    dic = Column(String(32), nullable=True, index=True)
+    data_box = Column(String(64), nullable=True)
+    country = Column(String(128), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    invoices = relationship("Invoice", back_populates="subject")
