@@ -495,3 +495,73 @@
   - VAT handling for expenses is currently a simple subtotal-plus-one-rate backend foundation; advanced incoming-tax cases remain a later accounting task.
   - Supplier data is stored directly as historical per-expense snapshot; reusable supplier registry remains intentionally deferred.
   - Expense PDF/email/export generation remains intentionally out of scope in this backend phase.
+
+## Úkol 10 Backend quote / offer foundation
+
+- Date: 2026-06-27
+- Goal: Make `document_kind = quote` safely usable in the backend as a non-payable commercial offer, including quote-specific payment semantics and minimal backend conversion to `invoice` or `proforma`, without changing the frontend and without breaking existing invoice-domain or expense behavior.
+- Scope: Backend invoice relation/index handling, backend quote numbering/update/payment/conversion logic, backend invoice schemas/router logic, backend numbering compatibility fix for year-based updates, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/numbering_service.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - No new tables or columns were added.
+  - Added safe SQLite unique indexes for quote conversion relations in `invoice_document_relations`:
+    - `invoice_from_quote`
+    - `proforma_from_quote`
+- Backend changes:
+  - Enabled safe quote semantics through the existing invoice backend:
+    - quote remains manually creatable through generic invoice create
+    - quote uses its own independent document-kind/year numbering sequence
+    - quote stores issuer/customer/payment snapshots, items, and totals like other invoice-domain documents
+    - quote supports `subject_id` snapshot copying through the existing subject registry flow
+    - quote can be listed, detail-read, updated, PDF-generated, and e-mailed through the existing architecture
+  - Quote payment behavior is now explicitly non-payable:
+    - adding payments to quote is rejected
+    - quote detail/list expose `payment_status = not_payable`
+    - quote never becomes `paid`, `partially_paid`, or `overdue`
+  - Added minimal quote conversion endpoint:
+    - `POST /api/admin/invoices/{quote_id}/convert`
+    - supported targets:
+      - `invoice`
+      - `proforma`
+    - conversion copies issuer/customer/payment snapshots and item rows
+    - conversion uses the target document numbering sequence, not the quote sequence
+    - conversion creates `invoice_document_relations` rows:
+      - `invoice_from_quote`
+      - `proforma_from_quote`
+    - duplicate conversion to the same target kind is blocked
+    - converted quote remains historically unchanged
+    - converted quote is intentionally locked against later edits
+  - Added a safe numbering compatibility fix for update flow of year-based document kinds so unchanged existing numbers no longer get re-prefixed during update.
+  - Preserved existing outgoing invoice/proforma/tax_document/final_invoice/correction flows and existing expense behavior from Úkol 9.
+  - `backend/app/modules/invoices/document_types.py` needed no additional code change because quote metadata already matched the required semantics from the prior document-kind foundation; this task completed the runtime/service behavior around that metadata.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "quote or convert" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "pdf_endpoint or e_mailem" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "quote or convert" -x` -> `16 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "pdf_endpoint or e_mailem" -x` -> `12 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `126 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `126 collected`
+  - `python -m pytest --collect-only -q` -> `134 collected`
+  - `python -m pytest -q` -> `134 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend quote document foundation`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - Quote PDF and email currently reuse the generic invoice wording (`Faktura`) in existing PDF/email flows; this backend task intentionally did not redesign templates or legal labels.
+  - Quote conversion is intentionally minimal and one-way from quote to `invoice`/`proforma`; richer offer lifecycle rules remain a later task.
+  - Converted quotes are intentionally locked against further edits to keep conversion source snapshots stable.

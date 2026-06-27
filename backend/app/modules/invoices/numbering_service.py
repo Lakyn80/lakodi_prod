@@ -154,6 +154,17 @@ def resolve_invoice_sequence_for_update(
         use_legacy_invoice_key=normalized_document_kind == DEFAULT_DOCUMENT_KIND,
     )
     normalized_requested_number = normalize_invoice_number(requested_invoice_number)
+    if normalized_requested_number is None or normalized_requested_number == current_invoice_number:
+        return InvoiceSequencePreview(
+            invoice_number=current_invoice_number,
+            variable_symbol=current_invoice_number,
+            next_numeric_value=state.last_number,
+            padding=max(state.padding, DEFAULT_PADDING),
+            sequence_key=state.sequence_key,
+            document_kind=state.document_kind or normalized_document_kind,
+            sequence_year=state.sequence_year,
+            prefix=state.prefix,
+        )
     resolved_invoice_number = normalized_requested_number or current_invoice_number
     next_numeric_value = int(resolved_invoice_number)
     padding = max(state.padding, len(resolved_invoice_number), DEFAULT_PADDING)

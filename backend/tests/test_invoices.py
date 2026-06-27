@@ -20,6 +20,8 @@ from backend.app.modules.invoices.document_types import get_document_kind_metada
 from backend.app.modules.invoices.models import (
     RELATION_TYPE_CORRECTION_FOR_INVOICE,
     RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+    RELATION_TYPE_INVOICE_FROM_QUOTE,
+    RELATION_TYPE_PROFORMA_FROM_QUOTE,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     InvoiceExpense,
     InvoiceDocumentRelation,
@@ -105,6 +107,16 @@ def _vytvor_konecnou_fakturu(source_proforma_ids: list[int], payload: dict | Non
 def _vytvor_opravny_doklad(source_invoice_id: int, payload: dict | None = None) -> dict:
     _login_admin()
     response = client.post(f"/api/admin/invoices/{source_invoice_id}/correction", json=payload or {})
+    assert response.status_code == 200
+    return response.json()
+
+
+def _preved_quote(quote_id: int, payload: dict | None = None) -> dict:
+    _login_admin()
+    request_payload = {"target_document_kind": "invoice"}
+    if payload:
+        request_payload.update(payload)
+    response = client.post(f"/api/admin/invoices/{quote_id}/convert", json=request_payload)
     assert response.status_code == 200
     return response.json()
 
@@ -962,6 +974,29 @@ def test_defaults_preview_pro_correction_je_oddeleny_od_ostatnich_rad() -> None:
     }
 
 
+def test_defaults_preview_pro_quote_je_oddeleny_od_ostatnich_rad() -> None:
+    _login_admin()
+
+    quote_response = client.get("/api/admin/invoices/defaults?document_kind=quote")
+    invoice_response = client.get("/api/admin/invoices/defaults")
+
+    assert quote_response.status_code == 200
+    assert invoice_response.status_code == 200
+
+    quote_defaults = quote_response.json()
+    invoice_defaults = invoice_response.json()
+    assert quote_defaults["document_kind"] == "quote"
+    assert quote_defaults["suggested_invoice_number"].isdigit()
+    assert quote_defaults["suggested_variable_symbol"].isdigit()
+    assert quote_defaults["suggested_invoice_number"].startswith("5")
+    assert quote_defaults["suggested_variable_symbol"] == quote_defaults["suggested_invoice_number"]
+    assert invoice_defaults == {
+        "document_kind": "invoice",
+        "suggested_invoice_number": "001",
+        "suggested_variable_symbol": "001",
+    }
+
+
 def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
     proforma = _vytvor_fakturu(
         {
@@ -982,11 +1017,36 @@ def test_vytvoreni_proformy_pouzije_document_kind_a_vlastni_radu() -> None:
     assert invoice["variable_symbol"] == "001"
 
 
+def test_vytvoreni_quote_pouzije_document_kind_vlastni_radu_a_not_payable_summary() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    invoice = _vytvor_fakturu({"customer_email": "quote-normal@example.com"})
+
+    assert quote["document_kind"] == "quote"
+    assert quote["invoice_number"] == "52099001"
+    assert quote["variable_symbol"] == "52099001"
+    assert quote["payment_status"] == "not_payable"
+    assert quote["effective_status"] == "issued"
+    assert quote["total_paid"] == 0.0
+    assert quote["remaining_amount"] == quote["total"]
+
+    assert invoice["document_kind"] == "invoice"
+    assert invoice["invoice_number"] == "001"
+    assert invoice["variable_symbol"] == "001"
+
+
 def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_workflow() -> None:
     proforma_metadata = get_document_kind_metadata("proforma")
     tax_document_metadata = get_document_kind_metadata("tax_document")
     final_invoice_metadata = get_document_kind_metadata("final_invoice")
     correction_metadata = get_document_kind_metadata("correction")
+    quote_metadata = get_document_kind_metadata("quote")
 
     assert proforma_metadata.machine_value == "proforma"
     assert proforma_metadata.allows_payment_tracking is True
@@ -1023,6 +1083,15 @@ def test_proforma_metadata_povoluje_platby_pdf_email_a_neimplementuje_navazne_wo
     assert correction_metadata.requires_source_relation is True
     assert correction_metadata.supports_tax_document_generation is False
     assert correction_metadata.supports_final_invoice_settlement is False
+
+    assert quote_metadata.machine_value == "quote"
+    assert quote_metadata.allows_payment_tracking is False
+    assert quote_metadata.allows_pdf_email is True
+    assert quote_metadata.participates_in_total_calculation is True
+    assert quote_metadata.allows_manual_create is True
+    assert quote_metadata.requires_source_relation is False
+    assert quote_metadata.supports_tax_document_generation is False
+    assert quote_metadata.supports_final_invoice_settlement is False
 
 
 def test_neplatny_document_kind_je_odmitnut() -> None:
@@ -1185,6 +1254,141 @@ def test_document_kind_nelze_po_vytvoreni_menit() -> None:
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Typ dokladu nelze po vytvoření měnit."}
+
+
+def test_quote_muže_pouzit_subject_id_a_detail_list_zustavaji_kompatibilni() -> None:
+    subject = _vytvor_subjekt(
+        {
+            "name": "Quote Subject",
+            "email": "quote-subject@example.com",
+            "phone": "+420333444555",
+            "address": "Plzeň 4",
+            "ico": "11113333",
+            "dic": "CZ11113333",
+        }
+    )
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "subject_id": subject["id"],
+            "customer_name": None,
+            "customer_email": None,
+            "customer_address": None,
+            "customer_phone": None,
+            "customer_ico": None,
+            "customer_dic": None,
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _login_admin()
+
+    list_response = client.get("/api/admin/invoices")
+    detail_response = client.get(f"/api/admin/invoices/{quote['id']}")
+
+    assert list_response.status_code == 200
+    assert detail_response.status_code == 200
+    listed_quote = next(item for item in list_response.json() if item["id"] == quote["id"])
+    detail = detail_response.json()
+    assert listed_quote["document_kind"] == "quote"
+    assert listed_quote["payment_status"] == "not_payable"
+    assert listed_quote["subject_id"] == subject["id"]
+    assert detail["customer_name"] == "Quote Subject"
+    assert detail["customer_email"] == "quote-subject@example.com"
+    assert detail["payment_status"] == "not_payable"
+    assert detail["effective_status"] == "issued"
+
+
+def test_quote_lze_upravit_pokud_nebyl_preveden() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-update@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/{quote['id']}",
+        json={
+            "invoice_number": quote["invoice_number"],
+            "document_kind": "quote",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+            "customer_name": "Upravená nabídka",
+            "customer_email": "quote-update@example.com",
+            "customer_phone": "+420999888777",
+            "customer_address": "Olomouc 9",
+            "customer_ico": "12312312",
+            "customer_dic": "CZ12312312",
+            "note": "Upravená cenová nabídka",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Nabídková položka", "quantity": 1, "unit_price": 2000},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["document_kind"] == "quote"
+    assert updated["customer_name"] == "Upravená nabídka"
+    assert updated["total"] == 2420.0
+    assert updated["payment_status"] == "not_payable"
+
+
+def test_pridani_platby_ke_quote_je_odmitnuto_a_list_plateb_je_prazdny() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-payment@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _login_admin()
+
+    add_response = client.post(
+        f"/api/admin/invoices/{quote['id']}/payments",
+        json={
+            "amount": 1000,
+            "paid_at": "2099-04-10",
+            "payment_method": "Převodem",
+            "note": "Neplatná platba k nabídce",
+        },
+    )
+    list_response = client.get(f"/api/admin/invoices/{quote['id']}/payments")
+    detail_response = client.get(f"/api/admin/invoices/{quote['id']}")
+
+    assert add_response.status_code == 400
+    assert add_response.json() == {"detail": "Pro tento typ dokladu zatím nelze evidovat platby."}
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["payment_status"] == "not_payable"
+    assert detail["effective_status"] == "issued"
+    assert detail["total_paid"] == 0.0
+    assert detail["remaining_amount"] == detail["total"]
+
+
+def test_quote_po_splatnosti_nepada_do_overdue() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-not-overdue@example.com",
+            "issue_date": "2020-01-01",
+            "due_date": "2020-01-15",
+        }
+    )
+
+    assert quote["payment_status"] == "not_payable"
+    assert quote["effective_status"] == "issued"
 
 
 def test_castecna_uhrada_proformy_funguje() -> None:
@@ -1728,6 +1932,201 @@ def test_duplicitni_konecna_faktura_pro_stejnou_proformu_je_blokovana() -> None:
     assert first_final_invoice["document_kind"] == "final_invoice"
     assert response.status_code == 400
     assert response.json() == {"detail": "K některé z vybraných proforem už byla vytvořena konečná faktura."}
+
+
+def test_quote_lze_prevest_na_invoice_a_vznikne_relation() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-convert-invoice@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+
+    converted = _preved_quote(
+        quote["id"],
+        {
+            "target_document_kind": "invoice",
+            "issue_date": "2099-05-01",
+            "due_date": "2099-05-15",
+            "note": "Převedeno z nabídky",
+        },
+    )
+
+    assert converted["document_kind"] == "invoice"
+    assert converted["invoice_number"] == "001"
+    assert converted["customer_email"] == "quote-convert-invoice@example.com"
+    assert converted["items"][0]["description"] == "Diagnostika"
+    assert converted["payment_status"] == "unpaid"
+
+    with SessionLocal() as db:
+        relation = (
+            db.query(InvoiceDocumentRelation)
+            .filter(
+                InvoiceDocumentRelation.source_invoice_id == quote["id"],
+                InvoiceDocumentRelation.target_invoice_id == converted["id"],
+                InvoiceDocumentRelation.relation_type == RELATION_TYPE_INVOICE_FROM_QUOTE,
+            )
+            .first()
+        )
+        assert relation is not None
+
+
+def test_quote_lze_prevest_na_proformu_a_vznikne_relation() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-convert-proforma@example.com",
+            "issue_date": "2026-04-04",
+            "due_date": "2026-04-18",
+        }
+    )
+
+    converted = _preved_quote(
+        quote["id"],
+        {
+            "target_document_kind": "proforma",
+            "issue_date": "2026-05-01",
+            "due_date": "2026-05-15",
+        },
+    )
+
+    assert converted["document_kind"] == "proforma"
+    assert converted["invoice_number"] == "12026001"
+    assert converted["customer_email"] == "quote-convert-proforma@example.com"
+    assert converted["payment_status"] == "unpaid"
+
+    with SessionLocal() as db:
+        relation = (
+            db.query(InvoiceDocumentRelation)
+            .filter(
+                InvoiceDocumentRelation.source_invoice_id == quote["id"],
+                InvoiceDocumentRelation.target_invoice_id == converted["id"],
+                InvoiceDocumentRelation.relation_type == RELATION_TYPE_PROFORMA_FROM_QUOTE,
+            )
+            .first()
+        )
+        assert relation is not None
+
+
+def test_duplicitni_prevod_quote_na_stejny_target_kind_je_blokovan() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-duplicate-conversion@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    first_invoice = _preved_quote(quote["id"], {"target_document_kind": "invoice", "issue_date": "2099-05-01"})
+    _login_admin()
+
+    response = client.post(
+        f"/api/admin/invoices/{quote['id']}/convert",
+        json={"target_document_kind": "invoice", "issue_date": "2099-05-02"},
+    )
+
+    assert first_invoice["document_kind"] == "invoice"
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Z této cenové nabídky už byla vytvořena faktura."}
+
+
+def test_prevod_nequote_dokladu_je_odmitnut() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "convert-non-quote@example.com"})
+    _login_admin()
+
+    response = client.post(
+        f"/api/admin/invoices/{invoice['id']}/convert",
+        json={"target_document_kind": "invoice", "issue_date": "2099-05-01"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Převádět lze pouze cenovou nabídku."}
+
+
+def test_nepodporovany_target_kind_prevodu_quote_je_odmitnut() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-unsupported-conversion@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _login_admin()
+
+    response = client.post(
+        f"/api/admin/invoices/{quote['id']}/convert",
+        json={"target_document_kind": "correction", "issue_date": "2099-05-01"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_prevedenou_quote_uz_nelze_upravit() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-locked-after-conversion@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _preved_quote(quote["id"], {"target_document_kind": "invoice", "issue_date": "2099-05-01"})
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/{quote['id']}",
+        json={
+            "invoice_number": quote["invoice_number"],
+            "document_kind": "quote",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+            "customer_name": "Locked Quote",
+            "customer_email": "quote-locked-after-conversion@example.com",
+            "customer_phone": "+420123456789",
+            "customer_address": "Praha 10",
+            "customer_ico": "12345678",
+            "customer_dic": "CZ12345678",
+            "note": "Locked quote",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {"description": "Diagnostika", "quantity": 1, "unit_price": 1200},
+                {"description": "Oprava převodovky", "quantity": 2, "unit_price": 3500},
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Převedenou cenovou nabídku už nelze upravovat."}
+
+
+def test_prevod_quote_nekonsumuji_quote_radu() -> None:
+    first_quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-sequence-1@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    converted = _preved_quote(first_quote["id"], {"target_document_kind": "invoice", "issue_date": "2099-05-01"})
+    second_quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-sequence-2@example.com",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+        }
+    )
+
+    assert converted["document_kind"] == "invoice"
+    assert first_quote["invoice_number"] == "52099001"
+    assert second_quote["invoice_number"] == "52099002"
 
 
 def test_vytvoreni_opravneho_dokladu_z_faktury_funguje() -> None:
@@ -2807,6 +3206,24 @@ def test_pdf_endpoint_funguje_i_pro_correction() -> None:
     assert response.content.startswith(b"%PDF")
 
 
+def test_pdf_endpoint_funguje_i_pro_quote() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-pdf@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+
+    response = client.get(f"/api/admin/invoices/{quote['id']}/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert f'{quote["invoice_number"]}.pdf' in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+
+
 def test_odeslani_faktury_e_mailem_prilozi_pdf() -> None:
     _login_admin()
     settings_response = client.put(
@@ -3165,6 +3582,77 @@ def test_odeslani_opravneho_dokladu_e_mailem_prilozi_pdf() -> None:
     assert attachments[0].filename == f"{correction['invoice_number']}.pdf"
     assert attachments[0].content_type == "application/pdf"
     assert attachments[0].content == b"%PDF-test-correction"
+
+
+def test_odeslani_quote_e_mailem_prilozi_pdf() -> None:
+    _login_admin()
+    settings_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "kopie@lakodi.cz",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert settings_response.status_code == 200
+
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-mail@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+    captured = {}
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{quote['invoice_number']}.pdf",
+        content=b"%PDF-test-quote",
+    )
+
+    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None, bcc=None, cc=None) -> bool:
+        captured["to_email"] = to_email
+        captured["subject"] = subject
+        captured["html"] = html
+        captured["attachments"] = attachments
+        captured["bcc"] = bcc
+        return True
+
+    invoice_email_service.send_html_email = fake_send_html_email
+    try:
+        response = client.post(f"/api/admin/invoices/{quote['id']}/send-email")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "invoice_id": quote["id"],
+        "invoice_number": quote["invoice_number"],
+        "sent_to": "quote-mail@example.com",
+        "copied_to": ["kopie@lakodi.cz"],
+    }
+    assert captured["to_email"] == "quote-mail@example.com"
+    assert captured["subject"] == f"Faktura {quote['invoice_number']}"
+    attachments = captured["attachments"]
+    assert attachments is not None
+    assert len(attachments) == 1
+    assert attachments[0].filename == f"{quote['invoice_number']}.pdf"
+    assert attachments[0].content_type == "application/pdf"
+    assert attachments[0].content == b"%PDF-test-quote"
 
 
 def test_odeslani_faktury_vrati_503_kdyz_neni_email_nakonfigurovany() -> None:

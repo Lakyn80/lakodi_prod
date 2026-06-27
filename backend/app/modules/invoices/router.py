@@ -42,6 +42,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceSendEmailResponse,
     InvoiceSummaryResponse,
     InvoiceUpdate,
+    QuoteConvertRequest,
 )
 from backend.app.modules.invoices.service import (
     InvoiceExpenseNotFoundError,
@@ -52,6 +53,7 @@ from backend.app.modules.invoices.service import (
     InvoiceValidationError,
     add_invoice_expense_payment,
     add_invoice_payment,
+    convert_quote_to_document,
     create_invoice_expense,
     create_invoice_subject,
     create_correction_from_invoice,
@@ -352,6 +354,21 @@ def admin_create_final_invoice(
 ):
     try:
         return create_final_invoice_from_proformas(db, body)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{quote_id}/convert", response_model=InvoiceDetailResponse)
+def admin_convert_quote(
+    quote_id: int,
+    body: QuoteConvertRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return convert_quote_to_document(db, quote_id, body)
     except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
     except InvoiceValidationError as exc:

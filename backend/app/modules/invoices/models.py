@@ -8,6 +8,8 @@ from backend.app.db import Base
 RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT = "tax_document_for_payment"
 RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA = "final_invoice_for_proforma"
 RELATION_TYPE_CORRECTION_FOR_INVOICE = "correction_for_invoice"
+RELATION_TYPE_INVOICE_FROM_QUOTE = "invoice_from_quote"
+RELATION_TYPE_PROFORMA_FROM_QUOTE = "proforma_from_quote"
 
 
 class Invoice(Base):

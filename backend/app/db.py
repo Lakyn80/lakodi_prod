@@ -382,6 +382,22 @@ def _ensure_invoice_document_relations_table():
                 "WHERE relation_type = 'correction_for_invoice'"
             )
         )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ux_invoice_document_relations_source_invoice_from_quote "
+                "ON invoice_document_relations (source_invoice_id, relation_type) "
+                "WHERE relation_type = 'invoice_from_quote'"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ux_invoice_document_relations_source_proforma_from_quote "
+                "ON invoice_document_relations (source_invoice_id, relation_type) "
+                "WHERE relation_type = 'proforma_from_quote'"
+            )
+        )
 
 
 def init_db():

@@ -19,6 +19,8 @@ from backend.app.modules.invoices.exporters import build_invoice_export
 from backend.app.modules.invoices.models import (
     RELATION_TYPE_CORRECTION_FOR_INVOICE,
     RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+    RELATION_TYPE_INVOICE_FROM_QUOTE,
+    RELATION_TYPE_PROFORMA_FROM_QUOTE,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     Invoice,
     InvoiceDocumentRelation,
@@ -61,6 +63,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceSubjectUpdate,
     InvoiceSettingsUpdate,
     InvoiceUpdate,
+    QuoteConvertRequest,
 )
 
 TWOPLACES = Decimal("0.01")
@@ -484,6 +487,108 @@ def update_invoice(db: Session, invoice_id: int, payload: InvoiceUpdate) -> Invo
         raise InvoiceValidationError(str(exc)) from exc
 
 
+def convert_quote_to_document(db: Session, quote_id: int, payload: QuoteConvertRequest) -> Invoice:
+    source_quote = get_invoice_detail(db, quote_id)
+    if normalize_document_kind(source_quote.document_kind) != "quote":
+        raise InvoiceValidationError("Převádět lze pouze cenovou nabídku.")
+
+    relation_type = _quote_relation_type_for_target(payload.target_document_kind)
+    if _quote_conversion_relation_exists(db, source_invoice_id=source_quote.id, relation_type=relation_type):
+        if payload.target_document_kind == "invoice":
+            raise InvoiceValidationError("Z této cenové nabídky už byla vytvořena faktura.")
+        raise InvoiceValidationError("Z této cenové nabídky už byla vytvořena proforma.")
+
+    issue_date = payload.issue_date or date.today()
+    due_date = payload.due_date or max(source_quote.due_date, issue_date)
+    if due_date < issue_date:
+        raise InvoiceValidationError("Datum splatnosti nemůže být dříve než datum vystavení.")
+    resolved_note = payload.note if payload.note is not None else source_quote.note
+    prepared_items = [_build_prepared_item_from_snapshot(item) for item in source_quote.items]
+    totals = _calculate_totals(
+        tax_mode=source_quote.tax_mode,
+        vat_rate=Decimal(source_quote.vat_rate) if source_quote.vat_rate is not None else None,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+
+    for attempt in range(2):
+        try:
+            reserved_sequence = reserve_invoice_sequence(
+                db,
+                document_kind=payload.target_document_kind,
+                reference_date=issue_date,
+            )
+            generated_invoice = Invoice(
+                invoice_number=reserved_sequence.invoice_number,
+                variable_symbol=reserved_sequence.variable_symbol,
+                issue_date=issue_date,
+                due_date=due_date,
+                issuer_name=source_quote.issuer_name,
+                issuer_address=source_quote.issuer_address,
+                issuer_city=source_quote.issuer_city,
+                issuer_zip=source_quote.issuer_zip,
+                issuer_ico=source_quote.issuer_ico,
+                issuer_dic=source_quote.issuer_dic,
+                issuer_data_box=source_quote.issuer_data_box,
+                customer_name=source_quote.customer_name,
+                customer_email=source_quote.customer_email,
+                customer_phone=source_quote.customer_phone,
+                customer_address=source_quote.customer_address,
+                customer_ico=source_quote.customer_ico,
+                customer_dic=source_quote.customer_dic,
+                subject_id=source_quote.subject_id,
+                note=resolved_note,
+                document_kind=payload.target_document_kind,
+                business_mode=source_quote.business_mode,
+                tax_mode=source_quote.tax_mode,
+                currency=source_quote.currency,
+                subtotal=totals.subtotal,
+                vat_rate=totals.vat_rate,
+                vat_amount=totals.vat_amount,
+                total=totals.total,
+                status="issued",
+                reverse_charge_reason=totals.reverse_charge_reason,
+                reverse_charge_text=totals.reverse_charge_text,
+                payment_method=source_quote.payment_method,
+                bank_account_number=source_quote.bank_account_number,
+                bank_account_prefix=source_quote.bank_account_prefix,
+                bank_code=source_quote.bank_code,
+                bank_iban=source_quote.bank_iban,
+            )
+            generated_invoice.items = [
+                InvoiceItem(
+                    description=item.description,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    line_total=item.line_total,
+                )
+                for item in prepared_items
+            ]
+            db.add(generated_invoice)
+            db.flush()
+            db.add(
+                InvoiceDocumentRelation(
+                    source_invoice_id=source_quote.id,
+                    target_invoice_id=generated_invoice.id,
+                    source_payment_id=None,
+                    relation_type=relation_type,
+                )
+            )
+            db.commit()
+            created_invoice = get_invoice_detail(db, generated_invoice.id)
+            _cache_invoice_nonfatal(created_invoice)
+            return created_invoice
+        except IntegrityError as exc:
+            db.rollback()
+            if _quote_conversion_relation_exists(db, source_invoice_id=source_quote.id, relation_type=relation_type):
+                if payload.target_document_kind == "invoice":
+                    raise InvoiceValidationError("Z této cenové nabídky už byla vytvořena faktura.") from exc
+                raise InvoiceValidationError("Z této cenové nabídky už byla vytvořena proforma.") from exc
+            if attempt > 0:
+                raise InvoiceValidationError("Číslo faktury nebo variabilní symbol už existuje.") from exc
+
+    raise InvoiceValidationError("Cenovou nabídku se nepodařilo bezpečně převést.")
+
+
 def create_tax_document_from_proforma_payment(db: Session, proforma_invoice_id: int, payment_id: int) -> Invoice:
     source_invoice = get_invoice_detail(db, proforma_invoice_id)
     source_document_meta = get_document_kind_metadata(source_invoice.document_kind)
@@ -904,6 +1009,19 @@ def _normalize_expense_status(value: str | None) -> str:
 def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:
     invoice_total = _quantize_money(Decimal(invoice.total))
     document_metadata = get_document_kind_metadata(invoice.document_kind)
+    normalized_document_kind = normalize_document_kind(invoice.document_kind)
+    if normalized_document_kind == "quote":
+        total_paid = Decimal("0.00")
+        payment_status = "not_payable"
+        remaining_amount = invoice_total
+        effective_status = _compute_non_payment_effective_status(_normalize_invoice_status(invoice.status))
+        return InvoicePaymentSummary(
+            total_paid=total_paid,
+            remaining_amount=remaining_amount,
+            payment_status=payment_status,
+            effective_status=effective_status,
+        )
+
     total_paid = _quantize_money(
         sum((Decimal(payment.amount) for payment in invoice.payments), Decimal("0.00"))
     )
@@ -1646,6 +1764,40 @@ def _correction_relation_exists(db: Session, *, source_invoice_id: int) -> bool:
     return relation is not None
 
 
+def _quote_relation_type_for_target(target_document_kind: str) -> str:
+    if target_document_kind == "invoice":
+        return RELATION_TYPE_INVOICE_FROM_QUOTE
+    if target_document_kind == "proforma":
+        return RELATION_TYPE_PROFORMA_FROM_QUOTE
+    raise InvoiceValidationError("Cenovou nabídku lze převést pouze na fakturu nebo proformu.")
+
+
+def _quote_conversion_relation_exists(db: Session, *, source_invoice_id: int, relation_type: str) -> bool:
+    relation = (
+        db.query(InvoiceDocumentRelation.id)
+        .filter(
+            InvoiceDocumentRelation.source_invoice_id == source_invoice_id,
+            InvoiceDocumentRelation.relation_type == relation_type,
+        )
+        .first()
+    )
+    return relation is not None
+
+
+def _quote_has_any_conversion(db: Session, *, source_invoice_id: int) -> bool:
+    relation = (
+        db.query(InvoiceDocumentRelation.id)
+        .filter(
+            InvoiceDocumentRelation.source_invoice_id == source_invoice_id,
+            InvoiceDocumentRelation.relation_type.in_(
+                [RELATION_TYPE_INVOICE_FROM_QUOTE, RELATION_TYPE_PROFORMA_FROM_QUOTE]
+            ),
+        )
+        .first()
+    )
+    return relation is not None
+
+
 def _sum_invoice_payments(invoice: Invoice) -> Decimal:
     return _quantize_money(sum((Decimal(payment.amount) for payment in invoice.payments), Decimal("0.00")))
 
@@ -1755,6 +1907,8 @@ def _update_existing_invoice(
 ) -> Invoice:
     try:
         current_document_kind = normalize_document_kind(invoice.document_kind)
+        if current_document_kind == "quote" and _quote_has_any_conversion(db, source_invoice_id=invoice.id):
+            raise InvoiceValidationError("Převedenou cenovou nabídku už nelze upravovat.")
         requested_document_kind = (
             normalize_document_kind(payload.document_kind)
             if "document_kind" in payload.model_fields_set and payload.document_kind is not None

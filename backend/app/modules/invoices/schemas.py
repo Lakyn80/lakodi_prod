@@ -11,7 +11,7 @@ BusinessMode = Literal["autoservice", "construction"]
 TaxMode = Literal["standard", "reverse_charge"]
 StoredInvoiceStatus = Literal["draft", "issued", "cancelled"]
 EffectiveInvoiceStatus = Literal["draft", "issued", "partially_paid", "paid", "overdue", "cancelled"]
-InvoicePaymentStatus = Literal["unpaid", "partially_paid", "paid"]
+InvoicePaymentStatus = Literal["unpaid", "partially_paid", "paid", "not_payable"]
 StoredExpenseStatus = Literal["open", "cancelled"]
 EffectiveExpenseStatus = Literal["open", "partially_paid", "paid", "overdue", "cancelled"]
 
@@ -381,6 +381,27 @@ class InvoiceSubjectResponse(InvoiceSubjectBase):
 class InvoiceSubjectDeleteResponse(BaseModel):
     ok: Literal[True]
     subject_id: int
+
+
+class QuoteConvertRequest(BaseModel):
+    target_document_kind: Literal["invoice", "proforma"]
+    issue_date: date | None = None
+    due_date: date | None = None
+    note: str | None = None
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "QuoteConvertRequest":
+        if self.issue_date is not None and self.due_date is not None and self.due_date < self.issue_date:
+            raise ValueError("Datum splatnosti nemůže být dříve než datum vystavení.")
+        return self
 
 
 class InvoiceExpenseItemCreate(InvoiceItemCreate):
