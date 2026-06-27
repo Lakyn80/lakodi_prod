@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from backend.app.db import get_db
 from backend.app.modules.admin.router import require_admin
 from backend.app.modules.invoices.accounting_exports import (
+    AccountingExportError,
     ExpenseExportFilters,
     OutgoingExportFilters,
     build_expenses_csv_export,
@@ -189,7 +190,10 @@ def admin_export_outgoing_xlsx(
         status=status,
         customer_query=customer_query,
     )
-    content = build_outgoing_xlsx_export(db, filters)
+    try:
+        content = build_outgoing_xlsx_export(db, filters)
+    except AccountingExportError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -235,7 +239,10 @@ def admin_export_expenses_xlsx(
         status=status,
         supplier_query=supplier_query,
     )
-    content = build_expenses_xlsx_export(db, filters)
+    try:
+        content = build_expenses_xlsx_export(db, filters)
+    except AccountingExportError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

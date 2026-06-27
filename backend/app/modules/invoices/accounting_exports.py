@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import csv
+import importlib.util
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from io import BytesIO, StringIO
 
-from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from backend.app.modules.invoices.service import list_invoice_expenses, list_invoices
@@ -77,6 +77,10 @@ class ExpenseExportFilters:
     supplier_query: str | None = None
 
 
+class AccountingExportError(RuntimeError):
+    """Raised when an optional accounting export format is unavailable."""
+
+
 def build_outgoing_csv_export(db: Session, filters: OutgoingExportFilters) -> str:
     rows = _build_outgoing_export_rows(db, filters)
     return _write_csv(OUTGOING_EXPORT_HEADERS, rows)
@@ -95,6 +99,10 @@ def build_outgoing_xlsx_export(db: Session, filters: OutgoingExportFilters) -> b
 def build_expenses_xlsx_export(db: Session, filters: ExpenseExportFilters) -> bytes:
     rows = _build_expense_export_rows(db, filters)
     return _write_xlsx(EXPENSE_EXPORT_HEADERS, rows)
+
+
+def xlsx_exports_available() -> bool:
+    return importlib.util.find_spec("openpyxl") is not None
 
 
 def _build_outgoing_export_rows(db: Session, filters: OutgoingExportFilters) -> list[list[str]]:
@@ -209,6 +217,11 @@ def _write_csv(headers: list[str], rows: list[list[str]]) -> str:
 
 
 def _write_xlsx(headers: list[str], rows: list[list[str]]) -> bytes:
+    if not xlsx_exports_available():
+        raise AccountingExportError("XLSX export není v tomto prostředí dostupný.")
+
+    from openpyxl import Workbook
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "export"

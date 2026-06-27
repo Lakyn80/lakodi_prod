@@ -4,7 +4,6 @@ from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
-from openpyxl import load_workbook
 
 from backend.app.db import SessionLocal
 from backend.app.main import app
@@ -3283,6 +3282,7 @@ def test_expenses_csv_export_obsahuje_hlavicku_data_a_filtry() -> None:
 
 
 def test_outgoing_xlsx_export_vrati_sešit() -> None:
+    openpyxl = pytest.importorskip("openpyxl")
     invoice = _vytvor_fakturu({"customer_email": "xlsx-outgoing@example.com"})
     _login_admin()
 
@@ -3293,7 +3293,7 @@ def test_outgoing_xlsx_export_vrati_sešit() -> None:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert 'lakodi_outgoing_documents.xlsx' in response.headers["content-disposition"]
-    workbook = load_workbook(BytesIO(response.content))
+    workbook = openpyxl.load_workbook(BytesIO(response.content))
     sheet = workbook.active
     assert sheet.max_row >= 2
     assert sheet["A1"].value == "id"
@@ -3301,6 +3301,7 @@ def test_outgoing_xlsx_export_vrati_sešit() -> None:
 
 
 def test_expenses_xlsx_export_vrati_sešit() -> None:
+    openpyxl = pytest.importorskip("openpyxl")
     expense = _vytvor_vydaj({"supplier_email": "xlsx-expense@example.com"})
     _login_admin()
 
@@ -3311,7 +3312,7 @@ def test_expenses_xlsx_export_vrati_sešit() -> None:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert 'lakodi_expenses.xlsx' in response.headers["content-disposition"]
-    workbook = load_workbook(BytesIO(response.content))
+    workbook = openpyxl.load_workbook(BytesIO(response.content))
     sheet = workbook.active
     assert sheet.max_row >= 2
     assert sheet["A1"].value == "id"
