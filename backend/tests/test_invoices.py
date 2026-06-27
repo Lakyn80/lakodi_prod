@@ -1,7 +1,10 @@
+import csv
+from io import BytesIO
 from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 
 from backend.app.db import SessionLocal
 from backend.app.main import app
@@ -139,6 +142,10 @@ def _vytvor_subjekt(payload: dict | None = None) -> dict:
     response = client.post("/api/admin/invoices/subjects", json=subject_payload)
     assert response.status_code == 200
     return response.json()
+
+
+def _parse_csv_export(content: str) -> list[dict[str, str]]:
+    return list(csv.DictReader(content.splitlines()))
 
 
 def _vytvor_vydaj(payload: dict | None = None) -> dict:
@@ -3110,6 +3117,205 @@ def test_search_ares_vrati_502_pri_chybe_upstreamu() -> None:
 
     assert response.status_code == 502
     assert response.json() == {"detail": "Služba ARES je dočasně nedostupná."}
+
+
+def test_outgoing_csv_export_vyzaduje_admin_auth() -> None:
+    anonymous_client = TestClient(app)
+
+    response = anonymous_client.get("/api/admin/invoices/exports/outgoing.csv")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Přihlaste se do adminu"}
+
+
+def test_outgoing_csv_export_obsahuje_hlavicku_data_a_filtry() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "outgoing-export-invoice@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    _pridej_platbu(invoice["id"], {"amount": 2000, "paid_at": "2099-04-10"})
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_name": "Quote Export",
+            "customer_email": "quote-export@example.com",
+            "issue_date": "2099-04-05",
+            "due_date": "2099-04-19",
+        }
+    )
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/exports/outgoing.csv")
+    quote_filter_response = client.get("/api/admin/invoices/exports/outgoing.csv?document_kind=quote&customer_query=quote-export")
+    status_filter_response = client.get("/api/admin/invoices/exports/outgoing.csv?status=partially_paid")
+    date_filter_response = client.get("/api/admin/invoices/exports/outgoing.csv?date_from=2099-04-05&date_to=2099-04-05")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert 'lakodi_outgoing_documents.csv' in response.headers["content-disposition"]
+    rows = _parse_csv_export(response.text)
+    assert rows
+    assert set(rows[0].keys()) == {
+        "id",
+        "document_kind",
+        "invoice_number",
+        "variable_symbol",
+        "issue_date",
+        "due_date",
+        "customer_name",
+        "customer_email",
+        "customer_ico",
+        "customer_dic",
+        "currency",
+        "subtotal",
+        "vat_rate",
+        "vat_amount",
+        "total",
+        "total_paid",
+        "remaining_amount",
+        "payment_status",
+        "effective_status",
+        "created_at",
+    }
+    invoice_row = next(row for row in rows if row["id"] == str(invoice["id"]))
+    quote_row = next(row for row in rows if row["id"] == str(quote["id"]))
+    assert invoice_row["document_kind"] == "invoice"
+    assert invoice_row["payment_status"] == "partially_paid"
+    assert invoice_row["total_paid"] == "2000.00"
+    assert quote_row["document_kind"] == "quote"
+    assert quote_row["payment_status"] == "not_payable"
+
+    quote_rows = _parse_csv_export(quote_filter_response.text)
+    assert quote_filter_response.status_code == 200
+    assert len(quote_rows) == 1
+    assert quote_rows[0]["id"] == str(quote["id"])
+
+    status_rows = _parse_csv_export(status_filter_response.text)
+    assert status_filter_response.status_code == 200
+    assert len(status_rows) == 1
+    assert status_rows[0]["id"] == str(invoice["id"])
+
+    date_rows = _parse_csv_export(date_filter_response.text)
+    assert date_filter_response.status_code == 200
+    assert len(date_rows) == 1
+    assert date_rows[0]["id"] == str(quote["id"])
+
+
+def test_expenses_csv_export_vyzaduje_admin_auth() -> None:
+    anonymous_client = TestClient(app)
+
+    response = anonymous_client.get("/api/admin/invoices/exports/expenses.csv")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Přihlaste se do adminu"}
+
+
+def test_expenses_csv_export_obsahuje_hlavicku_data_a_filtry() -> None:
+    expense = _vytvor_vydaj(
+        {
+            "supplier_name": "Export Supplier",
+            "supplier_email": "expense-export@example.com",
+            "issue_date": "2099-05-01",
+            "received_date": "2099-05-02",
+            "due_date": "2099-05-16",
+            "taxable_supply_date": "2099-05-01",
+        }
+    )
+    _pridej_platbu_vydaje(expense["id"], {"amount": 1000, "paid_at": "2099-05-10"})
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/exports/expenses.csv")
+    supplier_filter_response = client.get("/api/admin/invoices/exports/expenses.csv?supplier_query=export supplier")
+    status_filter_response = client.get("/api/admin/invoices/exports/expenses.csv?status=partially_paid")
+    date_filter_response = client.get("/api/admin/invoices/exports/expenses.csv?date_from=2099-05-01&date_to=2099-05-01")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert 'lakodi_expenses.csv' in response.headers["content-disposition"]
+    rows = _parse_csv_export(response.text)
+    assert rows
+    assert set(rows[0].keys()) == {
+        "id",
+        "expense_number",
+        "variable_symbol",
+        "issue_date",
+        "received_date",
+        "due_date",
+        "taxable_supply_date",
+        "supplier_name",
+        "supplier_email",
+        "supplier_ico",
+        "supplier_dic",
+        "currency",
+        "subtotal",
+        "vat_rate",
+        "vat_amount",
+        "total",
+        "total_paid",
+        "remaining_amount",
+        "payment_status",
+        "status",
+        "created_at",
+    }
+    expense_row = next(row for row in rows if row["id"] == str(expense["id"]))
+    assert expense_row["supplier_name"] == "Export Supplier"
+    assert expense_row["payment_status"] == "partially_paid"
+    assert expense_row["status"] == "partially_paid"
+    assert expense_row["total_paid"] == "1000.00"
+
+    supplier_rows = _parse_csv_export(supplier_filter_response.text)
+    assert supplier_filter_response.status_code == 200
+    assert len(supplier_rows) == 1
+    assert supplier_rows[0]["id"] == str(expense["id"])
+
+    status_rows = _parse_csv_export(status_filter_response.text)
+    assert status_filter_response.status_code == 200
+    assert len(status_rows) == 1
+    assert status_rows[0]["id"] == str(expense["id"])
+
+    date_rows = _parse_csv_export(date_filter_response.text)
+    assert date_filter_response.status_code == 200
+    assert len(date_rows) == 1
+    assert date_rows[0]["id"] == str(expense["id"])
+
+
+def test_outgoing_xlsx_export_vrati_sešit() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "xlsx-outgoing@example.com"})
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/exports/outgoing.xlsx")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert 'lakodi_outgoing_documents.xlsx' in response.headers["content-disposition"]
+    workbook = load_workbook(BytesIO(response.content))
+    sheet = workbook.active
+    assert sheet.max_row >= 2
+    assert sheet["A1"].value == "id"
+    assert any(str(row[0]) == str(invoice["id"]) for row in sheet.iter_rows(min_row=2, values_only=True))
+
+
+def test_expenses_xlsx_export_vrati_sešit() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "xlsx-expense@example.com"})
+    _login_admin()
+
+    response = client.get("/api/admin/invoices/exports/expenses.xlsx")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert 'lakodi_expenses.xlsx' in response.headers["content-disposition"]
+    workbook = load_workbook(BytesIO(response.content))
+    sheet = workbook.active
+    assert sheet.max_row >= 2
+    assert sheet["A1"].value == "id"
+    assert any(str(row[0]) == str(expense["id"]) for row in sheet.iter_rows(min_row=2, values_only=True))
 
 
 def test_realny_provider_nevraci_tise_prazdny_seznam_pri_spatnem_tvaru_odpovedi() -> None:

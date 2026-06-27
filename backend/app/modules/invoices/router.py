@@ -1,9 +1,19 @@
 """API administrace pro faktury."""
+from datetime import date
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from backend.app.db import get_db
 from backend.app.modules.admin.router import require_admin
+from backend.app.modules.invoices.accounting_exports import (
+    ExpenseExportFilters,
+    OutgoingExportFilters,
+    build_expenses_csv_export,
+    build_expenses_xlsx_export,
+    build_outgoing_csv_export,
+    build_outgoing_xlsx_export,
+)
 from backend.app.modules.invoices.ares_service import (
     AresCompanyNotFoundError,
     AresUnavailableError,
@@ -135,6 +145,102 @@ def admin_create_invoice(
         return create_invoice(db, body)
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/exports/outgoing.csv")
+def admin_export_outgoing_csv(
+    document_kind: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    customer_query: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    filters = _build_outgoing_export_filters(
+        document_kind=document_kind,
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        customer_query=customer_query,
+    )
+    content = build_outgoing_csv_export(db, filters)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="lakodi_outgoing_documents.csv"'},
+    )
+
+
+@router.get("/exports/outgoing.xlsx")
+def admin_export_outgoing_xlsx(
+    document_kind: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    customer_query: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    filters = _build_outgoing_export_filters(
+        document_kind=document_kind,
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        customer_query=customer_query,
+    )
+    content = build_outgoing_xlsx_export(db, filters)
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="lakodi_outgoing_documents.xlsx"'},
+    )
+
+
+@router.get("/exports/expenses.csv")
+def admin_export_expenses_csv(
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    supplier_query: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    filters = _build_expense_export_filters(
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        supplier_query=supplier_query,
+    )
+    content = build_expenses_csv_export(db, filters)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="lakodi_expenses.csv"'},
+    )
+
+
+@router.get("/exports/expenses.xlsx")
+def admin_export_expenses_xlsx(
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    supplier_query: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    filters = _build_expense_export_filters(
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+        supplier_query=supplier_query,
+    )
+    content = build_expenses_xlsx_export(db, filters)
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="lakodi_expenses.xlsx"'},
+    )
 
 
 @router.get("/subjects", response_model=list[InvoiceSubjectResponse])
@@ -557,3 +663,56 @@ def _build_settings_response(settings) -> dict:
         "bank_iban": settings.payment_profile.iban,
         "account_label": settings.payment_profile.account_label,
     }
+
+
+def _parse_optional_date(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _build_outgoing_export_filters(
+    *,
+    document_kind: str | None,
+    date_from: str | None,
+    date_to: str | None,
+    status: str | None,
+    customer_query: str | None,
+) -> OutgoingExportFilters:
+    try:
+        parsed_date_from = date.fromisoformat(_parse_optional_date(date_from)) if _parse_optional_date(date_from) else None
+        parsed_date_to = date.fromisoformat(_parse_optional_date(date_to)) if _parse_optional_date(date_to) else None
+        if parsed_date_from is not None and parsed_date_to is not None and parsed_date_to < parsed_date_from:
+            raise HTTPException(status_code=400, detail="date_to nemůže být dříve než date_from.")
+        return OutgoingExportFilters(
+            document_kind=document_kind.strip() if document_kind and document_kind.strip() else None,
+            date_from=parsed_date_from,
+            date_to=parsed_date_to,
+            status=status.strip() if status and status.strip() else None,
+            customer_query=customer_query.strip() if customer_query and customer_query.strip() else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Neplatný formát data. Použijte YYYY-MM-DD.") from exc
+
+
+def _build_expense_export_filters(
+    *,
+    date_from: str | None,
+    date_to: str | None,
+    status: str | None,
+    supplier_query: str | None,
+) -> ExpenseExportFilters:
+    try:
+        parsed_date_from = date.fromisoformat(_parse_optional_date(date_from)) if _parse_optional_date(date_from) else None
+        parsed_date_to = date.fromisoformat(_parse_optional_date(date_to)) if _parse_optional_date(date_to) else None
+        if parsed_date_from is not None and parsed_date_to is not None and parsed_date_to < parsed_date_from:
+            raise HTTPException(status_code=400, detail="date_to nemůže být dříve než date_from.")
+        return ExpenseExportFilters(
+            date_from=parsed_date_from,
+            date_to=parsed_date_to,
+            status=status.strip() if status and status.strip() else None,
+            supplier_query=supplier_query.strip() if supplier_query and supplier_query.strip() else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Neplatný formát data. Použijte YYYY-MM-DD.") from exc

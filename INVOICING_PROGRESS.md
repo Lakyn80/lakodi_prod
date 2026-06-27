@@ -565,3 +565,78 @@
   - Quote PDF and email currently reuse the generic invoice wording (`Faktura`) in existing PDF/email flows; this backend task intentionally did not redesign templates or legal labels.
   - Quote conversion is intentionally minimal and one-way from quote to `invoice`/`proforma`; richer offer lifecycle rules remain a later task.
   - Converted quotes are intentionally locked against further edits to keep conversion source snapshots stable.
+
+## Úkol 11 Backend accounting exports foundation
+
+- Date: 2026-06-27
+- Goal: Add a safe backend-only foundation for accounting exports of outgoing invoice-domain documents and incoming expenses, with CSV required and XLSX enabled only because a safe existing XLSX library was already available.
+- Scope: Backend accounting export service inside the existing invoices module, admin-only export endpoints, backend export filtering, backend tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/modules/invoices/accounting_exports.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - None
+- Backend changes:
+  - Added export service foundation in:
+    - `backend/app/modules/invoices/accounting_exports.py`
+  - Added outgoing CSV export endpoint:
+    - `GET /api/admin/invoices/exports/outgoing.csv`
+  - Added expenses CSV export endpoint:
+    - `GET /api/admin/invoices/exports/expenses.csv`
+  - Added outgoing XLSX export endpoint:
+    - `GET /api/admin/invoices/exports/outgoing.xlsx`
+  - Added expenses XLSX export endpoint:
+    - `GET /api/admin/invoices/exports/expenses.xlsx`
+  - Outgoing exports include invoice-domain documents:
+    - `invoice`
+    - `proforma`
+    - `tax_document`
+    - `final_invoice`
+    - `correction`
+    - `quote`
+  - Expense exports include incoming expense / received invoice data.
+  - Added simple safe backend filters:
+    - outgoing:
+      - `document_kind`
+      - `date_from`
+      - `date_to`
+      - `status`
+      - `customer_query`
+    - expenses:
+      - `date_from`
+      - `date_to`
+      - `status`
+      - `supplier_query`
+  - Outgoing date filters are applied against `issue_date`.
+  - Expense date filters are applied against `issue_date`.
+  - Status filtering supports both stored status and computed effective status in a safe in-memory export pass.
+  - Reused existing invoice/expense runtime payment summary state rather than duplicating payment math.
+  - Kept CSV UTF-8 with stable machine-readable headers and values.
+  - Implemented XLSX safely because `openpyxl` was already available in the environment; no new dependency was added.
+  - XML/ISDOC was intentionally deferred.
+  - Preserved existing `exporters.py`, PDF export DTO flow, and email flow.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "export" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "xlsx" -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "export" -x` -> `6 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "xlsx" -x` -> `2 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `132 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `132 collected`
+  - `python -m pytest --collect-only -q` -> `140 collected`
+  - `python -m pytest -q` -> `140 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend accounting export endpoints`
+- Commit hash if already known: pending until commit
+- Final status: implemented, backend-tested, ready to commit
+- Notes / risks:
+  - Export filtering is intentionally simple and safe; it operates on existing runtime invoice/expense state instead of introducing a new reporting model.
+  - CSV/XLSX exports use machine-readable backend field names and generic values only; no frontend-specific labels were introduced.
+  - XML/ISDOC and accounting-system-specific formats remain intentionally deferred.
