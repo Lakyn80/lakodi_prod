@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from backend.app.db import SessionLocal
 from backend.app.main import app
@@ -201,6 +202,21 @@ def _vytvor_todo(payload: dict | None = None) -> dict:
 def _vygeneruj_toda() -> dict:
     _login_admin()
     response = client.post("/api/admin/invoices/todos/generate")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _ziskej_relace_dokladu(invoice_id: int) -> dict:
+    _login_admin()
+    response = client.get(f"/api/admin/invoices/{invoice_id}/relations")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _list_relace(filters: str = "") -> list[dict]:
+    _login_admin()
+    suffix = f"?{filters}" if filters else ""
+    response = client.get(f"/api/admin/invoices/relations{suffix}")
     assert response.status_code == 200
     return response.json()
 
@@ -3140,6 +3156,185 @@ def test_search_ares_vrati_502_pri_chybe_upstreamu() -> None:
 
     assert response.status_code == 502
     assert response.json() == {"detail": "Služba ARES je dočasně nedostupná."}
+
+
+def test_relace_proformy_a_danoveho_dokladu_jsou_citelne_v_per_invoice_endpointu() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "relations-taxdoc-proforma@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    paid_proforma = _pridej_platbu(proforma["id"], {"amount": 2000, "paid_at": "2099-04-10"})
+    payment = paid_proforma["payments"][0]
+    tax_document = _vytvor_danovy_doklad_z_platby(proforma["id"], payment["id"])
+
+    proforma_relations = _ziskej_relace_dokladu(proforma["id"])
+    tax_document_relations = _ziskej_relace_dokladu(tax_document["id"])
+
+    assert proforma_relations["invoice_id"] == proforma["id"]
+    assert len(proforma_relations["outgoing_relations"]) == 1
+    outgoing = proforma_relations["outgoing_relations"][0]
+    assert outgoing["relation_type"] == RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT
+    assert outgoing["source_invoice_id"] == proforma["id"]
+    assert outgoing["target_invoice_id"] == tax_document["id"]
+    assert outgoing["source_document"]["document_kind"] == "proforma"
+    assert outgoing["target_document"]["document_kind"] == "tax_document"
+    assert outgoing["source_payment"]["id"] == payment["id"]
+    assert outgoing["source_payment"]["amount"] == payment["amount"]
+
+    assert tax_document_relations["invoice_id"] == tax_document["id"]
+    assert len(tax_document_relations["incoming_relations"]) == 1
+    incoming = tax_document_relations["incoming_relations"][0]
+    assert incoming["relation_type"] == RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT
+    assert incoming["source_invoice_id"] == proforma["id"]
+    assert incoming["target_invoice_id"] == tax_document["id"]
+    assert incoming["source_document"]["invoice_number"] == proforma["invoice_number"]
+    assert incoming["target_document"]["invoice_number"] == tax_document["invoice_number"]
+    assert incoming["source_payment"]["paid_at"] == payment["paid_at"]
+
+
+def test_relace_proformy_final_invoice_invoice_correction_a_quote_invoice_jsou_citelne() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "relations-final-proforma@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    final_invoice = _vytvor_konecnou_fakturu([proforma["id"]], {"issue_date": "2099-05-01", "due_date": "2099-05-15"})
+    invoice = _vytvor_fakturu({"customer_email": "relations-correction-invoice@example.com"})
+    correction = _vytvor_opravny_doklad(invoice["id"], {"issue_date": "2099-05-20", "reason": "Storno"})
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "relations-quote@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    converted_invoice = _preved_quote(quote["id"], {"target_document_kind": "invoice", "issue_date": "2099-05-01"})
+
+    proforma_relations = _ziskej_relace_dokladu(proforma["id"])
+    final_relations = _ziskej_relace_dokladu(final_invoice["id"])
+    invoice_relations = _ziskej_relace_dokladu(invoice["id"])
+    correction_relations = _ziskej_relace_dokladu(correction["id"])
+    quote_relations = _ziskej_relace_dokladu(quote["id"])
+    converted_relations = _ziskej_relace_dokladu(converted_invoice["id"])
+
+    assert proforma_relations["outgoing_relations"][0]["relation_type"] == RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA
+    assert proforma_relations["outgoing_relations"][0]["target_document"]["document_kind"] == "final_invoice"
+    assert final_relations["incoming_relations"][0]["relation_type"] == RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA
+    assert final_relations["incoming_relations"][0]["source_document"]["document_kind"] == "proforma"
+
+    assert invoice_relations["outgoing_relations"][0]["relation_type"] == RELATION_TYPE_CORRECTION_FOR_INVOICE
+    assert invoice_relations["outgoing_relations"][0]["target_document"]["document_kind"] == "correction"
+    assert correction_relations["incoming_relations"][0]["relation_type"] == RELATION_TYPE_CORRECTION_FOR_INVOICE
+    assert correction_relations["incoming_relations"][0]["source_document"]["document_kind"] == "invoice"
+
+    assert quote_relations["outgoing_relations"][0]["relation_type"] == RELATION_TYPE_INVOICE_FROM_QUOTE
+    assert quote_relations["outgoing_relations"][0]["target_document"]["document_kind"] == "invoice"
+    assert converted_relations["incoming_relations"][0]["relation_type"] == RELATION_TYPE_INVOICE_FROM_QUOTE
+    assert converted_relations["incoming_relations"][0]["source_document"]["document_kind"] == "quote"
+
+
+def test_global_relation_endpoint_filtrovani_funguje() -> None:
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "relations-global-proforma@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    paid_proforma = _pridej_platbu(proforma["id"], {"amount": 2000, "paid_at": "2099-04-10"})
+    payment = paid_proforma["payments"][0]
+    tax_document = _vytvor_danovy_doklad_z_platby(proforma["id"], payment["id"])
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "relations-global-quote@example.com",
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-18",
+        }
+    )
+    converted_invoice = _preved_quote(quote["id"], {"target_document_kind": "invoice", "issue_date": "2099-05-01"})
+
+    all_relations = _list_relace()
+    type_filtered = _list_relace(f"relation_type={RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT}")
+    source_filtered = _list_relace(f"source_invoice_id={quote['id']}")
+    target_filtered = _list_relace(f"target_invoice_id={converted_invoice['id']}")
+    payment_filtered = _list_relace(f"source_payment_id={payment['id']}")
+
+    assert any(
+        relation["relation_type"] == RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT
+        and relation["target_invoice_id"] == tax_document["id"]
+        for relation in all_relations
+    )
+    assert len(type_filtered) == 1
+    assert type_filtered[0]["source_payment"]["id"] == payment["id"]
+    assert len(source_filtered) == 1
+    assert source_filtered[0]["relation_type"] == RELATION_TYPE_INVOICE_FROM_QUOTE
+    assert len(target_filtered) == 1
+    assert target_filtered[0]["source_invoice_id"] == quote["id"]
+    assert len(payment_filtered) == 1
+    assert payment_filtered[0]["target_invoice_id"] == tax_document["id"]
+
+
+def test_relation_endpoint_vyzaduje_admin_auth_a_missing_invoice_vraci_404() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "relations-auth@example.com"})
+    anonymous_client = TestClient(app)
+
+    per_invoice_response = anonymous_client.get(f"/api/admin/invoices/{invoice['id']}/relations")
+    global_response = anonymous_client.get("/api/admin/invoices/relations")
+
+    _login_admin()
+    missing_response = client.get("/api/admin/invoices/999999/relations")
+
+    assert per_invoice_response.status_code == 401
+    assert per_invoice_response.json() == {"detail": "Přihlaste se do adminu"}
+    assert global_response.status_code == 401
+    assert global_response.json() == {"detail": "Přihlaste se do adminu"}
+    assert missing_response.status_code == 404
+    assert missing_response.json() == {"detail": "Faktura nebyla nalezena."}
+
+
+def test_relation_endpoint_nepada_kdyz_chybi_target_document_nebo_payment() -> None:
+    source_invoice = _vytvor_fakturu({"customer_email": "relations-broken-source@example.com"})
+
+    with SessionLocal() as db:
+        db.execute(text("PRAGMA foreign_keys=OFF"))
+        try:
+            db.execute(
+                text(
+                    "INSERT INTO invoice_document_relations "
+                    "(source_invoice_id, target_invoice_id, source_payment_id, relation_type, created_at) "
+                    "VALUES (:source_invoice_id, :target_invoice_id, :source_payment_id, :relation_type, CURRENT_TIMESTAMP)"
+                ),
+                {
+                    "source_invoice_id": source_invoice["id"],
+                    "target_invoice_id": 999998,
+                    "source_payment_id": 999997,
+                    "relation_type": RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+                },
+            )
+            db.commit()
+        finally:
+            db.execute(text("PRAGMA foreign_keys=ON"))
+            db.commit()
+
+    relations = _ziskej_relace_dokladu(source_invoice["id"])
+
+    assert len(relations["outgoing_relations"]) == 1
+    relation = relations["outgoing_relations"][0]
+    assert relation["target_invoice_id"] == 999998
+    assert relation["source_payment_id"] == 999997
+    assert relation["source_document"]["id"] == source_invoice["id"]
+    assert relation["target_document"] is None
+    assert relation["source_payment"] is None
 
 
 def test_manual_todo_crud_a_filtry_funguji() -> None:

@@ -734,3 +734,70 @@
   - Todo generation scans current invoice/expense runtime payment state instead of introducing a scheduler or separate accounting projection.
   - Todo delete is intentionally conservative to preserve history for completed/cancelled records.
   - No push, no deploy, no CD.
+
+## Úkol 13 Backend document relations read API cleanup
+
+- Date: 2026-06-27
+- Goal: Add safe backend read APIs for existing invoice document relations so future frontend work can display linked document chains without changing any current document workflow or frontend behavior.
+- Scope: Backend-only invoices module relation schemas, service read helpers, admin relation endpoints, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - None
+- Backend changes:
+  - Added centralized relation read helpers on top of the existing `invoice_document_relations` table:
+    - outgoing relations by source invoice
+    - incoming relations by target invoice
+    - combined relation summary for one invoice
+    - global relation list with safe filters
+  - Added backend response schemas for:
+    - linked source/target document summaries
+    - linked source payment summaries
+    - one relation item
+    - per-invoice relation summary payload
+  - Added admin-only read endpoints:
+    - `GET /api/admin/invoices/relations`
+    - `GET /api/admin/invoices/{invoice_id}/relations`
+  - Global relation endpoint supports optional filters:
+    - `relation_type`
+    - `source_invoice_id`
+    - `target_invoice_id`
+    - `source_payment_id`
+  - Supported existing relation types:
+    - `tax_document_for_payment`
+    - `final_invoice_for_proforma`
+    - `correction_for_invoice`
+    - `invoice_from_quote`
+    - `proforma_from_quote`
+  - Added read-time safety behavior:
+    - missing linked source/target invoice does not crash
+    - missing linked source payment does not crash
+    - missing linked summaries return `null`
+  - Relation creation logic was not changed.
+  - Invoice detail response was intentionally left unchanged in this task to avoid increasing response-contract risk; relations are exposed only through dedicated endpoints.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "relace or relation"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "relace or relation"` -> `7 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> reached `100%`; `141` dots matched `141 collected`, so `141 passed`
+  - `python -m pytest -q` -> reached `100%`; `149` dots matched `149 collected`, so `149 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `141 collected`
+  - `python -m pytest --collect-only -q` -> `149 collected`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice document relation read APIs`
+- Local commit hash if created: pending until local commit
+- Final status: implemented, backend-tested, ready for local commit
+- Notes / risks:
+  - Relation read APIs are intentionally backend-generic and do not include frontend labels or presentation grouping.
+  - The task did not backfill or repair existing relation rows; it only made relation reads resilient to missing linked records.
+  - Invoice detail response was intentionally not extended with relation data to avoid changing existing clients without a direct need.
+  - No push, no deploy, no CD.

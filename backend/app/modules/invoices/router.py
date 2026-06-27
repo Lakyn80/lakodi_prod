@@ -32,6 +32,7 @@ from backend.app.modules.invoices.schemas import (
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
     InvoiceCreate,
+    InvoiceDocumentRelationResponse,
     InvoiceDefaultsResponse,
     InvoiceDetailResponse,
     InvoiceExpenseCreate,
@@ -43,6 +44,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpenseUpdate,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
+    InvoiceRelationsSummaryResponse,
     InvoiceTodoCreate,
     InvoiceTodoDeleteResponse,
     InvoiceTodoGenerateResponse,
@@ -90,9 +92,11 @@ from backend.app.modules.invoices.service import (
     get_invoice_expense_detail,
     generate_invoice_pdf,
     get_invoice_detail,
+    get_invoice_relations_summary,
     get_invoice_settings,
     get_invoice_subject_detail,
     get_invoice_todo_detail,
+    list_invoice_document_relations,
     list_invoice_expense_payments,
     list_invoice_expenses,
     list_invoice_subjects,
@@ -309,6 +313,27 @@ def admin_generate_invoice_todos(
         "skipped_existing_count": result.skipped_existing_count,
         "generated_ids": result.generated_ids,
     }
+
+
+@router.get("/relations", response_model=list[InvoiceDocumentRelationResponse])
+def admin_list_invoice_relations(
+    relation_type: str | None = Query(default=None),
+    source_invoice_id: int | None = Query(default=None),
+    target_invoice_id: int | None = Query(default=None),
+    source_payment_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_document_relations(
+            db,
+            relation_type=relation_type,
+            source_invoice_id=source_invoice_id,
+            target_invoice_id=target_invoice_id,
+            source_payment_id=source_payment_id,
+        )
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/todos/{todo_id}", response_model=InvoiceTodoResponse)
@@ -662,6 +687,18 @@ def admin_list_invoice_payments(
 ):
     try:
         return list_invoice_payments(db, invoice_id)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+
+
+@router.get("/{invoice_id}/relations", response_model=InvoiceRelationsSummaryResponse)
+def admin_get_invoice_relations(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_relations_summary(db, invoice_id)
     except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
 

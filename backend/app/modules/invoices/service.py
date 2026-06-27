@@ -56,9 +56,13 @@ from backend.app.modules.invoices.schemas import (
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
     InvoiceCreate,
+    InvoiceDocumentRelationResponse,
     InvoiceExpenseCreate,
     InvoiceExpensePaymentCreate,
     InvoiceExpenseUpdate,
+    InvoiceRelationDocumentSummaryResponse,
+    InvoiceRelationPaymentSummaryResponse,
+    InvoiceRelationsSummaryResponse,
     InvoicePaymentCreate,
     InvoiceSubjectCreate,
     InvoiceSubjectUpdate,
@@ -79,6 +83,13 @@ DEFAULT_TODO_STATUS = "open"
 STORED_TODO_STATUSES = {"open", "completed", "cancelled"}
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
+SUPPORTED_RELATION_TYPES = {
+    RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+    RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+    RELATION_TYPE_CORRECTION_FOR_INVOICE,
+    RELATION_TYPE_INVOICE_FROM_QUOTE,
+    RELATION_TYPE_PROFORMA_FROM_QUOTE,
+}
 EXPENSE_SEQUENCE_KEY = "expense"
 LOGGER = logging.getLogger(__name__)
 
@@ -148,6 +159,62 @@ def get_invoice_detail(db: Session, invoice_id: int) -> Invoice:
 def list_invoice_payments(db: Session, invoice_id: int) -> list[InvoicePayment]:
     invoice = get_invoice_detail(db, invoice_id)
     return list(invoice.payments)
+
+
+def list_invoice_outgoing_relations(db: Session, invoice_id: int) -> list[InvoiceDocumentRelationResponse]:
+    relations = (
+        db.query(InvoiceDocumentRelation)
+        .filter(InvoiceDocumentRelation.source_invoice_id == invoice_id)
+        .order_by(InvoiceDocumentRelation.created_at.asc(), InvoiceDocumentRelation.id.asc())
+        .all()
+    )
+    return _build_relation_views(db, relations)
+
+
+def list_invoice_incoming_relations(db: Session, invoice_id: int) -> list[InvoiceDocumentRelationResponse]:
+    relations = (
+        db.query(InvoiceDocumentRelation)
+        .filter(InvoiceDocumentRelation.target_invoice_id == invoice_id)
+        .order_by(InvoiceDocumentRelation.created_at.asc(), InvoiceDocumentRelation.id.asc())
+        .all()
+    )
+    return _build_relation_views(db, relations)
+
+
+def get_invoice_relations_summary(db: Session, invoice_id: int) -> InvoiceRelationsSummaryResponse:
+    _get_invoice_or_raise(db, invoice_id, include_payments=False, include_subject=False)
+    outgoing_relations = list_invoice_outgoing_relations(db, invoice_id)
+    incoming_relations = list_invoice_incoming_relations(db, invoice_id)
+    relation_map = {relation.id: relation for relation in [*outgoing_relations, *incoming_relations]}
+    all_relations = sorted(relation_map.values(), key=lambda relation: (relation.created_at, relation.id))
+    return InvoiceRelationsSummaryResponse(
+        invoice_id=invoice_id,
+        outgoing_relations=outgoing_relations,
+        incoming_relations=incoming_relations,
+        all_relations=all_relations,
+    )
+
+
+def list_invoice_document_relations(
+    db: Session,
+    *,
+    relation_type: str | None = None,
+    source_invoice_id: int | None = None,
+    target_invoice_id: int | None = None,
+    source_payment_id: int | None = None,
+) -> list[InvoiceDocumentRelationResponse]:
+    normalized_relation_type = _normalize_relation_type_filter(relation_type, allow_none=True)
+    query = db.query(InvoiceDocumentRelation)
+    if normalized_relation_type is not None:
+        query = query.filter(InvoiceDocumentRelation.relation_type == normalized_relation_type)
+    if source_invoice_id is not None:
+        query = query.filter(InvoiceDocumentRelation.source_invoice_id == source_invoice_id)
+    if target_invoice_id is not None:
+        query = query.filter(InvoiceDocumentRelation.target_invoice_id == target_invoice_id)
+    if source_payment_id is not None:
+        query = query.filter(InvoiceDocumentRelation.source_payment_id == source_payment_id)
+    relations = query.order_by(InvoiceDocumentRelation.created_at.asc(), InvoiceDocumentRelation.id.asc()).all()
+    return _build_relation_views(db, relations)
 
 
 def get_invoice_creation_defaults(db: Session) -> InvoiceSequencePreview:
@@ -1220,6 +1287,17 @@ def _normalize_todo_status(value: str | None, *, allow_none: bool = False) -> st
     raise InvoiceValidationError("Neplatný stav todo.")
 
 
+def _normalize_relation_type_filter(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT
+    cleaned = value.strip()
+    if not cleaned:
+        return None if allow_none else RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT
+    if cleaned not in SUPPORTED_RELATION_TYPES:
+        raise InvoiceValidationError("Neplatný typ relace.")
+    return cleaned
+
+
 def _normalize_todo_type(value: str | None, *, allow_none: bool = False) -> str | None:
     if value is None:
         return None if allow_none else "manual"
@@ -1308,6 +1386,91 @@ def _create_generated_todo(
     db.add(todo)
     db.flush()
     return todo
+
+
+def _build_relation_views(
+    db: Session,
+    relations: list[InvoiceDocumentRelation],
+) -> list[InvoiceDocumentRelationResponse]:
+    if not relations:
+        return []
+
+    invoice_ids = {
+        relation_invoice_id
+        for relation in relations
+        for relation_invoice_id in (relation.source_invoice_id, relation.target_invoice_id)
+        if relation_invoice_id is not None
+    }
+    payment_ids = {relation.source_payment_id for relation in relations if relation.source_payment_id is not None}
+
+    invoice_map = _load_relation_document_summaries(db, invoice_ids)
+    payment_map = _load_relation_payment_summaries(db, payment_ids)
+
+    return [
+        InvoiceDocumentRelationResponse(
+            id=relation.id,
+            relation_type=relation.relation_type,
+            source_invoice_id=relation.source_invoice_id,
+            target_invoice_id=relation.target_invoice_id,
+            source_payment_id=relation.source_payment_id,
+            created_at=relation.created_at,
+            source_document=invoice_map.get(relation.source_invoice_id),
+            target_document=invoice_map.get(relation.target_invoice_id),
+            source_payment=payment_map.get(relation.source_payment_id),
+        )
+        for relation in relations
+    ]
+
+
+def _load_relation_document_summaries(
+    db: Session,
+    invoice_ids: set[int],
+) -> dict[int, InvoiceRelationDocumentSummaryResponse]:
+    if not invoice_ids:
+        return {}
+    invoices = (
+        db.query(Invoice)
+        .options(selectinload(Invoice.payments))
+        .filter(Invoice.id.in_(sorted(invoice_ids)))
+        .all()
+    )
+    summary_map: dict[int, InvoiceRelationDocumentSummaryResponse] = {}
+    for invoice in invoices:
+        runtime_invoice = _attach_invoice_runtime_state(invoice)
+        summary_map[invoice.id] = InvoiceRelationDocumentSummaryResponse(
+            id=runtime_invoice.id,
+            document_kind=runtime_invoice.document_kind,
+            invoice_number=runtime_invoice.invoice_number,
+            variable_symbol=runtime_invoice.variable_symbol,
+            issue_date=runtime_invoice.issue_date,
+            due_date=runtime_invoice.due_date,
+            customer_name=runtime_invoice.customer_name,
+            currency=runtime_invoice.currency,
+            total=_quantize_money(Decimal(runtime_invoice.total)),
+            effective_status=runtime_invoice.effective_status,
+            payment_status=runtime_invoice.payment_status,
+        )
+    return summary_map
+
+
+def _load_relation_payment_summaries(
+    db: Session,
+    payment_ids: set[int | None],
+) -> dict[int, InvoiceRelationPaymentSummaryResponse]:
+    normalized_payment_ids = sorted(payment_id for payment_id in payment_ids if payment_id is not None)
+    if not normalized_payment_ids:
+        return {}
+    payments = db.query(InvoicePayment).filter(InvoicePayment.id.in_(normalized_payment_ids)).all()
+    return {
+        payment.id: InvoiceRelationPaymentSummaryResponse(
+            id=payment.id,
+            amount=_quantize_money(Decimal(payment.amount)),
+            paid_at=payment.paid_at,
+            payment_method=payment.payment_method,
+            note=payment.note,
+        )
+        for payment in payments
+    }
 
 
 def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:

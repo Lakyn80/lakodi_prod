@@ -738,6 +738,64 @@ class InvoiceTodoGenerateResponse(BaseModel):
     generated_ids: list[int]
 
 
+InvoiceDocumentRelationType = Literal[
+    "tax_document_for_payment",
+    "final_invoice_for_proforma",
+    "correction_for_invoice",
+    "invoice_from_quote",
+    "proforma_from_quote",
+]
+
+
+class InvoiceRelationDocumentSummaryResponse(BaseModel):
+    id: int
+    document_kind: str
+    invoice_number: str
+    variable_symbol: str
+    issue_date: date
+    due_date: date
+    customer_name: str
+    currency: str
+    total: Decimal
+    effective_status: EffectiveInvoiceStatus
+    payment_status: InvoicePaymentStatus
+
+    @field_serializer("total", when_used="json")
+    def serialize_total(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceRelationPaymentSummaryResponse(BaseModel):
+    id: int
+    amount: Decimal
+    paid_at: date
+    payment_method: str
+    note: str | None
+
+    @field_serializer("amount", when_used="json")
+    def serialize_amount(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceDocumentRelationResponse(BaseModel):
+    id: int
+    relation_type: InvoiceDocumentRelationType
+    source_invoice_id: int
+    target_invoice_id: int
+    source_payment_id: int | None
+    created_at: datetime
+    source_document: InvoiceRelationDocumentSummaryResponse | None
+    target_document: InvoiceRelationDocumentSummaryResponse | None
+    source_payment: InvoiceRelationPaymentSummaryResponse | None
+
+
+class InvoiceRelationsSummaryResponse(BaseModel):
+    invoice_id: int
+    outgoing_relations: list[InvoiceDocumentRelationResponse]
+    incoming_relations: list[InvoiceDocumentRelationResponse]
+    all_relations: list[InvoiceDocumentRelationResponse]
+
+
 class FinalInvoiceCreateRequest(BaseModel):
     source_proforma_ids: list[int]
     issue_date: date | None = None
