@@ -325,6 +325,75 @@ class InvoicePaymentMatch(Base):
     bank_transaction = relationship("InvoiceBankTransaction", back_populates="matches")
 
 
+class InvoiceRecurringTemplate(Base):
+    __tablename__ = "invoice_recurring_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_type = Column(String(16), nullable=False, index=True)
+    document_kind = Column(String(32), nullable=True, index=True)
+    subject_id = Column(Integer, ForeignKey("invoice_subjects.id", ondelete="SET NULL"), nullable=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("invoice_suppliers.id", ondelete="SET NULL"), nullable=True, index=True)
+    name = Column(String(256), nullable=False)
+    status = Column(String(16), nullable=False, default="active", index=True)
+    recurrence_interval = Column(String(16), nullable=False)
+    recurrence_count = Column(Integer, nullable=False, default=1)
+    next_run_date = Column(Date, nullable=False, index=True)
+    last_run_date = Column(Date, nullable=True)
+    business_mode = Column(String(64), nullable=True)
+    tax_mode = Column(String(64), nullable=True)
+    currency = Column(String(8), nullable=False, default="CZK")
+    vat_rate = Column(Numeric(5, 2), nullable=True)
+    note = Column(Text, nullable=True)
+    payment_method = Column(String(64), nullable=True)
+    bank_account_number = Column(String(32), nullable=True)
+    bank_account_prefix = Column(String(16), nullable=True)
+    bank_code = Column(String(16), nullable=True)
+    bank_iban = Column(String(34), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    items = relationship(
+        "InvoiceRecurringTemplateItem",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        order_by="InvoiceRecurringTemplateItem.id",
+    )
+    generations = relationship(
+        "InvoiceRecurringGeneration",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        order_by="InvoiceRecurringGeneration.generated_at, InvoiceRecurringGeneration.id",
+    )
+
+
+class InvoiceRecurringTemplateItem(Base):
+    __tablename__ = "invoice_recurring_template_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("invoice_recurring_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+    description = Column(String(512), nullable=False)
+    quantity = Column(Numeric(12, 3), nullable=False)
+    unit_price = Column(Numeric(12, 2), nullable=False)
+    line_total = Column(Numeric(12, 2), nullable=False)
+
+    template = relationship("InvoiceRecurringTemplate", back_populates="items")
+
+
+class InvoiceRecurringGeneration(Base):
+    __tablename__ = "invoice_recurring_generations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("invoice_recurring_templates.id", ondelete="CASCADE"), nullable=False, index=True)
+    generated_invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    generated_expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="SET NULL"), nullable=True, index=True)
+    generated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    run_date = Column(Date, nullable=False, index=True)
+    status = Column(String(16), nullable=False, default="generated")
+    message = Column(Text, nullable=True)
+
+    template = relationship("InvoiceRecurringTemplate", back_populates="generations")
+
+
 class InvoiceTodo(Base):
     __tablename__ = "invoice_todos"
 

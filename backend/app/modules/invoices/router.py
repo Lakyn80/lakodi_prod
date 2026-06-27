@@ -49,6 +49,11 @@ from backend.app.modules.invoices.schemas import (
     InvoicePaymentMatchResponse,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
+    InvoiceRecurringGenerationResponse,
+    InvoiceRecurringTemplateCreate,
+    InvoiceRecurringTemplateDeleteResponse,
+    InvoiceRecurringTemplateResponse,
+    InvoiceRecurringTemplateUpdate,
     InvoiceRelationsSummaryResponse,
     InvoiceSupplierCreate,
     InvoiceSupplierDeleteResponse,
@@ -78,6 +83,7 @@ from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
     InvoicePaymentMatchNotFoundError,
     InvoicePaymentNotFoundError,
+    InvoiceRecurringTemplateNotFoundError,
     InvoiceSupplierNotFoundError,
     InvoiceSubjectNotFoundError,
     InvoiceTodoNotFoundError,
@@ -85,10 +91,13 @@ from backend.app.modules.invoices.service import (
     apply_invoice_payment_match,
     add_invoice_expense_payment,
     add_invoice_payment,
+    activate_invoice_recurring_template,
+    cancel_invoice_recurring_template,
     cancel_invoice_todo,
     complete_invoice_todo,
     convert_quote_to_document,
     create_invoice_expense,
+    create_invoice_recurring_template,
     create_invoice_supplier,
     create_invoice_subject,
     create_invoice_todo,
@@ -98,17 +107,20 @@ from backend.app.modules.invoices.service import (
     create_tax_document_from_proforma_payment,
     delete_invoice_expense,
     delete_invoice_expense_payment,
+    delete_invoice_recurring_template,
     delete_invoice_supplier,
     delete_invoice_subject,
     delete_invoice_payment,
     delete_invoice_todo,
     generate_invoice_payment_matches,
+    generate_invoice_from_recurring_template,
     generate_invoice_todos,
     get_document_creation_defaults,
     get_invoice_bank_transaction_detail,
     get_invoice_expense_detail,
     generate_invoice_pdf,
     get_invoice_detail,
+    get_invoice_recurring_template_detail,
     get_invoice_relations_summary,
     get_invoice_settings,
     get_invoice_supplier_detail,
@@ -120,16 +132,20 @@ from backend.app.modules.invoices.service import (
     list_invoice_document_relations,
     list_invoice_expense_payments,
     list_invoice_expenses,
+    list_invoice_recurring_generations,
+    list_invoice_recurring_templates,
     list_invoice_suppliers,
     list_invoice_subjects,
     list_invoice_payments,
     list_invoice_todos,
     list_invoices,
+    pause_invoice_recurring_template,
     save_invoice_settings,
     send_invoice_email,
     reject_invoice_payment_match,
     list_invoice_payment_matches,
     update_invoice_expense,
+    update_invoice_recurring_template,
     update_invoice_supplier,
     update_invoice_subject,
     update_invoice_todo,
@@ -551,6 +567,141 @@ def admin_delete_invoice_supplier(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/recurring-templates", response_model=list[InvoiceRecurringTemplateResponse])
+def admin_list_invoice_recurring_templates(
+    template_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_recurring_templates(db, template_type=template_type, status=status)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/recurring-templates", response_model=InvoiceRecurringTemplateResponse)
+def admin_create_invoice_recurring_template(
+    body: InvoiceRecurringTemplateCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_invoice_recurring_template(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/recurring-templates/{template_id}", response_model=InvoiceRecurringTemplateResponse)
+def admin_get_invoice_recurring_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_recurring_template_detail(db, template_id)
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/recurring-templates/{template_id}", response_model=InvoiceRecurringTemplateResponse)
+def admin_update_invoice_recurring_template(
+    template_id: int,
+    body: InvoiceRecurringTemplateUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return update_invoice_recurring_template(db, template_id, body)
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/recurring-templates/{template_id}/pause", response_model=InvoiceRecurringTemplateResponse)
+def admin_pause_invoice_recurring_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return pause_invoice_recurring_template(db, template_id)
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/recurring-templates/{template_id}/activate", response_model=InvoiceRecurringTemplateResponse)
+def admin_activate_invoice_recurring_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return activate_invoice_recurring_template(db, template_id)
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/recurring-templates/{template_id}/cancel", response_model=InvoiceRecurringTemplateResponse)
+def admin_cancel_invoice_recurring_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return cancel_invoice_recurring_template(db, template_id)
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/recurring-templates/{template_id}", response_model=InvoiceRecurringTemplateDeleteResponse)
+def admin_delete_invoice_recurring_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        deleted_template_id = delete_invoice_recurring_template(db, template_id)
+        return {"ok": True, "template_id": deleted_template_id}
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/recurring-templates/{template_id}/generate", response_model=InvoiceRecurringGenerationResponse)
+def admin_generate_invoice_recurring_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        result = generate_invoice_from_recurring_template(db, template_id)
+        return result.generation
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get(
+    "/recurring-templates/{template_id}/generations",
+    response_model=list[InvoiceRecurringGenerationResponse],
+)
+def admin_list_invoice_recurring_generations(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_recurring_generations(db, template_id)
+    except InvoiceRecurringTemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/bank-transactions", response_model=list[InvoiceBankTransactionResponse])

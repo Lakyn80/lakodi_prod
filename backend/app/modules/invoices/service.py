@@ -2,7 +2,8 @@
 import hashlib
 import json
 import logging
-from dataclasses import dataclass
+from calendar import monthrange
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -33,6 +34,9 @@ from backend.app.modules.invoices.models import (
     InvoiceItem,
     InvoicePayment,
     InvoicePaymentMatch,
+    InvoiceRecurringGeneration,
+    InvoiceRecurringTemplate,
+    InvoiceRecurringTemplateItem,
     InvoiceSequenceState,
     InvoiceSupplier,
     InvoiceSubject,
@@ -51,8 +55,10 @@ from backend.app.modules.invoices.numbering_service import (
 )
 from backend.app.modules.invoices.payment_service import (
     InvoicePaymentError,
+    PaymentProfile,
     InvoicePaymentSettingsProfile,
     IssuerProfile,
+    build_czech_iban,
     get_invoice_settings_profile,
     update_invoice_settings_profile,
 )
@@ -72,6 +78,9 @@ from backend.app.modules.invoices.schemas import (
     InvoiceRelationPaymentSummaryResponse,
     InvoiceRelationsSummaryResponse,
     InvoicePaymentCreate,
+    InvoiceRecurringGenerationResponse,
+    InvoiceRecurringTemplateCreate,
+    InvoiceRecurringTemplateUpdate,
     InvoiceSupplierCreate,
     InvoiceSupplierUpdate,
     InvoiceSubjectCreate,
@@ -97,6 +106,13 @@ STORED_BANK_TRANSACTION_DIRECTIONS = {"incoming", "outgoing"}
 DEFAULT_PAYMENT_MATCH_STATUS = "suggested"
 STORED_PAYMENT_MATCH_STATUSES = {"suggested", "applied", "rejected"}
 SUPPORTED_PAYMENT_MATCH_TYPES = {"variable_symbol_amount", "variable_symbol_only", "amount_only", "manual"}
+DEFAULT_RECURRING_TEMPLATE_STATUS = "active"
+STORED_RECURRING_TEMPLATE_STATUSES = {"active", "paused", "cancelled"}
+STORED_RECURRING_TEMPLATE_TYPES = {"invoice", "expense"}
+STORED_RECURRING_INTERVALS = {"daily", "weekly", "monthly", "quarterly", "yearly"}
+DEFAULT_RECURRING_GENERATION_STATUS = "generated"
+STORED_RECURRING_GENERATION_STATUSES = {"generated", "failed"}
+DEFAULT_RECURRING_EXPENSE_DUE_DAYS = 14
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 SUPPORTED_RELATION_TYPES = {
@@ -146,6 +162,10 @@ class InvoicePaymentMatchNotFoundError(LookupError):
     """Návrh párování neexistuje."""
 
 
+class InvoiceRecurringTemplateNotFoundError(LookupError):
+    """Recurring šablona neexistuje."""
+
+
 class InvoiceTodoNotFoundError(LookupError):
     """Todo nebylo nalezeno."""
 
@@ -168,6 +188,12 @@ class ImportBankTransactionsResult:
     skipped_duplicate_count: int
     imported_transaction_ids: list[int]
     skipped_duplicate_identifiers: list[str]
+
+
+@dataclass(frozen=True)
+class RecurringGenerationResult:
+    template: InvoiceRecurringTemplate
+    generation: InvoiceRecurringGeneration
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
@@ -437,6 +463,214 @@ def delete_invoice_supplier(db: Session, supplier_id: int) -> int:
     db.delete(supplier)
     db.commit()
     return supplier_id
+
+
+def list_invoice_recurring_templates(
+    db: Session,
+    *,
+    template_type: str | None = None,
+    status: str | None = None,
+) -> list[InvoiceRecurringTemplate]:
+    query = (
+        db.query(InvoiceRecurringTemplate)
+        .options(selectinload(InvoiceRecurringTemplate.items))
+        .order_by(InvoiceRecurringTemplate.id.desc())
+    )
+    normalized_template_type = _normalize_recurring_template_type(template_type, allow_none=True)
+    normalized_status = _normalize_recurring_template_status(status, allow_none=True)
+    if normalized_template_type is not None:
+        query = query.filter(InvoiceRecurringTemplate.template_type == normalized_template_type)
+    if normalized_status is not None:
+        query = query.filter(InvoiceRecurringTemplate.status == normalized_status)
+    return query.all()
+
+
+def get_invoice_recurring_template_detail(db: Session, template_id: int) -> InvoiceRecurringTemplate:
+    template = (
+        db.query(InvoiceRecurringTemplate)
+        .options(selectinload(InvoiceRecurringTemplate.items))
+        .filter(InvoiceRecurringTemplate.id == template_id)
+        .first()
+    )
+    if template is None:
+        raise InvoiceRecurringTemplateNotFoundError("Recurring šablona nebyla nalezena.")
+    return template
+
+
+def create_invoice_recurring_template(
+    db: Session,
+    payload: InvoiceRecurringTemplateCreate,
+) -> InvoiceRecurringTemplate:
+    subject = _resolve_invoice_subject(db, payload.subject_id) if payload.subject_id is not None else None
+    supplier = _resolve_invoice_supplier(db, payload.supplier_id) if payload.supplier_id is not None else None
+    prepared_items = [_prepare_invoice_item(item) for item in payload.items]
+    template = InvoiceRecurringTemplate(
+        template_type=_normalize_recurring_template_type(payload.template_type),
+        document_kind=payload.document_kind,
+        subject_id=subject.id if subject is not None else None,
+        supplier_id=supplier.id if supplier is not None else None,
+        name=payload.name,
+        status=_normalize_recurring_template_status(payload.status),
+        recurrence_interval=_normalize_recurring_interval(payload.recurrence_interval),
+        recurrence_count=payload.recurrence_count,
+        next_run_date=payload.next_run_date,
+        last_run_date=None,
+        business_mode=payload.business_mode,
+        tax_mode=payload.tax_mode,
+        currency=payload.currency,
+        vat_rate=_normalize_vat_rate(payload.vat_rate) if payload.vat_rate is not None else None,
+        note=payload.note,
+        payment_method=payload.payment_method,
+        bank_account_number=payload.bank_account_number,
+        bank_account_prefix=payload.bank_account_prefix,
+        bank_code=payload.bank_code,
+        bank_iban=payload.bank_iban,
+    )
+    template.items = [
+        InvoiceRecurringTemplateItem(
+            description=item.description,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            line_total=item.line_total,
+        )
+        for item in prepared_items
+    ]
+    db.add(template)
+    db.commit()
+    return get_invoice_recurring_template_detail(db, template.id)
+
+
+def update_invoice_recurring_template(
+    db: Session,
+    template_id: int,
+    payload: InvoiceRecurringTemplateUpdate,
+) -> InvoiceRecurringTemplate:
+    template = get_invoice_recurring_template_detail(db, template_id)
+    subject = _resolve_invoice_subject(db, payload.subject_id) if payload.subject_id is not None else None
+    supplier = _resolve_invoice_supplier(db, payload.supplier_id) if payload.supplier_id is not None else None
+    prepared_items = [_prepare_invoice_item(item) for item in payload.items]
+    template.template_type = _normalize_recurring_template_type(payload.template_type)
+    template.document_kind = payload.document_kind
+    template.subject_id = subject.id if subject is not None else None
+    template.supplier_id = supplier.id if supplier is not None else None
+    template.name = payload.name
+    template.status = _normalize_recurring_template_status(payload.status)
+    template.recurrence_interval = _normalize_recurring_interval(payload.recurrence_interval)
+    template.recurrence_count = payload.recurrence_count
+    template.next_run_date = payload.next_run_date
+    template.business_mode = payload.business_mode
+    template.tax_mode = payload.tax_mode
+    template.currency = payload.currency
+    template.vat_rate = _normalize_vat_rate(payload.vat_rate) if payload.vat_rate is not None else None
+    template.note = payload.note
+    template.payment_method = payload.payment_method
+    template.bank_account_number = payload.bank_account_number
+    template.bank_account_prefix = payload.bank_account_prefix
+    template.bank_code = payload.bank_code
+    template.bank_iban = payload.bank_iban
+    template.items = [
+        InvoiceRecurringTemplateItem(
+            description=item.description,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            line_total=item.line_total,
+        )
+        for item in prepared_items
+    ]
+    db.add(template)
+    db.commit()
+    return get_invoice_recurring_template_detail(db, template.id)
+
+
+def pause_invoice_recurring_template(db: Session, template_id: int) -> InvoiceRecurringTemplate:
+    template = get_invoice_recurring_template_detail(db, template_id)
+    template.status = "paused"
+    db.add(template)
+    db.commit()
+    return get_invoice_recurring_template_detail(db, template.id)
+
+
+def activate_invoice_recurring_template(db: Session, template_id: int) -> InvoiceRecurringTemplate:
+    template = get_invoice_recurring_template_detail(db, template_id)
+    template.status = "active"
+    db.add(template)
+    db.commit()
+    return get_invoice_recurring_template_detail(db, template.id)
+
+
+def cancel_invoice_recurring_template(db: Session, template_id: int) -> InvoiceRecurringTemplate:
+    template = get_invoice_recurring_template_detail(db, template_id)
+    template.status = "cancelled"
+    db.add(template)
+    db.commit()
+    return get_invoice_recurring_template_detail(db, template.id)
+
+
+def delete_invoice_recurring_template(db: Session, template_id: int) -> int:
+    template = get_invoice_recurring_template_detail(db, template_id)
+    has_generations = (
+        db.query(InvoiceRecurringGeneration.id)
+        .filter(InvoiceRecurringGeneration.template_id == template.id)
+        .first()
+        is not None
+    )
+    if has_generations:
+        raise InvoiceValidationError("Recurring šablonu s historií generování nelze smazat.")
+    db.delete(template)
+    db.commit()
+    return template_id
+
+
+def list_invoice_recurring_generations(db: Session, template_id: int) -> list[InvoiceRecurringGeneration]:
+    _get_invoice_recurring_template_or_raise(db, template_id, include_items=False)
+    return (
+        db.query(InvoiceRecurringGeneration)
+        .filter(InvoiceRecurringGeneration.template_id == template_id)
+        .order_by(InvoiceRecurringGeneration.generated_at.desc(), InvoiceRecurringGeneration.id.desc())
+        .all()
+    )
+
+
+def generate_invoice_from_recurring_template(db: Session, template_id: int) -> RecurringGenerationResult:
+    template = _get_invoice_recurring_template_or_raise(db, template_id, include_items=True)
+    if template.status != "active":
+        raise InvoiceValidationError("Generovat lze pouze z aktivní recurring šablony.")
+
+    run_date = template.next_run_date
+    if template.template_type == "invoice":
+        generated_invoice = _generate_invoice_document_from_recurring_template(db, template, run_date=run_date)
+        generation = InvoiceRecurringGeneration(
+            template_id=template.id,
+            generated_invoice_id=generated_invoice.id,
+            generated_expense_id=None,
+            run_date=run_date,
+            status=DEFAULT_RECURRING_GENERATION_STATUS,
+            message=f"Vygenerováno z recurring šablony {template.name}.",
+        )
+    else:
+        generated_expense = _generate_expense_document_from_recurring_template(db, template, run_date=run_date)
+        generation = InvoiceRecurringGeneration(
+            template_id=template.id,
+            generated_invoice_id=None,
+            generated_expense_id=generated_expense.id,
+            run_date=run_date,
+            status=DEFAULT_RECURRING_GENERATION_STATUS,
+            message=f"Vygenerováno z recurring šablony {template.name}.",
+        )
+
+    template.last_run_date = run_date
+    template.next_run_date = _advance_recurring_run_date(
+        run_date,
+        interval=template.recurrence_interval,
+        recurrence_count=template.recurrence_count,
+    )
+    db.add(template)
+    db.add(generation)
+    db.commit()
+    return RecurringGenerationResult(
+        template=get_invoice_recurring_template_detail(db, template.id),
+        generation=generation,
+    )
 
 
 def list_invoice_bank_transactions(
@@ -1673,6 +1907,38 @@ def _normalize_payment_match_type(value: str) -> str:
     return cleaned
 
 
+def _normalize_recurring_template_type(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else "invoice"
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else "invoice"
+    if cleaned not in STORED_RECURRING_TEMPLATE_TYPES:
+        supported = ", ".join(sorted(STORED_RECURRING_TEMPLATE_TYPES))
+        raise InvoiceValidationError(f"Neplatný typ recurring šablony. Povolené hodnoty: {supported}.")
+    return cleaned
+
+
+def _normalize_recurring_template_status(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else DEFAULT_RECURRING_TEMPLATE_STATUS
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else DEFAULT_RECURRING_TEMPLATE_STATUS
+    if cleaned not in STORED_RECURRING_TEMPLATE_STATUSES:
+        supported = ", ".join(sorted(STORED_RECURRING_TEMPLATE_STATUSES))
+        raise InvoiceValidationError(f"Neplatný stav recurring šablony. Povolené hodnoty: {supported}.")
+    return cleaned
+
+
+def _normalize_recurring_interval(value: str) -> str:
+    cleaned = value.strip().lower()
+    if cleaned not in STORED_RECURRING_INTERVALS:
+        supported = ", ".join(sorted(STORED_RECURRING_INTERVALS))
+        raise InvoiceValidationError(f"Neplatný interval recurring šablony. Povolené hodnoty: {supported}.")
+    return cleaned
+
+
 def _normalize_invoice_status(value: str | None) -> str:
     if value in STORED_INVOICE_STATUSES:
         return value
@@ -2096,6 +2362,21 @@ def _get_invoice_payment_match_or_raise(
     return match
 
 
+def _get_invoice_recurring_template_or_raise(
+    db: Session,
+    template_id: int,
+    *,
+    include_items: bool = True,
+) -> InvoiceRecurringTemplate:
+    query = db.query(InvoiceRecurringTemplate)
+    if include_items:
+        query = query.options(selectinload(InvoiceRecurringTemplate.items))
+    template = query.filter(InvoiceRecurringTemplate.id == template_id).first()
+    if template is None:
+        raise InvoiceRecurringTemplateNotFoundError("Recurring šablona nebyla nalezena.")
+    return template
+
+
 def _validate_todo_links(
     db: Session,
     *,
@@ -2280,6 +2561,184 @@ def _apply_supplier_snapshot_to_expense(expense: InvoiceExpense, snapshot: Suppl
     expense.supplier_dic = snapshot.dic
     expense.supplier_data_box = snapshot.data_box
     expense.supplier_country = snapshot.country
+
+
+def _advance_recurring_run_date(base_date: date, *, interval: str, recurrence_count: int) -> date:
+    normalized_interval = _normalize_recurring_interval(interval)
+    if recurrence_count <= 0:
+        raise InvoiceValidationError("recurrence_count musí být větší než nula.")
+    if normalized_interval == "daily":
+        return base_date + timedelta(days=recurrence_count)
+    if normalized_interval == "weekly":
+        return base_date + timedelta(weeks=recurrence_count)
+    if normalized_interval == "monthly":
+        return _add_months(base_date, recurrence_count)
+    if normalized_interval == "quarterly":
+        return _add_months(base_date, recurrence_count * 3)
+    if normalized_interval == "yearly":
+        return _add_months(base_date, recurrence_count * 12)
+    raise InvoiceValidationError("Neplatný interval recurring šablony.")
+
+
+def _add_months(base_date: date, months: int) -> date:
+    total_month = (base_date.month - 1) + months
+    year = base_date.year + total_month // 12
+    month = (total_month % 12) + 1
+    day = min(base_date.day, monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _build_prepared_item_from_recurring_template_item(
+    item: InvoiceRecurringTemplateItem,
+) -> PreparedInvoiceItem:
+    return PreparedInvoiceItem(
+        description=item.description.strip(),
+        quantity=_quantize_quantity(Decimal(item.quantity)),
+        unit_price=_quantize_money(Decimal(item.unit_price)),
+        line_total=_quantize_money(Decimal(item.line_total)),
+    )
+
+
+def _resolve_recurring_invoice_payment_settings(
+    settings: InvoicePaymentSettingsProfile,
+    template: InvoiceRecurringTemplate,
+) -> InvoicePaymentSettingsProfile:
+    has_override = any(
+        value is not None
+        for value in (
+            template.payment_method,
+            template.bank_account_number,
+            template.bank_account_prefix,
+            template.bank_code,
+            template.bank_iban,
+        )
+    )
+    if not has_override:
+        return settings
+
+    account_number = template.bank_account_number or settings.payment_profile.account_number
+    bank_code = template.bank_code or settings.payment_profile.bank_code
+    account_prefix = (
+        template.bank_account_prefix
+        if template.bank_account_prefix is not None
+        else settings.payment_profile.account_prefix
+    )
+    iban = template.bank_iban or build_czech_iban(
+        account_number=account_number,
+        bank_code=bank_code,
+        account_prefix=account_prefix,
+    )
+    payment_profile = PaymentProfile(
+        payment_method=template.payment_method or settings.payment_profile.payment_method,
+        account_number=account_number,
+        account_prefix=account_prefix,
+        bank_code=bank_code,
+        iban=iban,
+    )
+    return replace(settings, payment_profile=payment_profile)
+
+
+def _generate_invoice_document_from_recurring_template(
+    db: Session,
+    template: InvoiceRecurringTemplate,
+    *,
+    run_date: date,
+) -> Invoice:
+    settings = get_invoice_settings(db)
+    subject = _resolve_invoice_subject(db, template.subject_id)
+    if subject is None:
+        raise InvoiceValidationError("Recurring invoice/proforma template vyžaduje platný subject_id.")
+    customer_snapshot = _build_customer_snapshot_from_subject(subject)
+    prepared_items = [_build_prepared_item_from_recurring_template_item(item) for item in template.items]
+    totals = _calculate_totals(
+        tax_mode=template.tax_mode or "standard",
+        vat_rate=Decimal(template.vat_rate) if template.vat_rate is not None else None,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    payment_settings = _resolve_recurring_invoice_payment_settings(settings, template)
+    due_date = run_date + timedelta(days=settings.invoice_defaults.default_due_days)
+    payload = InvoiceCreate(
+        invoice_number=None,
+        document_kind=template.document_kind or DEFAULT_DOCUMENT_KIND,
+        status="issued",
+        issue_date=run_date,
+        due_date=due_date,
+        subject_id=subject.id,
+        customer_name=None,
+        customer_email=None,
+        customer_phone=None,
+        customer_address=None,
+        customer_ico=None,
+        customer_dic=None,
+        note=template.note,
+        business_mode=template.business_mode or "autoservice",
+        tax_mode=template.tax_mode or "standard",
+        currency=template.currency,
+        vat_rate=Decimal(template.vat_rate) if template.vat_rate is not None else None,
+        items=[
+            {
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+            }
+            for item in template.items
+        ],
+    )
+    return _create_invoice_with_reserved_sequence(
+        db=db,
+        payload=payload,
+        subject=subject,
+        customer_snapshot=customer_snapshot,
+        issuer=settings.issuer_profile,
+        payment_settings=payment_settings,
+        prepared_items=prepared_items,
+        totals=totals,
+    )
+
+
+def _generate_expense_document_from_recurring_template(
+    db: Session,
+    template: InvoiceRecurringTemplate,
+    *,
+    run_date: date,
+) -> InvoiceExpense:
+    supplier = _resolve_invoice_supplier(db, template.supplier_id)
+    if supplier is None:
+        raise InvoiceValidationError("Recurring expense template vyžaduje platný supplier_id.")
+    payload = InvoiceExpenseCreate(
+        expense_number=None,
+        supplier_id=supplier.id,
+        supplier_name=None,
+        supplier_email=None,
+        supplier_phone=None,
+        supplier_address=None,
+        supplier_ico=None,
+        supplier_dic=None,
+        supplier_data_box=None,
+        supplier_country=None,
+        issue_date=run_date,
+        received_date=run_date,
+        due_date=run_date + timedelta(days=DEFAULT_RECURRING_EXPENSE_DUE_DAYS),
+        taxable_supply_date=run_date,
+        currency=template.currency,
+        vat_rate=Decimal(template.vat_rate) if template.vat_rate is not None else None,
+        note=template.note,
+        payment_method=template.payment_method or "Bankovní převod",
+        bank_account_number=template.bank_account_number or "123456789",
+        bank_account_prefix=template.bank_account_prefix,
+        bank_code=template.bank_code or "0800",
+        bank_iban=template.bank_iban,
+        items=[
+            {
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+            }
+            for item in template.items
+        ],
+        status="open",
+    )
+    return create_invoice_expense(db, payload)
 
 
 def _serialize_bank_transaction_raw_payload(value: object | None) -> str | None:

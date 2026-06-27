@@ -26,6 +26,10 @@ BankTransactionDirection = Literal["incoming", "outgoing"]
 BankTransactionStatus = Literal["imported", "matched", "ignored"]
 PaymentMatchType = Literal["variable_symbol_amount", "variable_symbol_only", "amount_only", "manual"]
 PaymentMatchStatus = Literal["suggested", "applied", "rejected"]
+RecurringTemplateType = Literal["invoice", "expense"]
+RecurringTemplateStatus = Literal["active", "paused", "cancelled"]
+RecurringInterval = Literal["daily", "weekly", "monthly", "quarterly", "yearly"]
+RecurringGenerationStatus = Literal["generated", "failed"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -570,6 +574,199 @@ class InvoicePaymentMatchResponse(BaseModel):
     reason: str | None
     created_at: datetime
     applied_at: datetime | None
+
+
+class InvoiceRecurringTemplateItemCreate(InvoiceItemCreate):
+    pass
+
+
+class InvoiceRecurringTemplateItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    description: str
+    quantity: Decimal
+    unit_price: Decimal
+    line_total: Decimal
+
+    @field_serializer("quantity", "unit_price", "line_total", when_used="json")
+    def serialize_decimal(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceRecurringTemplateBase(BaseModel):
+    template_type: RecurringTemplateType
+    document_kind: str | None = None
+    subject_id: int | None = Field(default=None, ge=1)
+    supplier_id: int | None = Field(default=None, ge=1)
+    name: str = Field(min_length=1, max_length=256)
+    status: RecurringTemplateStatus = "active"
+    recurrence_interval: RecurringInterval
+    recurrence_count: int = Field(ge=1, le=365)
+    next_run_date: date
+    business_mode: BusinessMode | None = None
+    tax_mode: TaxMode | None = None
+    currency: str = Field(default="CZK", min_length=3, max_length=8)
+    vat_rate: Decimal | None = None
+    note: str | None = None
+    payment_method: str | None = Field(default=None, max_length=64)
+    bank_account_number: str | None = Field(default=None, max_length=32)
+    bank_account_prefix: str | None = Field(default=None, max_length=16)
+    bank_code: str | None = Field(default=None, max_length=16)
+    bank_iban: str | None = Field(default=None, max_length=34)
+    items: list[InvoiceRecurringTemplateItemCreate]
+
+    @field_validator("document_kind")
+    @classmethod
+    def normalize_optional_recurring_document_kind(cls, value: str | None) -> str | None:
+        return normalize_document_kind(value, default_to_invoice=False)
+
+    @field_validator("name")
+    @classmethod
+    def validate_recurring_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Název šablony je povinný.")
+        return cleaned
+
+    @field_validator("currency")
+    @classmethod
+    def normalize_recurring_currency(cls, value: str) -> str:
+        cleaned = value.strip().upper()
+        if not cleaned:
+            raise ValueError("Měna je povinná.")
+        return cleaned
+
+    @field_validator("vat_rate")
+    @classmethod
+    def validate_recurring_vat_rate(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value < 0:
+            raise ValueError("Sazba DPH nemůže být záporná.")
+        return value
+
+    @field_validator(
+        "note",
+        "payment_method",
+        "bank_account_number",
+        "bank_account_prefix",
+        "bank_code",
+        "bank_iban",
+    )
+    @classmethod
+    def normalize_optional_recurring_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @field_validator("items")
+    @classmethod
+    def validate_recurring_items(
+        cls, value: list[InvoiceRecurringTemplateItemCreate]
+    ) -> list[InvoiceRecurringTemplateItemCreate]:
+        if not value:
+            raise ValueError("Šablona musí obsahovat alespoň jednu položku.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_recurring_template_rules(self) -> "InvoiceRecurringTemplateBase":
+        if self.template_type == "invoice":
+            if self.document_kind not in {"invoice", "proforma"}:
+                raise ValueError("Recurring invoice template podporuje pouze document_kind invoice nebo proforma.")
+            if self.subject_id is None:
+                raise ValueError("Recurring invoice/proforma template vyžaduje subject_id.")
+            if self.supplier_id is not None:
+                raise ValueError("Recurring invoice template nesmí používat supplier_id.")
+            if self.business_mode is None:
+                raise ValueError("Recurring invoice/proforma template vyžaduje business_mode.")
+            if self.tax_mode is None:
+                raise ValueError("Recurring invoice/proforma template vyžaduje tax_mode.")
+        else:
+            if self.document_kind is not None:
+                raise ValueError("Recurring expense template nesmí obsahovat document_kind.")
+            if self.subject_id is not None:
+                raise ValueError("Recurring expense template nesmí používat subject_id.")
+            if self.supplier_id is None:
+                raise ValueError("Recurring expense template vyžaduje supplier_id.")
+            if self.business_mode is not None:
+                raise ValueError("Recurring expense template nesmí obsahovat business_mode.")
+            if self.tax_mode is not None:
+                raise ValueError("Recurring expense template nesmí obsahovat tax_mode.")
+            if self.payment_method is None or self.bank_account_number is None or self.bank_code is None:
+                raise ValueError(
+                    "Recurring expense template vyžaduje payment_method, bank_account_number a bank_code."
+                )
+
+        if any(
+            value is not None
+            for value in (self.payment_method, self.bank_account_number, self.bank_account_prefix, self.bank_code, self.bank_iban)
+        ):
+            if self.payment_method is None or self.bank_account_number is None or self.bank_code is None:
+                raise ValueError(
+                    "Pokud recurring template obsahuje platební override, musí vyplnit payment_method, bank_account_number a bank_code."
+                )
+        return self
+
+
+class InvoiceRecurringTemplateCreate(InvoiceRecurringTemplateBase):
+    pass
+
+
+class InvoiceRecurringTemplateUpdate(InvoiceRecurringTemplateBase):
+    pass
+
+
+class InvoiceRecurringGenerationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    template_id: int
+    generated_invoice_id: int | None
+    generated_expense_id: int | None
+    generated_at: datetime
+    run_date: date
+    status: RecurringGenerationStatus
+    message: str | None
+
+
+class InvoiceRecurringTemplateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    template_type: RecurringTemplateType
+    document_kind: str | None
+    subject_id: int | None
+    supplier_id: int | None
+    name: str
+    status: RecurringTemplateStatus
+    recurrence_interval: RecurringInterval
+    recurrence_count: int
+    next_run_date: date
+    last_run_date: date | None
+    business_mode: BusinessMode | None
+    tax_mode: TaxMode | None
+    currency: str
+    vat_rate: Decimal | None
+    note: str | None
+    payment_method: str | None
+    bank_account_number: str | None
+    bank_account_prefix: str | None
+    bank_code: str | None
+    bank_iban: str | None
+    created_at: datetime
+    updated_at: datetime
+    items: list[InvoiceRecurringTemplateItemResponse]
+
+    @field_serializer("vat_rate", when_used="json")
+    def serialize_vat_rate(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class InvoiceRecurringTemplateDeleteResponse(BaseModel):
+    ok: Literal[True]
+    template_id: int
 
 
 class QuoteConvertRequest(BaseModel):

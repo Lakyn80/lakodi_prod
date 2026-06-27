@@ -349,6 +349,93 @@ def _ensure_invoice_bank_matching_tables():
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_payment_matches_status ON invoice_payment_matches (status)"))
 
 
+def _ensure_invoice_recurring_tables():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        template_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_recurring_templates'")
+        ).fetchone()
+        if template_exists:
+            rows = conn.execute(text("PRAGMA table_info(invoice_recurring_templates)")).fetchall()
+            columns = {row[1] for row in rows}
+            add_map = {
+                "template_type": "ALTER TABLE invoice_recurring_templates ADD COLUMN template_type VARCHAR(16)",
+                "document_kind": "ALTER TABLE invoice_recurring_templates ADD COLUMN document_kind VARCHAR(32)",
+                "subject_id": "ALTER TABLE invoice_recurring_templates ADD COLUMN subject_id INTEGER",
+                "supplier_id": "ALTER TABLE invoice_recurring_templates ADD COLUMN supplier_id INTEGER",
+                "name": "ALTER TABLE invoice_recurring_templates ADD COLUMN name VARCHAR(256)",
+                "status": "ALTER TABLE invoice_recurring_templates ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'active'",
+                "recurrence_interval": "ALTER TABLE invoice_recurring_templates ADD COLUMN recurrence_interval VARCHAR(16)",
+                "recurrence_count": "ALTER TABLE invoice_recurring_templates ADD COLUMN recurrence_count INTEGER NOT NULL DEFAULT 1",
+                "next_run_date": "ALTER TABLE invoice_recurring_templates ADD COLUMN next_run_date DATE",
+                "last_run_date": "ALTER TABLE invoice_recurring_templates ADD COLUMN last_run_date DATE",
+                "business_mode": "ALTER TABLE invoice_recurring_templates ADD COLUMN business_mode VARCHAR(64)",
+                "tax_mode": "ALTER TABLE invoice_recurring_templates ADD COLUMN tax_mode VARCHAR(64)",
+                "currency": "ALTER TABLE invoice_recurring_templates ADD COLUMN currency VARCHAR(8) NOT NULL DEFAULT 'CZK'",
+                "vat_rate": "ALTER TABLE invoice_recurring_templates ADD COLUMN vat_rate NUMERIC(5, 2)",
+                "note": "ALTER TABLE invoice_recurring_templates ADD COLUMN note TEXT",
+                "payment_method": "ALTER TABLE invoice_recurring_templates ADD COLUMN payment_method VARCHAR(64)",
+                "bank_account_number": "ALTER TABLE invoice_recurring_templates ADD COLUMN bank_account_number VARCHAR(32)",
+                "bank_account_prefix": "ALTER TABLE invoice_recurring_templates ADD COLUMN bank_account_prefix VARCHAR(16)",
+                "bank_code": "ALTER TABLE invoice_recurring_templates ADD COLUMN bank_code VARCHAR(16)",
+                "bank_iban": "ALTER TABLE invoice_recurring_templates ADD COLUMN bank_iban VARCHAR(34)",
+                "created_at": "ALTER TABLE invoice_recurring_templates ADD COLUMN created_at DATETIME",
+                "updated_at": "ALTER TABLE invoice_recurring_templates ADD COLUMN updated_at DATETIME",
+            }
+            for col, sql in add_map.items():
+                if col not in columns:
+                    conn.execute(text(sql))
+
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_templates_template_type ON invoice_recurring_templates (template_type)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_templates_status ON invoice_recurring_templates (status)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_templates_next_run_date ON invoice_recurring_templates (next_run_date)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_templates_subject_id ON invoice_recurring_templates (subject_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_templates_supplier_id ON invoice_recurring_templates (supplier_id)"))
+
+        item_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_recurring_template_items'")
+        ).fetchone()
+        if item_exists:
+            rows = conn.execute(text("PRAGMA table_info(invoice_recurring_template_items)")).fetchall()
+            columns = {row[1] for row in rows}
+            add_map = {
+                "template_id": "ALTER TABLE invoice_recurring_template_items ADD COLUMN template_id INTEGER",
+                "description": "ALTER TABLE invoice_recurring_template_items ADD COLUMN description VARCHAR(512)",
+                "quantity": "ALTER TABLE invoice_recurring_template_items ADD COLUMN quantity NUMERIC(12, 3)",
+                "unit_price": "ALTER TABLE invoice_recurring_template_items ADD COLUMN unit_price NUMERIC(12, 2)",
+                "line_total": "ALTER TABLE invoice_recurring_template_items ADD COLUMN line_total NUMERIC(12, 2)",
+            }
+            for col, sql in add_map.items():
+                if col not in columns:
+                    conn.execute(text(sql))
+
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_template_items_template_id ON invoice_recurring_template_items (template_id)"))
+
+        generation_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_recurring_generations'")
+        ).fetchone()
+        if generation_exists:
+            rows = conn.execute(text("PRAGMA table_info(invoice_recurring_generations)")).fetchall()
+            columns = {row[1] for row in rows}
+            add_map = {
+                "template_id": "ALTER TABLE invoice_recurring_generations ADD COLUMN template_id INTEGER",
+                "generated_invoice_id": "ALTER TABLE invoice_recurring_generations ADD COLUMN generated_invoice_id INTEGER",
+                "generated_expense_id": "ALTER TABLE invoice_recurring_generations ADD COLUMN generated_expense_id INTEGER",
+                "generated_at": "ALTER TABLE invoice_recurring_generations ADD COLUMN generated_at DATETIME",
+                "run_date": "ALTER TABLE invoice_recurring_generations ADD COLUMN run_date DATE",
+                "status": "ALTER TABLE invoice_recurring_generations ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'generated'",
+                "message": "ALTER TABLE invoice_recurring_generations ADD COLUMN message TEXT",
+            }
+            for col, sql in add_map.items():
+                if col not in columns:
+                    conn.execute(text(sql))
+
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_generations_template_id ON invoice_recurring_generations (template_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_generations_generated_invoice_id ON invoice_recurring_generations (generated_invoice_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_recurring_generations_generated_expense_id ON invoice_recurring_generations (generated_expense_id)"))
+
+
 def _ensure_invoice_settings_columns():
     if not DATABASE_URL.startswith("sqlite"):
         return
@@ -563,6 +650,7 @@ def init_db():
     _ensure_invoice_suppliers_table()
     _ensure_invoice_expense_tables()
     _ensure_invoice_bank_matching_tables()
+    _ensure_invoice_recurring_tables()
     _ensure_invoice_settings_columns()
     _ensure_invoice_sequence_state_columns()
     _ensure_invoice_document_relations_table()

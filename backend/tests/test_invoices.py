@@ -30,6 +30,8 @@ from backend.app.modules.invoices.models import (
     InvoiceExpense,
     InvoiceDocumentRelation,
     InvoicePaymentMatch,
+    InvoiceRecurringGeneration,
+    InvoiceRecurringTemplate,
     InvoiceSequenceState,
     InvoiceTodo,
 )
@@ -283,6 +285,41 @@ def _ziskej_matche_bankovni_transakce(transaction_id: int) -> list[dict]:
 def _aplikuj_match_bankovni_transakce(transaction_id: int, match_id: int) -> dict:
     _login_admin()
     response = client.post(f"/api/admin/invoices/bank-transactions/{transaction_id}/matches/{match_id}/apply")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vytvor_recurring_sablonu(payload: dict | None = None) -> dict:
+    _login_admin()
+    subject = _vytvor_subjekt({"email": "recurring-template-subject@example.com"})
+    template_payload = {
+        "template_type": "invoice",
+        "document_kind": "invoice",
+        "subject_id": subject["id"],
+        "supplier_id": None,
+        "name": "Recurring invoice template",
+        "status": "active",
+        "recurrence_interval": "monthly",
+        "recurrence_count": 1,
+        "next_run_date": "2099-07-01",
+        "business_mode": "autoservice",
+        "tax_mode": "standard",
+        "currency": "CZK",
+        "vat_rate": 21,
+        "note": "Recurring note",
+        "payment_method": None,
+        "bank_account_number": None,
+        "bank_account_prefix": None,
+        "bank_code": None,
+        "bank_iban": None,
+        "items": [
+            {"description": "Servisní paušál", "quantity": 1, "unit_price": 2500},
+            {"description": "Monitoring", "quantity": 2, "unit_price": 500},
+        ],
+    }
+    if payload:
+        template_payload.update(payload)
+    response = client.post("/api/admin/invoices/recurring-templates", json=template_payload)
     assert response.status_code == 200
     return response.json()
 
@@ -3645,6 +3682,320 @@ def test_aplikace_matche_nepovoli_overpay_ani_opakovanou_aplikaci_stejne_transak
 
     assert second_apply_response.status_code == 400
     assert second_apply_response.json() == {"detail": "Tato bankovní transakce už byla spárována."}
+
+
+def test_vytvoreni_recurring_invoice_proforma_a_expense_sablon_funguje() -> None:
+    invoice_template = _vytvor_recurring_sablonu({"name": "Recurring invoice"})
+    proforma_template = _vytvor_recurring_sablonu(
+        {
+            "name": "Recurring proforma",
+            "document_kind": "proforma",
+            "next_run_date": "2099-07-02",
+        }
+    )
+    supplier = _vytvor_dodavatele({"email": "recurring-expense-supplier@example.com"})
+    expense_template = _vytvor_recurring_sablonu(
+        {
+            "template_type": "expense",
+            "document_kind": None,
+            "subject_id": None,
+            "supplier_id": supplier["id"],
+            "name": "Recurring expense",
+            "business_mode": None,
+            "tax_mode": None,
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_account_prefix": "19",
+            "bank_code": "0800",
+            "bank_iban": "CZ6508000000001234567899",
+            "next_run_date": "2099-07-03",
+        }
+    )
+
+    assert invoice_template["template_type"] == "invoice"
+    assert invoice_template["document_kind"] == "invoice"
+    assert proforma_template["document_kind"] == "proforma"
+    assert expense_template["template_type"] == "expense"
+    assert expense_template["supplier_id"] == supplier["id"]
+
+
+def test_list_filter_detail_update_a_stavove_prehody_recurring_sablon_funguji() -> None:
+    active_template = _vytvor_recurring_sablonu({"name": "Active recurring"})
+    paused_template = _vytvor_recurring_sablonu({"name": "Paused recurring", "status": "paused"})
+    _login_admin()
+
+    list_response = client.get("/api/admin/invoices/recurring-templates?template_type=invoice&status=active")
+    detail_response = client.get(f"/api/admin/invoices/recurring-templates/{active_template['id']}")
+    update_response = client.put(
+        f"/api/admin/invoices/recurring-templates/{active_template['id']}",
+        json={
+            "template_type": "invoice",
+            "document_kind": "invoice",
+            "subject_id": active_template["subject_id"],
+            "supplier_id": None,
+            "name": "Updated recurring",
+            "status": "active",
+            "recurrence_interval": "weekly",
+            "recurrence_count": 2,
+            "next_run_date": "2099-08-01",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "EUR",
+            "vat_rate": 12,
+            "note": "Updated note",
+            "payment_method": None,
+            "bank_account_number": None,
+            "bank_account_prefix": None,
+            "bank_code": None,
+            "bank_iban": None,
+            "items": [{"description": "Updated item", "quantity": 3, "unit_price": 100}],
+        },
+    )
+    pause_response = client.post(f"/api/admin/invoices/recurring-templates/{active_template['id']}/pause")
+    activate_response = client.post(f"/api/admin/invoices/recurring-templates/{paused_template['id']}/activate")
+    cancel_response = client.post(f"/api/admin/invoices/recurring-templates/{paused_template['id']}/cancel")
+
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
+    assert list_response.json()[0]["id"] == active_template["id"]
+    assert detail_response.status_code == 200
+    assert detail_response.json()["name"] == "Active recurring"
+    assert update_response.status_code == 200
+    assert update_response.json()["name"] == "Updated recurring"
+    assert update_response.json()["currency"] == "EUR"
+    assert len(update_response.json()["items"]) == 1
+    assert update_response.json()["items"][0]["line_total"] == 300.0
+    assert pause_response.status_code == 200
+    assert pause_response.json()["status"] == "paused"
+    assert activate_response.status_code == 200
+    assert activate_response.json()["status"] == "active"
+    assert cancel_response.status_code == 200
+    assert cancel_response.json()["status"] == "cancelled"
+
+
+def test_delete_recurring_sablony_bez_generaci_funguje_a_s_generacemi_je_blokovano() -> None:
+    deletable = _vytvor_recurring_sablonu({"name": "Delete recurring"})
+    generated = _vytvor_recurring_sablonu({"name": "Generated recurring"})
+    _login_admin()
+
+    delete_response = client.delete(f"/api/admin/invoices/recurring-templates/{deletable['id']}")
+    generate_response = client.post(f"/api/admin/invoices/recurring-templates/{generated['id']}/generate")
+    blocked_delete_response = client.delete(f"/api/admin/invoices/recurring-templates/{generated['id']}")
+
+    assert delete_response.status_code == 200
+    assert delete_response.json() == {"ok": True, "template_id": deletable["id"]}
+    assert generate_response.status_code == 200
+    assert blocked_delete_response.status_code == 400
+    assert blocked_delete_response.json() == {"detail": "Recurring šablonu s historií generování nelze smazat."}
+
+
+def test_validace_recurring_sablon_odmitne_neplatne_kombinace() -> None:
+    subject = _vytvor_subjekt({"email": "recurring-validation-subject@example.com"})
+    supplier = _vytvor_dodavatele({"email": "recurring-validation-supplier@example.com"})
+    _login_admin()
+
+    unsupported_document_kind = client.post(
+        "/api/admin/invoices/recurring-templates",
+        json={
+            "template_type": "invoice",
+            "document_kind": "quote",
+            "subject_id": subject["id"],
+            "supplier_id": None,
+            "name": "Invalid invoice kind",
+            "status": "active",
+            "recurrence_interval": "monthly",
+            "recurrence_count": 1,
+            "next_run_date": "2099-07-01",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [{"description": "Item", "quantity": 1, "unit_price": 100}],
+        },
+    )
+    expense_with_document_kind = client.post(
+        "/api/admin/invoices/recurring-templates",
+        json={
+            "template_type": "expense",
+            "document_kind": "invoice",
+            "subject_id": None,
+            "supplier_id": supplier["id"],
+            "name": "Invalid expense kind",
+            "status": "active",
+            "recurrence_interval": "monthly",
+            "recurrence_count": 1,
+            "next_run_date": "2099-07-01",
+            "business_mode": None,
+            "tax_mode": None,
+            "currency": "CZK",
+            "vat_rate": 21,
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_code": "0800",
+            "items": [{"description": "Item", "quantity": 1, "unit_price": 100}],
+        },
+    )
+    invoice_with_supplier = client.post(
+        "/api/admin/invoices/recurring-templates",
+        json={
+            "template_type": "invoice",
+            "document_kind": "invoice",
+            "subject_id": subject["id"],
+            "supplier_id": supplier["id"],
+            "name": "Invalid invoice supplier",
+            "status": "active",
+            "recurrence_interval": "monthly",
+            "recurrence_count": 1,
+            "next_run_date": "2099-07-01",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [{"description": "Item", "quantity": 1, "unit_price": 100}],
+        },
+    )
+    expense_with_subject = client.post(
+        "/api/admin/invoices/recurring-templates",
+        json={
+            "template_type": "expense",
+            "document_kind": None,
+            "subject_id": subject["id"],
+            "supplier_id": supplier["id"],
+            "name": "Invalid expense subject",
+            "status": "active",
+            "recurrence_interval": "monthly",
+            "recurrence_count": 1,
+            "next_run_date": "2099-07-01",
+            "business_mode": None,
+            "tax_mode": None,
+            "currency": "CZK",
+            "vat_rate": 21,
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_code": "0800",
+            "items": [{"description": "Item", "quantity": 1, "unit_price": 100}],
+        },
+    )
+
+    assert unsupported_document_kind.status_code == 422
+    assert expense_with_document_kind.status_code == 422
+    assert invoice_with_supplier.status_code == 422
+    assert expense_with_subject.status_code == 422
+
+
+def test_generovani_z_pozastavene_nebo_zrusene_recurring_sablony_je_odmitnuto() -> None:
+    paused = _vytvor_recurring_sablonu({"status": "paused", "name": "Paused generate"})
+    cancelled = _vytvor_recurring_sablonu({"status": "cancelled", "name": "Cancelled generate"})
+    _login_admin()
+
+    paused_response = client.post(f"/api/admin/invoices/recurring-templates/{paused['id']}/generate")
+    cancelled_response = client.post(f"/api/admin/invoices/recurring-templates/{cancelled['id']}/generate")
+
+    assert paused_response.status_code == 400
+    assert paused_response.json() == {"detail": "Generovat lze pouze z aktivní recurring šablony."}
+    assert cancelled_response.status_code == 400
+    assert cancelled_response.json() == {"detail": "Generovat lze pouze z aktivní recurring šablony."}
+
+
+def test_generovani_invoice_a_proformy_z_recurring_sablony_funguje_a_neodesila_email() -> None:
+    invoice_template = _vytvor_recurring_sablonu({"name": "Generate invoice recurring", "next_run_date": "2099-01-31"})
+    proforma_template = _vytvor_recurring_sablonu(
+        {
+            "name": "Generate proforma recurring",
+            "document_kind": "proforma",
+            "next_run_date": "2099-07-05",
+        }
+    )
+    from backend.app.modules.invoices import service as invoice_service
+
+    original_deliver = invoice_service.deliver_invoice_email
+    invoice_service.deliver_invoice_email = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("email send should not run"))
+    try:
+        _login_admin()
+        invoice_generation = client.post(f"/api/admin/invoices/recurring-templates/{invoice_template['id']}/generate")
+        proforma_generation = client.post(f"/api/admin/invoices/recurring-templates/{proforma_template['id']}/generate")
+    finally:
+        invoice_service.deliver_invoice_email = original_deliver
+
+    assert invoice_generation.status_code == 200
+    assert proforma_generation.status_code == 200
+    invoice_generation_id = invoice_generation.json()["generated_invoice_id"]
+    proforma_generation_id = proforma_generation.json()["generated_invoice_id"]
+    _login_admin()
+    invoice_detail = client.get(f"/api/admin/invoices/{invoice_generation_id}").json()
+    proforma_detail = client.get(f"/api/admin/invoices/{proforma_generation_id}").json()
+    invoice_template_detail = client.get(f"/api/admin/invoices/recurring-templates/{invoice_template['id']}").json()
+    generation_list = client.get(f"/api/admin/invoices/recurring-templates/{invoice_template['id']}/generations").json()
+
+    assert invoice_detail["document_kind"] == "invoice"
+    assert proforma_detail["document_kind"] == "proforma"
+    assert invoice_detail["subject_id"] == invoice_template["subject_id"]
+    assert invoice_detail["customer_email"] == "recurring-template-subject@example.com"
+    assert len(invoice_detail["items"]) == 2
+    assert invoice_detail["subtotal"] == 3500.0
+    assert invoice_detail["vat_amount"] == 735.0
+    assert invoice_template_detail["last_run_date"] == "2099-01-31"
+    assert invoice_template_detail["next_run_date"] == "2099-02-28"
+    assert len(generation_list) == 1
+    assert generation_list[0]["generated_invoice_id"] == invoice_generation_id
+
+
+def test_generovani_expense_z_recurring_sablony_funguje_a_loguje_generaci() -> None:
+    supplier = _vytvor_dodavatele({"email": "recurring-generate-expense@example.com"})
+    template = _vytvor_recurring_sablonu(
+        {
+            "template_type": "expense",
+            "document_kind": None,
+            "subject_id": None,
+            "supplier_id": supplier["id"],
+            "name": "Generate recurring expense",
+            "business_mode": None,
+            "tax_mode": None,
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_account_prefix": "19",
+            "bank_code": "0800",
+            "bank_iban": "CZ6508000000001234567899",
+            "next_run_date": "2099-07-10",
+        }
+    )
+    _login_admin()
+
+    generation_response = client.post(f"/api/admin/invoices/recurring-templates/{template['id']}/generate")
+    assert generation_response.status_code == 200
+    generated_expense_id = generation_response.json()["generated_expense_id"]
+    expense_detail = client.get(f"/api/admin/invoices/expenses/{generated_expense_id}").json()
+    template_detail = client.get(f"/api/admin/invoices/recurring-templates/{template['id']}").json()
+    generations_response = client.get(f"/api/admin/invoices/recurring-templates/{template['id']}/generations")
+
+    assert expense_detail["supplier_id"] == supplier["id"]
+    assert expense_detail["supplier_email"] == "recurring-generate-expense@example.com"
+    assert len(expense_detail["items"]) == 2
+    assert expense_detail["subtotal"] == 3500.0
+    assert expense_detail["vat_amount"] == 735.0
+    assert template_detail["last_run_date"] == "2099-07-10"
+    assert template_detail["next_run_date"] == "2099-08-10"
+    assert generations_response.status_code == 200
+    assert generations_response.json()[0]["generated_expense_id"] == generated_expense_id
+
+
+def test_recurring_generace_se_propise_do_generations_tabulky() -> None:
+    template = _vytvor_recurring_sablonu({"name": "Generation log recurring"})
+    _login_admin()
+    generate_response = client.post(f"/api/admin/invoices/recurring-templates/{template['id']}/generate")
+    assert generate_response.status_code == 200
+
+    with SessionLocal() as db:
+        generation = (
+            db.query(InvoiceRecurringGeneration)
+            .filter(InvoiceRecurringGeneration.template_id == template["id"])
+            .first()
+        )
+        template_row = db.query(InvoiceRecurringTemplate).filter(InvoiceRecurringTemplate.id == template["id"]).first()
+        assert generation is not None
+        assert generation.status == "generated"
+        assert template_row is not None
+        assert template_row.last_run_date is not None
 
 
 def test_lookup_ares_podle_ico_vrati_namapovana_data() -> None:

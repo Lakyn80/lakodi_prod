@@ -973,3 +973,97 @@
   - Current invoice-domain matching follows the existing payable-document semantics of the codebase, so quotes remain excluded and only document kinds with payment tracking are auto-suggested as candidates.
   - Duplicate guarding uses a stable fingerprint derived from normalized transaction fields; changing normalization rules later would require care for backward compatibility.
   - No push, no deploy, no CD.
+
+## Úkol 16 Backend recurring invoices / recurring expenses foundation
+
+- Date: 2026-06-27
+- Goal: Add a backend-only foundation for recurring invoice/proforma and recurring expense templates with explicit manual generation, reusable items, safe recurrence date progression, and generation audit history.
+- Scope: Backend-only invoicing models, SQLite compatibility helpers, recurring schemas, recurring service logic, admin recurring endpoints, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added recurring template table/model:
+    - `InvoiceRecurringTemplate`
+    - `invoice_recurring_templates`
+  - Added recurring template item table/model:
+    - `InvoiceRecurringTemplateItem`
+    - `invoice_recurring_template_items`
+  - Added recurring generation log table/model:
+    - `InvoiceRecurringGeneration`
+    - `invoice_recurring_generations`
+  - Added safe SQLite indexes for:
+    - `invoice_recurring_templates.template_type`
+    - `invoice_recurring_templates.status`
+    - `invoice_recurring_templates.next_run_date`
+    - `invoice_recurring_templates.subject_id`
+    - `invoice_recurring_templates.supplier_id`
+    - `invoice_recurring_generations.template_id`
+    - `invoice_recurring_generations.generated_invoice_id`
+    - `invoice_recurring_generations.generated_expense_id`
+  - Existing invoice/expense/payment rows were not rewritten.
+- Backend changes:
+  - Added admin-only recurring template endpoints under:
+    - `GET /api/admin/invoices/recurring-templates`
+    - `POST /api/admin/invoices/recurring-templates`
+    - `GET /api/admin/invoices/recurring-templates/{template_id}`
+    - `PUT /api/admin/invoices/recurring-templates/{template_id}`
+    - `POST /api/admin/invoices/recurring-templates/{template_id}/pause`
+    - `POST /api/admin/invoices/recurring-templates/{template_id}/activate`
+    - `POST /api/admin/invoices/recurring-templates/{template_id}/cancel`
+    - `DELETE /api/admin/invoices/recurring-templates/{template_id}`
+    - `POST /api/admin/invoices/recurring-templates/{template_id}/generate`
+    - `GET /api/admin/invoices/recurring-templates/{template_id}/generations`
+  - Added recurring template filtering for:
+    - `template_type`
+    - `status`
+  - Added validation rules:
+    - recurring invoice templates support only `invoice` and `proforma`
+    - recurring invoice/proforma templates require `subject_id`
+    - recurring expense templates require `supplier_id`
+    - recurring expense templates reject `document_kind`
+    - recurring invoice templates reject `supplier_id`
+    - recurring expense templates reject `subject_id`
+  - Added reusable recurring item storage with server-side `line_total` calculation.
+  - Added explicit recurring generation only; no scheduler/background job was added.
+  - Generation uses existing document creation logic where safe:
+    - recurring invoice/proforma -> existing invoice creation path with current numbering
+    - recurring expense -> existing expense creation path with independent expense numbering
+  - Generated documents remain normal invoices/expenses, so existing exports/todos/bank matching naturally see them.
+  - Added safe recurrence date progression for:
+    - daily
+    - weekly
+    - monthly
+    - quarterly
+    - yearly
+  - Added month-end-safe month arithmetic; monthly rollover no longer crashes on end-of-month dates.
+  - Added generation logging and safe delete blocking once a template has generation history.
+  - No email is sent automatically and no PDF is generated automatically during recurring generation.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "recurring"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "recurring"` -> `8 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> reached `100%`; `169` collected and exit code `0`, so `169 passed`
+  - `python -m pytest -q` -> reached `100%`; `177` collected and exit code `0`, so `177 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `169 collected`
+  - `python -m pytest --collect-only -q` -> `177 collected`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend recurring accounting templates`
+- Local commit hash if created: pending until local commit
+- Final status: implemented, backend-tested, ready for local commit
+- Notes / risks:
+  - This task intentionally adds only explicit manual generation; no automatic schedule runner, background job, or automatic mail/PDF workflow was added.
+  - The recurring invoice/proforma path intentionally requires `subject_id`, and the recurring expense path intentionally requires `supplier_id`, to avoid incomplete historical customer/supplier snapshots.
+  - Recurring template persistence stores minimal document-generation settings rather than a full parallel accounting domain.
+  - Invoice recurring payment overrides are supported conservatively; otherwise current invoice settings defaults remain the source of truth.
+  - No push, no deploy, no CD.
