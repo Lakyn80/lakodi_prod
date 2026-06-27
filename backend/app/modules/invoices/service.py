@@ -1,7 +1,7 @@
 """Aplikační logika pro faktury."""
 import logging
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.exc import IntegrityError
@@ -31,6 +31,7 @@ from backend.app.modules.invoices.models import (
     InvoicePayment,
     InvoiceSequenceState,
     InvoiceSubject,
+    InvoiceTodo,
 )
 from backend.app.modules.invoices.numbering_service import (
     DEFAULT_PADDING,
@@ -61,6 +62,8 @@ from backend.app.modules.invoices.schemas import (
     InvoicePaymentCreate,
     InvoiceSubjectCreate,
     InvoiceSubjectUpdate,
+    InvoiceTodoCreate,
+    InvoiceTodoUpdate,
     InvoiceSettingsUpdate,
     InvoiceUpdate,
     QuoteConvertRequest,
@@ -72,6 +75,10 @@ DEFAULT_STATUS = "draft"
 STORED_INVOICE_STATUSES = {"draft", "issued", "cancelled"}
 DEFAULT_EXPENSE_STATUS = "open"
 STORED_EXPENSE_STATUSES = {"open", "cancelled"}
+DEFAULT_TODO_STATUS = "open"
+STORED_TODO_STATUSES = {"open", "completed", "cancelled"}
+AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
+AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 EXPENSE_SEQUENCE_KEY = "expense"
 LOGGER = logging.getLogger(__name__)
 
@@ -100,10 +107,20 @@ class InvoiceSubjectNotFoundError(LookupError):
     """Subjekt faktury neexistuje."""
 
 
+class InvoiceTodoNotFoundError(LookupError):
+    """Todo nebylo nalezeno."""
+
+
 @dataclass(frozen=True)
 class ReverseChargeTexts:
     reason: str
     text: str
+
+
+@dataclass(frozen=True)
+class InvoiceTodoGenerationResult:
+    generated_ids: list[int]
+    skipped_existing_count: int
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
@@ -124,14 +141,7 @@ def list_invoices(db: Session) -> list[Invoice]:
 
 
 def get_invoice_detail(db: Session, invoice_id: int) -> Invoice:
-    invoice = (
-        db.query(Invoice)
-        .options(selectinload(Invoice.items), selectinload(Invoice.payments), selectinload(Invoice.subject))
-        .filter(Invoice.id == invoice_id)
-        .first()
-    )
-    if not invoice:
-        raise InvoiceNotFoundError("Faktura nebyla nalezena.")
+    invoice = _get_invoice_or_raise(db, invoice_id, include_items=True)
     return _attach_invoice_runtime_state(invoice)
 
 
@@ -257,6 +267,200 @@ def delete_invoice_subject(db: Session, subject_id: int) -> int:
     db.delete(subject)
     db.commit()
     return subject_id
+
+
+def list_invoice_todos(
+    db: Session,
+    *,
+    status: str | None = None,
+    todo_type: str | None = None,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+) -> list[InvoiceTodo]:
+    query = db.query(InvoiceTodo)
+    normalized_status = _normalize_todo_status(status, allow_none=True)
+    if normalized_status is not None:
+        query = query.filter(InvoiceTodo.status == normalized_status)
+    normalized_todo_type = _normalize_todo_type(todo_type, allow_none=True)
+    if normalized_todo_type is not None:
+        query = query.filter(InvoiceTodo.todo_type == normalized_todo_type)
+    if invoice_id is not None:
+        query = query.filter(InvoiceTodo.invoice_id == invoice_id)
+    if expense_id is not None:
+        query = query.filter(InvoiceTodo.expense_id == expense_id)
+    return query.order_by(InvoiceTodo.due_date.asc(), InvoiceTodo.id.desc()).all()
+
+
+def get_invoice_todo_detail(db: Session, todo_id: int) -> InvoiceTodo:
+    todo = db.query(InvoiceTodo).filter(InvoiceTodo.id == todo_id).first()
+    if todo is None:
+        raise InvoiceTodoNotFoundError("Todo nebylo nalezeno.")
+    return todo
+
+
+def create_invoice_todo(db: Session, payload: InvoiceTodoCreate) -> InvoiceTodo:
+    invoice_id, expense_id = _validate_todo_links(
+        db,
+        invoice_id=payload.invoice_id,
+        expense_id=payload.expense_id,
+        todo_type=payload.todo_type,
+    )
+    normalized_status = _normalize_todo_status(payload.status)
+    if _should_prevent_open_todo_duplicate(
+        todo_type=payload.todo_type,
+        status=normalized_status,
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+    ) and _has_open_todo_duplicate(
+        db,
+        todo_type=payload.todo_type,
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+    ):
+        raise InvoiceValidationError("Otevřené todo tohoto typu už pro daný doklad existuje.")
+
+    todo = InvoiceTodo(
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+        todo_type=payload.todo_type,
+        status=normalized_status,
+        title=payload.title,
+        message=payload.message,
+        due_date=payload.due_date,
+        completed_at=_resolve_completed_at_for_status(normalized_status),
+    )
+    db.add(todo)
+    db.commit()
+    return get_invoice_todo_detail(db, todo.id)
+
+
+def update_invoice_todo(db: Session, todo_id: int, payload: InvoiceTodoUpdate) -> InvoiceTodo:
+    todo = get_invoice_todo_detail(db, todo_id)
+    normalized_status = _normalize_todo_status(payload.status)
+    if _should_prevent_open_todo_duplicate(
+        todo_type=todo.todo_type,
+        status=normalized_status,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+    ) and _has_open_todo_duplicate(
+        db,
+        todo_type=todo.todo_type,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        exclude_todo_id=todo.id,
+    ):
+        raise InvoiceValidationError("Otevřené todo tohoto typu už pro daný doklad existuje.")
+
+    todo.title = payload.title
+    todo.message = payload.message
+    todo.due_date = payload.due_date
+    todo.status = normalized_status
+    todo.completed_at = _resolve_completed_at_for_status(normalized_status, current_value=todo.completed_at)
+    db.add(todo)
+    db.commit()
+    return get_invoice_todo_detail(db, todo.id)
+
+
+def complete_invoice_todo(db: Session, todo_id: int) -> InvoiceTodo:
+    todo = get_invoice_todo_detail(db, todo_id)
+    todo.status = "completed"
+    todo.completed_at = _resolve_completed_at_for_status("completed", current_value=todo.completed_at)
+    db.add(todo)
+    db.commit()
+    return get_invoice_todo_detail(db, todo.id)
+
+
+def cancel_invoice_todo(db: Session, todo_id: int) -> InvoiceTodo:
+    todo = get_invoice_todo_detail(db, todo_id)
+    todo.status = "cancelled"
+    todo.completed_at = None
+    db.add(todo)
+    db.commit()
+    return get_invoice_todo_detail(db, todo.id)
+
+
+def delete_invoice_todo(db: Session, todo_id: int) -> int:
+    todo = get_invoice_todo_detail(db, todo_id)
+    if todo.status != "open":
+        raise InvoiceValidationError("Dokončené nebo zrušené todo nelze smazat.")
+    db.delete(todo)
+    db.commit()
+    return todo_id
+
+
+def generate_invoice_todos(db: Session) -> InvoiceTodoGenerationResult:
+    generated_ids: list[int] = []
+    skipped_existing_count = 0
+    today = date.today()
+
+    overdue_invoices = (
+        db.query(Invoice)
+        .options(selectinload(Invoice.payments))
+        .order_by(Invoice.id.asc())
+        .all()
+    )
+    for invoice in overdue_invoices:
+        invoice = _attach_invoice_runtime_state(invoice)
+        document_metadata = get_document_kind_metadata(invoice.document_kind)
+        if not document_metadata.allows_payment_tracking:
+            continue
+        if getattr(invoice, "effective_status", None) != "overdue":
+            continue
+        if _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00")))) <= Decimal("0.00"):
+            continue
+        if _has_open_todo_duplicate(db, todo_type="invoice_overdue", invoice_id=invoice.id):
+            skipped_existing_count += 1
+            continue
+        todo = _create_generated_todo(
+            db,
+            invoice_id=invoice.id,
+            expense_id=None,
+            todo_type="invoice_overdue",
+            title=f"Po splatnosti: {document_metadata.internal_label} {invoice.invoice_number}",
+            message=(
+                f"Doklad {invoice.invoice_number} je po splatnosti od {invoice.due_date.isoformat()} "
+                f"a zbývá uhradit {float(invoice.remaining_amount):.2f} {invoice.currency}."
+            ),
+            due_date=invoice.due_date,
+        )
+        generated_ids.append(todo.id)
+
+    overdue_expenses = (
+        db.query(InvoiceExpense)
+        .options(selectinload(InvoiceExpense.payments))
+        .order_by(InvoiceExpense.id.asc())
+        .all()
+    )
+    for expense in overdue_expenses:
+        expense = _attach_expense_runtime_state(expense)
+        if getattr(expense, "effective_status", None) != "overdue":
+            continue
+        if _quantize_money(Decimal(getattr(expense, "remaining_amount", Decimal("0.00")))) <= Decimal("0.00"):
+            continue
+        if expense.due_date >= today:
+            continue
+        if _has_open_todo_duplicate(db, todo_type="expense_overdue", expense_id=expense.id):
+            skipped_existing_count += 1
+            continue
+        todo = _create_generated_todo(
+            db,
+            invoice_id=None,
+            expense_id=expense.id,
+            todo_type="expense_overdue",
+            title=f"Po splatnosti: výdaj {expense.expense_number}",
+            message=(
+                f"Výdaj {expense.expense_number} je po splatnosti od {expense.due_date.isoformat()} "
+                f"a zbývá uhradit {float(expense.remaining_amount):.2f} {expense.currency}."
+            ),
+            due_date=expense.due_date,
+        )
+        generated_ids.append(todo.id)
+
+    db.commit()
+    return InvoiceTodoGenerationResult(
+        generated_ids=generated_ids,
+        skipped_existing_count=skipped_existing_count,
+    )
 
 
 def list_invoice_expenses(db: Session) -> list[InvoiceExpense]:
@@ -1006,6 +1210,106 @@ def _normalize_expense_status(value: str | None) -> str:
     return DEFAULT_EXPENSE_STATUS
 
 
+def _normalize_todo_status(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else DEFAULT_TODO_STATUS
+    if value in STORED_TODO_STATUSES:
+        return value
+    if allow_none:
+        raise InvoiceValidationError("Neplatný stav todo.")
+    raise InvoiceValidationError("Neplatný stav todo.")
+
+
+def _normalize_todo_type(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else "manual"
+    cleaned = value.strip()
+    if not cleaned:
+        if allow_none:
+            return None
+        return "manual"
+    supported = AUTO_INVOICE_TODO_TYPES | AUTO_EXPENSE_TODO_TYPES | {"manual"}
+    if cleaned not in supported:
+        raise InvoiceValidationError("Neplatný typ todo.")
+    return cleaned
+
+
+def _resolve_completed_at_for_status(status: str, *, current_value: datetime | None = None) -> datetime | None:
+    if status == "completed":
+        return current_value or _utc_now()
+    return None
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _should_prevent_open_todo_duplicate(
+    *,
+    todo_type: str,
+    status: str,
+    invoice_id: int | None,
+    expense_id: int | None,
+) -> bool:
+    if status != "open":
+        return False
+    if todo_type in AUTO_INVOICE_TODO_TYPES and invoice_id is not None:
+        return True
+    if todo_type in AUTO_EXPENSE_TODO_TYPES and expense_id is not None:
+        return True
+    return False
+
+
+def _has_open_todo_duplicate(
+    db: Session,
+    *,
+    todo_type: str,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    exclude_todo_id: int | None = None,
+) -> bool:
+    query = db.query(InvoiceTodo.id).filter(
+        InvoiceTodo.todo_type == todo_type,
+        InvoiceTodo.status == "open",
+    )
+    if invoice_id is not None:
+        query = query.filter(InvoiceTodo.invoice_id == invoice_id)
+    else:
+        query = query.filter(InvoiceTodo.invoice_id.is_(None))
+    if expense_id is not None:
+        query = query.filter(InvoiceTodo.expense_id == expense_id)
+    else:
+        query = query.filter(InvoiceTodo.expense_id.is_(None))
+    if exclude_todo_id is not None:
+        query = query.filter(InvoiceTodo.id != exclude_todo_id)
+    return query.first() is not None
+
+
+def _create_generated_todo(
+    db: Session,
+    *,
+    invoice_id: int | None,
+    expense_id: int | None,
+    todo_type: str,
+    title: str,
+    message: str | None,
+    due_date: date,
+) -> InvoiceTodo:
+    todo = InvoiceTodo(
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+        todo_type=todo_type,
+        status="open",
+        title=title,
+        message=message,
+        due_date=due_date,
+        completed_at=None,
+    )
+    db.add(todo)
+    db.flush()
+    return todo
+
+
 def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:
     invoice_total = _quantize_money(Decimal(invoice.total))
     document_metadata = get_document_kind_metadata(invoice.document_kind)
@@ -1157,6 +1461,27 @@ def _attach_expense_runtime_state(expense: InvoiceExpense) -> InvoiceExpense:
     return expense
 
 
+def _get_invoice_or_raise(
+    db: Session,
+    invoice_id: int,
+    *,
+    include_items: bool = False,
+    include_payments: bool = True,
+    include_subject: bool = True,
+) -> Invoice:
+    query = db.query(Invoice)
+    if include_items:
+        query = query.options(selectinload(Invoice.items))
+    if include_payments:
+        query = query.options(selectinload(Invoice.payments))
+    if include_subject:
+        query = query.options(selectinload(Invoice.subject))
+    invoice = query.filter(Invoice.id == invoice_id).first()
+    if invoice is None:
+        raise InvoiceNotFoundError("Faktura nebyla nalezena.")
+    return invoice
+
+
 def _get_invoice_expense_or_raise(
     db: Session,
     expense_id: int,
@@ -1173,6 +1498,46 @@ def _get_invoice_expense_or_raise(
     if expense is None:
         raise InvoiceExpenseNotFoundError("Přijatý doklad nebyl nalezen.")
     return expense
+
+
+def _validate_todo_links(
+    db: Session,
+    *,
+    invoice_id: int | None,
+    expense_id: int | None,
+    todo_type: str,
+) -> tuple[int | None, int | None]:
+    normalized_todo_type = _normalize_todo_type(todo_type)
+    if invoice_id is not None and expense_id is not None:
+        raise InvoiceValidationError("Todo může být navázáno buď na fakturu, nebo na výdaj, ne na obojí.")
+    if normalized_todo_type in AUTO_INVOICE_TODO_TYPES:
+        if invoice_id is None:
+            raise InvoiceValidationError("Pro tento typ todo musíte vyplnit invoice_id.")
+        try:
+            _get_invoice_or_raise(db, invoice_id, include_payments=False, include_subject=False)
+        except InvoiceNotFoundError as exc:
+            raise InvoiceValidationError("Navázaná faktura nebyla nalezena.") from exc
+        return invoice_id, None
+    if normalized_todo_type in AUTO_EXPENSE_TODO_TYPES:
+        if expense_id is None:
+            raise InvoiceValidationError("Pro tento typ todo musíte vyplnit expense_id.")
+        try:
+            _get_invoice_expense_or_raise(db, expense_id, include_items=False, include_payments=False)
+        except InvoiceExpenseNotFoundError as exc:
+            raise InvoiceValidationError("Navázaný výdaj nebyl nalezen.") from exc
+        return None, expense_id
+
+    if invoice_id is not None:
+        try:
+            _get_invoice_or_raise(db, invoice_id, include_payments=False, include_subject=False)
+        except InvoiceNotFoundError as exc:
+            raise InvoiceValidationError("Navázaná faktura nebyla nalezena.") from exc
+    if expense_id is not None:
+        try:
+            _get_invoice_expense_or_raise(db, expense_id, include_items=False, include_payments=False)
+        except InvoiceExpenseNotFoundError as exc:
+            raise InvoiceValidationError("Navázaný výdaj nebyl nalezen.") from exc
+    return invoice_id, expense_id
 
 
 def _resolve_invoice_subject(db: Session, subject_id: int | None) -> InvoiceSubject | None:

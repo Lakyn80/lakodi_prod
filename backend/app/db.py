@@ -400,6 +400,41 @@ def _ensure_invoice_document_relations_table():
         )
 
 
+def _ensure_invoice_todos_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_todos'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_todos)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "invoice_id": "ALTER TABLE invoice_todos ADD COLUMN invoice_id INTEGER",
+            "expense_id": "ALTER TABLE invoice_todos ADD COLUMN expense_id INTEGER",
+            "todo_type": "ALTER TABLE invoice_todos ADD COLUMN todo_type VARCHAR(64)",
+            "status": "ALTER TABLE invoice_todos ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'open'",
+            "title": "ALTER TABLE invoice_todos ADD COLUMN title VARCHAR(256)",
+            "message": "ALTER TABLE invoice_todos ADD COLUMN message TEXT",
+            "due_date": "ALTER TABLE invoice_todos ADD COLUMN due_date DATE",
+            "created_at": "ALTER TABLE invoice_todos ADD COLUMN created_at DATETIME",
+            "updated_at": "ALTER TABLE invoice_todos ADD COLUMN updated_at DATETIME",
+            "completed_at": "ALTER TABLE invoice_todos ADD COLUMN completed_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(text("UPDATE invoice_todos SET status = 'open' WHERE status IS NULL"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_todos_invoice_id ON invoice_todos (invoice_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_todos_expense_id ON invoice_todos (expense_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_todos_todo_type ON invoice_todos (todo_type)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_todos_status ON invoice_todos (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_todos_due_date ON invoice_todos (due_date)"))
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -420,6 +455,7 @@ def init_db():
     _ensure_invoice_settings_columns()
     _ensure_invoice_sequence_state_columns()
     _ensure_invoice_document_relations_table()
+    _ensure_invoice_todos_table()
 
 
 def get_db():

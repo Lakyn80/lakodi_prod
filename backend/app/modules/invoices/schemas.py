@@ -14,6 +14,14 @@ EffectiveInvoiceStatus = Literal["draft", "issued", "partially_paid", "paid", "o
 InvoicePaymentStatus = Literal["unpaid", "partially_paid", "paid", "not_payable"]
 StoredExpenseStatus = Literal["open", "cancelled"]
 EffectiveExpenseStatus = Literal["open", "partially_paid", "paid", "overdue", "cancelled"]
+InvoiceTodoType = Literal[
+    "invoice_overdue",
+    "invoice_payment_reminder",
+    "expense_due",
+    "expense_overdue",
+    "manual",
+]
+InvoiceTodoStatus = Literal["open", "completed", "cancelled"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -632,6 +640,102 @@ class InvoiceExpenseDetailResponse(InvoiceExpenseSummaryResponse):
 class InvoiceExpenseDeleteResponse(BaseModel):
     ok: Literal[True]
     expense_id: int
+
+
+class InvoiceTodoCreate(BaseModel):
+    invoice_id: int | None = None
+    expense_id: int | None = None
+    todo_type: InvoiceTodoType = "manual"
+    status: InvoiceTodoStatus = "open"
+    title: str = Field(min_length=1, max_length=256)
+    message: str | None = Field(default=None, max_length=4000)
+    due_date: date
+
+    @field_validator("invoice_id", "expense_id")
+    @classmethod
+    def validate_optional_positive_id(cls, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("ID musí být kladné číslo.")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Název todo je povinný.")
+        return cleaned
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_links(self) -> "InvoiceTodoCreate":
+        if self.invoice_id is not None and self.expense_id is not None:
+            raise ValueError("Todo může být navázáno buď na fakturu, nebo na výdaj, ne na obojí.")
+        if self.todo_type.startswith("invoice_") and self.invoice_id is None:
+            raise ValueError("Pro tento typ todo musíte vyplnit invoice_id.")
+        if self.todo_type.startswith("expense_") and self.expense_id is None:
+            raise ValueError("Pro tento typ todo musíte vyplnit expense_id.")
+        return self
+
+
+class InvoiceTodoUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=256)
+    message: str | None = Field(default=None, max_length=4000)
+    due_date: date
+    status: InvoiceTodoStatus
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Název todo je povinný.")
+        return cleaned
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceTodoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    invoice_id: int | None
+    expense_id: int | None
+    todo_type: InvoiceTodoType
+    status: InvoiceTodoStatus
+    title: str
+    message: str | None
+    due_date: date
+    created_at: datetime
+    updated_at: datetime
+    completed_at: datetime | None
+
+
+class InvoiceTodoDeleteResponse(BaseModel):
+    ok: Literal[True]
+    todo_id: int
+
+
+class InvoiceTodoGenerateResponse(BaseModel):
+    ok: Literal[True]
+    generated_count: int
+    skipped_existing_count: int
+    generated_ids: list[int]
 
 
 class FinalInvoiceCreateRequest(BaseModel):

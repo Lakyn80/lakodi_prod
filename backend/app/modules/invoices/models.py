@@ -248,3 +248,19 @@ class InvoiceExpensePayment(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     expense = relationship("InvoiceExpense", back_populates="payments")
+
+
+class InvoiceTodo(Base):
+    __tablename__ = "invoice_todos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="SET NULL"), nullable=True, index=True)
+    todo_type = Column(String(64), nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="open", index=True)
+    title = Column(String(256), nullable=False)
+    message = Column(Text, nullable=True)
+    due_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)

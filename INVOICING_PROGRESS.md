@@ -640,3 +640,97 @@
   - Export filtering is intentionally simple and safe; it operates on existing runtime invoice/expense state instead of introducing a new reporting model.
   - CSV/XLSX exports use machine-readable backend field names and generic values only; no frontend-specific labels were introduced.
   - XML/ISDOC and accounting-system-specific formats remain intentionally deferred.
+
+## Úkol 12 Backend reminders / todos foundation
+
+- Date: 2026-06-27
+- Goal: Add a safe backend-only foundation for persistent invoice/expense reminders and internal accounting todos without changing frontend behavior, deployment state, or existing invoicing/accounting workflows.
+- Scope: Backend invoices module model/schema/service/router work, safe SQLite schema backfill, backend todo/reminder tests, and invoicing task tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added persistent `invoice_todos` table through the existing SQLAlchemy metadata path.
+  - Added safe SQLite helper `_ensure_invoice_todos_table()` to backfill/verify columns on existing databases.
+  - Added `invoice_todos` columns:
+    - `id`
+    - `invoice_id`
+    - `expense_id`
+    - `todo_type`
+    - `status`
+    - `title`
+    - `message`
+    - `due_date`
+    - `created_at`
+    - `updated_at`
+    - `completed_at`
+  - Added safe SQLite indexes on:
+    - `invoice_id`
+    - `expense_id`
+    - `todo_type`
+    - `status`
+    - `due_date`
+- Backend changes:
+  - Added persistent backend model:
+    - `InvoiceTodo`
+  - Added admin-only todo endpoints under:
+    - `GET /api/admin/invoices/todos`
+    - `POST /api/admin/invoices/todos`
+    - `POST /api/admin/invoices/todos/generate`
+    - `GET /api/admin/invoices/todos/{todo_id}`
+    - `PUT /api/admin/invoices/todos/{todo_id}`
+    - `POST /api/admin/invoices/todos/{todo_id}/complete`
+    - `POST /api/admin/invoices/todos/{todo_id}/cancel`
+    - `DELETE /api/admin/invoices/todos/{todo_id}`
+  - Added todo filtering support for:
+    - `status`
+    - `todo_type`
+    - `invoice_id`
+    - `expense_id`
+  - Added persistent todo type support for:
+    - `invoice_overdue`
+    - `invoice_payment_reminder`
+    - `expense_due`
+    - `expense_overdue`
+    - `manual`
+  - Added persistent todo status support for:
+    - `open`
+    - `completed`
+    - `cancelled`
+  - Added explicit backend generation service with no scheduler/background job.
+  - Generation currently auto-creates overdue reminders only:
+    - overdue payable outgoing documents -> `invoice_overdue`
+    - overdue unpaid expenses -> `expense_overdue`
+  - `quote`, non-payable document kinds, and fully paid documents are skipped.
+  - Duplicate open auto-todos for the same document and todo type are blocked at service level.
+  - Manual todos remain CRUD-manageable even without linked invoice/expense.
+  - Delete behavior is intentionally safe:
+    - open todos can be deleted
+    - completed/cancelled todos are blocked from delete
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "todo"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "todo"` -> `4 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `136 passed`
+  - `python -m pytest -q` -> `144 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `136 collected`
+  - `python -m pytest --collect-only -q` -> `144 collected`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice reminders and todos foundation`
+- Local commit hash if created: pending until local commit
+- Final status: implemented, backend-tested, ready for local commit
+- Notes / risks:
+  - Auto-generation intentionally does not create future `invoice_payment_reminder` or `expense_due` records yet; those types are registered and available through manual CRUD only.
+  - Todo generation scans current invoice/expense runtime payment state instead of introducing a scheduler or separate accounting projection.
+  - Todo delete is intentionally conservative to preserve history for completed/cancelled records.
+  - No push, no deploy, no CD.

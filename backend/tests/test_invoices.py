@@ -1,6 +1,6 @@
 import csv
 from io import BytesIO
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -28,6 +28,7 @@ from backend.app.modules.invoices.models import (
     InvoiceExpense,
     InvoiceDocumentRelation,
     InvoiceSequenceState,
+    InvoiceTodo,
 )
 from backend.app.modules.invoices.numbering_service import (
     get_document_sequence_preview,
@@ -177,6 +178,29 @@ def _vytvor_vydaj(payload: dict | None = None) -> dict:
     if payload:
         expense_payload.update(payload)
     response = client.post("/api/admin/invoices/expenses", json=expense_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vytvor_todo(payload: dict | None = None) -> dict:
+    _login_admin()
+    todo_payload = {
+        "todo_type": "manual",
+        "status": "open",
+        "title": "Prověřit účetnictví",
+        "message": "Zkontrolovat interní účetní poznámku.",
+        "due_date": "2099-06-01",
+    }
+    if payload:
+        todo_payload.update(payload)
+    response = client.post("/api/admin/invoices/todos", json=todo_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vygeneruj_toda() -> dict:
+    _login_admin()
+    response = client.post("/api/admin/invoices/todos/generate")
     assert response.status_code == 200
     return response.json()
 
@@ -3116,6 +3140,194 @@ def test_search_ares_vrati_502_pri_chybe_upstreamu() -> None:
 
     assert response.status_code == 502
     assert response.json() == {"detail": "Služba ARES je dočasně nedostupná."}
+
+
+def test_manual_todo_crud_a_filtry_funguji() -> None:
+    todo = _vytvor_todo(
+        {
+            "title": "Prověřit ruční položku",
+            "message": "Interní manuální připomínka.",
+            "due_date": "2099-06-10",
+        }
+    )
+    _login_admin()
+
+    list_response = client.get("/api/admin/invoices/todos")
+    detail_response = client.get(f"/api/admin/invoices/todos/{todo['id']}")
+    update_response = client.put(
+        f"/api/admin/invoices/todos/{todo['id']}",
+        json={
+            "title": "Prověřit ruční položku urgentně",
+            "message": "Doplněná interní poznámka.",
+            "due_date": "2099-06-12",
+            "status": "completed",
+        },
+    )
+    completed_filter_response = client.get("/api/admin/invoices/todos?status=completed")
+    type_filter_response = client.get("/api/admin/invoices/todos?todo_type=manual")
+
+    assert list_response.status_code == 200
+    assert any(item["id"] == todo["id"] for item in list_response.json())
+    assert detail_response.status_code == 200
+    assert detail_response.json()["title"] == "Prověřit ruční položku"
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["title"] == "Prověřit ruční položku urgentně"
+    assert updated["status"] == "completed"
+    assert updated["completed_at"] is not None
+    assert completed_filter_response.status_code == 200
+    assert any(item["id"] == todo["id"] for item in completed_filter_response.json())
+    assert type_filter_response.status_code == 200
+    assert any(item["id"] == todo["id"] for item in type_filter_response.json())
+
+
+def test_todo_complete_cancel_a_delete_maji_bezpecne_chovani() -> None:
+    open_todo = _vytvor_todo({"title": "Smazatelný todo", "due_date": "2099-06-15"})
+    complete_todo = _vytvor_todo({"title": "Dokončit todo", "due_date": "2099-06-16"})
+    cancel_todo = _vytvor_todo({"title": "Zrušit todo", "due_date": "2099-06-17"})
+    _login_admin()
+
+    complete_response = client.post(f"/api/admin/invoices/todos/{complete_todo['id']}/complete")
+    cancel_response = client.post(f"/api/admin/invoices/todos/{cancel_todo['id']}/cancel")
+    delete_open_response = client.delete(f"/api/admin/invoices/todos/{open_todo['id']}")
+    delete_completed_response = client.delete(f"/api/admin/invoices/todos/{complete_todo['id']}")
+    delete_cancelled_response = client.delete(f"/api/admin/invoices/todos/{cancel_todo['id']}")
+
+    assert complete_response.status_code == 200
+    assert complete_response.json()["status"] == "completed"
+    assert complete_response.json()["completed_at"] is not None
+    assert cancel_response.status_code == 200
+    assert cancel_response.json()["status"] == "cancelled"
+    assert cancel_response.json()["completed_at"] is None
+    assert delete_open_response.status_code == 200
+    assert delete_open_response.json() == {"ok": True, "todo_id": open_todo["id"]}
+    assert delete_completed_response.status_code == 400
+    assert delete_completed_response.json() == {"detail": "Dokončené nebo zrušené todo nelze smazat."}
+    assert delete_cancelled_response.status_code == 400
+    assert delete_cancelled_response.json() == {"detail": "Dokončené nebo zrušené todo nelze smazat."}
+
+
+def test_generate_todos_vytvori_overdue_invoice_a_proforma_bez_quote_a_bez_duplikatu() -> None:
+    today = date.today()
+    issue_date = (today - timedelta(days=30)).isoformat()
+    due_date = (today - timedelta(days=10)).isoformat()
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "todo-overdue-invoice@example.com",
+            "issue_date": issue_date,
+            "due_date": due_date,
+        }
+    )
+    paid_invoice = _vytvor_fakturu(
+        {
+            "customer_email": "todo-paid-invoice@example.com",
+            "issue_date": issue_date,
+            "due_date": due_date,
+        }
+    )
+    _pridej_platbu(
+        paid_invoice["id"],
+        {"amount": paid_invoice["total"], "paid_at": (today - timedelta(days=5)).isoformat()},
+    )
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "todo-quote@example.com",
+            "issue_date": issue_date,
+            "due_date": due_date,
+        }
+    )
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "customer_email": "todo-proforma@example.com",
+            "issue_date": issue_date,
+            "due_date": due_date,
+        }
+    )
+
+    assert get_document_kind_metadata("proforma").allows_payment_tracking is True
+
+    first_generation = _vygeneruj_toda()
+    second_generation = _vygeneruj_toda()
+
+    assert first_generation["generated_count"] >= 2
+    assert len(first_generation["generated_ids"]) >= 2
+    assert second_generation["generated_count"] == 0
+    assert second_generation["skipped_existing_count"] >= 2
+
+    _login_admin()
+    invoice_filter_response = client.get(f"/api/admin/invoices/todos?invoice_id={invoice['id']}")
+    proforma_filter_response = client.get(f"/api/admin/invoices/todos?invoice_id={proforma['id']}")
+
+    assert invoice_filter_response.status_code == 200
+    assert len(invoice_filter_response.json()) == 1
+    assert invoice_filter_response.json()[0]["todo_type"] == "invoice_overdue"
+    assert proforma_filter_response.status_code == 200
+    assert len(proforma_filter_response.json()) == 1
+    assert proforma_filter_response.json()[0]["todo_type"] == "invoice_overdue"
+
+    with SessionLocal() as db:
+        invoice_todos = db.query(InvoiceTodo).filter(InvoiceTodo.invoice_id == invoice["id"]).all()
+        proforma_todos = db.query(InvoiceTodo).filter(InvoiceTodo.invoice_id == proforma["id"]).all()
+        paid_invoice_todos = db.query(InvoiceTodo).filter(InvoiceTodo.invoice_id == paid_invoice["id"]).all()
+        quote_todos = db.query(InvoiceTodo).filter(InvoiceTodo.invoice_id == quote["id"]).all()
+
+        assert len(invoice_todos) == 1
+        assert invoice_todos[0].todo_type == "invoice_overdue"
+        assert len(proforma_todos) == 1
+        assert proforma_todos[0].todo_type == "invoice_overdue"
+        assert paid_invoice_todos == []
+        assert quote_todos == []
+
+
+def test_generate_todos_vytvori_overdue_expense_ale_ne_fully_paid_expense() -> None:
+    today = date.today()
+    issue_date = (today - timedelta(days=20)).isoformat()
+    received_date = (today - timedelta(days=19)).isoformat()
+    due_date = (today - timedelta(days=7)).isoformat()
+    overdue_expense = _vytvor_vydaj(
+        {
+            "supplier_email": "todo-expense@example.com",
+            "issue_date": issue_date,
+            "received_date": received_date,
+            "due_date": due_date,
+            "taxable_supply_date": issue_date,
+        }
+    )
+    paid_expense = _vytvor_vydaj(
+        {
+            "supplier_email": "todo-expense-paid@example.com",
+            "issue_date": issue_date,
+            "received_date": received_date,
+            "due_date": due_date,
+            "taxable_supply_date": issue_date,
+        }
+    )
+    _pridej_platbu_vydaje(
+        paid_expense["id"],
+        {"amount": paid_expense["total"], "paid_at": (today - timedelta(days=3)).isoformat()},
+    )
+
+    generation = _vygeneruj_toda()
+
+    assert generation["generated_count"] == 1
+    assert len(generation["generated_ids"]) == 1
+
+    _login_admin()
+    expense_filter_response = client.get(f"/api/admin/invoices/todos?expense_id={overdue_expense['id']}")
+
+    assert expense_filter_response.status_code == 200
+    assert len(expense_filter_response.json()) == 1
+    assert expense_filter_response.json()[0]["todo_type"] == "expense_overdue"
+
+    with SessionLocal() as db:
+        overdue_todos = db.query(InvoiceTodo).filter(InvoiceTodo.expense_id == overdue_expense["id"]).all()
+        paid_todos = db.query(InvoiceTodo).filter(InvoiceTodo.expense_id == paid_expense["id"]).all()
+
+        assert len(overdue_todos) == 1
+        assert overdue_todos[0].todo_type == "expense_overdue"
+        assert paid_todos == []
 
 
 def test_outgoing_csv_export_vyzaduje_admin_auth() -> None:

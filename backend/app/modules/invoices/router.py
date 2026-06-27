@@ -43,6 +43,11 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpenseUpdate,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
+    InvoiceTodoCreate,
+    InvoiceTodoDeleteResponse,
+    InvoiceTodoGenerateResponse,
+    InvoiceTodoResponse,
+    InvoiceTodoUpdate,
     InvoiceSubjectCreate,
     InvoiceSubjectDeleteResponse,
     InvoiceSubjectResponse,
@@ -61,12 +66,16 @@ from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
     InvoicePaymentNotFoundError,
     InvoiceSubjectNotFoundError,
+    InvoiceTodoNotFoundError,
     InvoiceValidationError,
     add_invoice_expense_payment,
     add_invoice_payment,
+    cancel_invoice_todo,
+    complete_invoice_todo,
     convert_quote_to_document,
     create_invoice_expense,
     create_invoice_subject,
+    create_invoice_todo,
     create_correction_from_invoice,
     create_invoice,
     create_final_invoice_from_proformas,
@@ -75,21 +84,26 @@ from backend.app.modules.invoices.service import (
     delete_invoice_expense_payment,
     delete_invoice_subject,
     delete_invoice_payment,
+    delete_invoice_todo,
+    generate_invoice_todos,
     get_document_creation_defaults,
     get_invoice_expense_detail,
     generate_invoice_pdf,
     get_invoice_detail,
     get_invoice_settings,
     get_invoice_subject_detail,
+    get_invoice_todo_detail,
     list_invoice_expense_payments,
     list_invoice_expenses,
     list_invoice_subjects,
     list_invoice_payments,
+    list_invoice_todos,
     list_invoices,
     save_invoice_settings,
     send_invoice_email,
     update_invoice_expense,
     update_invoice_subject,
+    update_invoice_todo,
     update_invoice,
 )
 
@@ -248,6 +262,119 @@ def admin_export_expenses_xlsx(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="lakodi_expenses.xlsx"'},
     )
+
+
+@router.get("/todos", response_model=list[InvoiceTodoResponse])
+def admin_list_invoice_todos(
+    status: str | None = Query(default=None),
+    todo_type: str | None = Query(default=None),
+    invoice_id: int | None = Query(default=None),
+    expense_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_todos(
+            db,
+            status=status,
+            todo_type=todo_type,
+            invoice_id=invoice_id,
+            expense_id=expense_id,
+        )
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/todos", response_model=InvoiceTodoResponse)
+def admin_create_invoice_todo(
+    body: InvoiceTodoCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_invoice_todo(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/todos/generate", response_model=InvoiceTodoGenerateResponse)
+def admin_generate_invoice_todos(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    result = generate_invoice_todos(db)
+    return {
+        "ok": True,
+        "generated_count": len(result.generated_ids),
+        "skipped_existing_count": result.skipped_existing_count,
+        "generated_ids": result.generated_ids,
+    }
+
+
+@router.get("/todos/{todo_id}", response_model=InvoiceTodoResponse)
+def admin_get_invoice_todo(
+    todo_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_todo_detail(db, todo_id)
+    except InvoiceTodoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/todos/{todo_id}", response_model=InvoiceTodoResponse)
+def admin_update_invoice_todo(
+    todo_id: int,
+    body: InvoiceTodoUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return update_invoice_todo(db, todo_id, body)
+    except InvoiceTodoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/todos/{todo_id}/complete", response_model=InvoiceTodoResponse)
+def admin_complete_invoice_todo(
+    todo_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return complete_invoice_todo(db, todo_id)
+    except InvoiceTodoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/todos/{todo_id}/cancel", response_model=InvoiceTodoResponse)
+def admin_cancel_invoice_todo(
+    todo_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return cancel_invoice_todo(db, todo_id)
+    except InvoiceTodoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/todos/{todo_id}", response_model=InvoiceTodoDeleteResponse)
+def admin_delete_invoice_todo(
+    todo_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        deleted_todo_id = delete_invoice_todo(db, todo_id)
+        return {"ok": True, "todo_id": deleted_todo_id}
+    except InvoiceTodoNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/subjects", response_model=list[InvoiceSubjectResponse])
