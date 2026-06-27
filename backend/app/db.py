@@ -133,6 +133,40 @@ def _ensure_invoice_subjects_table():
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_subjects_dic ON invoice_subjects (dic)"))
 
 
+def _ensure_invoice_suppliers_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_suppliers'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_suppliers)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "name": "ALTER TABLE invoice_suppliers ADD COLUMN name VARCHAR(256)",
+            "email": "ALTER TABLE invoice_suppliers ADD COLUMN email VARCHAR(256)",
+            "phone": "ALTER TABLE invoice_suppliers ADD COLUMN phone VARCHAR(64)",
+            "address": "ALTER TABLE invoice_suppliers ADD COLUMN address VARCHAR(256)",
+            "ico": "ALTER TABLE invoice_suppliers ADD COLUMN ico VARCHAR(32)",
+            "dic": "ALTER TABLE invoice_suppliers ADD COLUMN dic VARCHAR(32)",
+            "data_box": "ALTER TABLE invoice_suppliers ADD COLUMN data_box VARCHAR(64)",
+            "country": "ALTER TABLE invoice_suppliers ADD COLUMN country VARCHAR(128)",
+            "note": "ALTER TABLE invoice_suppliers ADD COLUMN note TEXT",
+            "created_at": "ALTER TABLE invoice_suppliers ADD COLUMN created_at DATETIME",
+            "updated_at": "ALTER TABLE invoice_suppliers ADD COLUMN updated_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_suppliers_name ON invoice_suppliers (name)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_suppliers_email ON invoice_suppliers (email)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_suppliers_ico ON invoice_suppliers (ico)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_suppliers_dic ON invoice_suppliers (dic)"))
+
+
 def _ensure_invoice_expense_tables():
     if not DATABASE_URL.startswith("sqlite"):
         return
@@ -144,6 +178,7 @@ def _ensure_invoice_expense_tables():
             rows = conn.execute(text("PRAGMA table_info(invoice_expenses)")).fetchall()
             columns = {row[1] for row in rows}
             add_map = {
+                "supplier_id": "ALTER TABLE invoice_expenses ADD COLUMN supplier_id INTEGER",
                 "supplier_name": "ALTER TABLE invoice_expenses ADD COLUMN supplier_name VARCHAR(256)",
                 "supplier_email": "ALTER TABLE invoice_expenses ADD COLUMN supplier_email VARCHAR(256)",
                 "supplier_phone": "ALTER TABLE invoice_expenses ADD COLUMN supplier_phone VARCHAR(64)",
@@ -151,6 +186,7 @@ def _ensure_invoice_expense_tables():
                 "supplier_ico": "ALTER TABLE invoice_expenses ADD COLUMN supplier_ico VARCHAR(32)",
                 "supplier_dic": "ALTER TABLE invoice_expenses ADD COLUMN supplier_dic VARCHAR(32)",
                 "supplier_data_box": "ALTER TABLE invoice_expenses ADD COLUMN supplier_data_box VARCHAR(64)",
+                "supplier_country": "ALTER TABLE invoice_expenses ADD COLUMN supplier_country VARCHAR(128)",
                 "expense_number": "ALTER TABLE invoice_expenses ADD COLUMN expense_number VARCHAR(64)",
                 "variable_symbol": "ALTER TABLE invoice_expenses ADD COLUMN variable_symbol VARCHAR(9)",
                 "issue_date": "ALTER TABLE invoice_expenses ADD COLUMN issue_date DATE",
@@ -190,6 +226,7 @@ def _ensure_invoice_expense_tables():
                 )
             )
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_expenses_supplier_email ON invoice_expenses (supplier_email)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_expenses_supplier_id ON invoice_expenses (supplier_id)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_expenses_due_date ON invoice_expenses (due_date)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_expenses_status ON invoice_expenses (status)"))
 
@@ -451,6 +488,7 @@ def init_db():
     _ensure_zakazky_columns()
     _ensure_invoice_columns()
     _ensure_invoice_subjects_table()
+    _ensure_invoice_suppliers_table()
     _ensure_invoice_expense_tables()
     _ensure_invoice_settings_columns()
     _ensure_invoice_sequence_state_columns()

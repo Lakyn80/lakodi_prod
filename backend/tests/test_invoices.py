@@ -145,6 +145,26 @@ def _vytvor_subjekt(payload: dict | None = None) -> dict:
     return response.json()
 
 
+def _vytvor_dodavatele(payload: dict | None = None) -> dict:
+    _login_admin()
+    supplier_payload = {
+        "name": "Dodavatel s.r.o.",
+        "email": "supplier.registry@example.com",
+        "phone": "+420987654321",
+        "address": "Brno 5",
+        "ico": "87654321",
+        "dic": "CZ87654321",
+        "data_box": "exp1234",
+        "country": "Česká republika",
+        "note": "Preferovaný dodavatel",
+    }
+    if payload:
+        supplier_payload.update(payload)
+    response = client.post("/api/admin/invoices/suppliers", json=supplier_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
 def _parse_csv_export(content: str) -> list[dict[str, str]]:
     return list(csv.DictReader(content.splitlines()))
 
@@ -163,6 +183,7 @@ def _vytvor_vydaj(payload: dict | None = None) -> dict:
         "supplier_ico": "87654321",
         "supplier_dic": "CZ87654321",
         "supplier_data_box": "exp1234",
+        "supplier_country": "Česká republika",
         "currency": "CZK",
         "vat_rate": 21,
         "note": "Přijatá faktura za materiál",
@@ -745,6 +766,114 @@ def test_detail_a_list_faktury_zustavaji_kompatibilni_a_obsahuji_subject_id() ->
     assert detail_response.status_code == 200
     assert list_response.json()[0]["subject_id"] == subject["id"]
     assert detail_response.json()["subject_id"] == subject["id"]
+
+
+def test_vytvoreni_dodavatele_funguje() -> None:
+    supplier = _vytvor_dodavatele()
+
+    assert supplier["id"] > 0
+    assert supplier["name"] == "Dodavatel s.r.o."
+    assert supplier["email"] == "supplier.registry@example.com"
+    assert supplier["phone"] == "+420987654321"
+    assert supplier["address"] == "Brno 5"
+    assert supplier["ico"] == "87654321"
+    assert supplier["dic"] == "CZ87654321"
+    assert supplier["data_box"] == "exp1234"
+    assert supplier["country"] == "Česká republika"
+    assert supplier["note"] == "Preferovaný dodavatel"
+
+
+def test_list_a_search_dodavatelu_funguji() -> None:
+    first = _vytvor_dodavatele({"name": "Alfa Supplier", "email": "alfa-supplier@example.com", "ico": "11111111", "dic": "CZ11111111"})
+    second = _vytvor_dodavatele({"name": "Beta Supplier", "email": "beta-supplier@example.com", "ico": "22222222", "dic": "CZ22222222"})
+    _login_admin()
+
+    list_response = client.get("/api/admin/invoices/suppliers")
+    by_name = client.get("/api/admin/invoices/suppliers?search=alfa")
+    by_email = client.get("/api/admin/invoices/suppliers?search=beta-supplier@example.com")
+    by_ico = client.get("/api/admin/invoices/suppliers?search=11111111")
+    by_dic = client.get("/api/admin/invoices/suppliers?search=CZ22222222")
+
+    assert list_response.status_code == 200
+    assert by_name.status_code == 200
+    assert by_email.status_code == 200
+    assert by_ico.status_code == 200
+    assert by_dic.status_code == 200
+    listed = list_response.json()
+    assert listed[0]["id"] == second["id"]
+    assert listed[1]["id"] == first["id"]
+    assert by_name.json()[0]["name"] == "Alfa Supplier"
+    assert by_email.json()[0]["email"] == "beta-supplier@example.com"
+    assert by_ico.json()[0]["ico"] == "11111111"
+    assert by_dic.json()[0]["dic"] == "CZ22222222"
+
+
+def test_detail_a_update_dodavatele_funguji() -> None:
+    supplier = _vytvor_dodavatele({"name": "Detail Supplier", "email": "detail-supplier@example.com"})
+    _login_admin()
+
+    detail_response = client.get(f"/api/admin/invoices/suppliers/{supplier['id']}")
+    update_response = client.put(
+        f"/api/admin/invoices/suppliers/{supplier['id']}",
+        json={
+            "name": "Updated Supplier",
+            "email": "updated-supplier@example.com",
+            "phone": "+420111222333",
+            "address": "Ostrava 8",
+            "ico": "33334444",
+            "dic": "CZ33334444",
+            "data_box": "supplier22",
+            "country": "Slovensko",
+            "note": "Aktualizovaný dodavatel",
+        },
+    )
+
+    assert detail_response.status_code == 200
+    assert detail_response.json()["id"] == supplier["id"]
+    assert detail_response.json()["name"] == "Detail Supplier"
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["name"] == "Updated Supplier"
+    assert updated["email"] == "updated-supplier@example.com"
+    assert updated["country"] == "Slovensko"
+    assert updated["note"] == "Aktualizovaný dodavatel"
+
+
+def test_smazani_nepouziteho_dodavatele_funguje() -> None:
+    supplier = _vytvor_dodavatele({"email": "delete-supplier@example.com"})
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/suppliers/{supplier['id']}")
+    detail_response = client.get(f"/api/admin/invoices/suppliers/{supplier['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "supplier_id": supplier["id"]}
+    assert detail_response.status_code == 404
+    assert detail_response.json() == {"detail": "Dodavatel nebyl nalezen."}
+
+
+def test_smazani_dodavatele_navazaneho_na_vydaj_je_blokovano() -> None:
+    supplier = _vytvor_dodavatele({"email": "referenced-supplier@example.com"})
+    expense = _vytvor_vydaj(
+        {
+            "supplier_id": supplier["id"],
+            "supplier_name": None,
+            "supplier_email": None,
+            "supplier_phone": None,
+            "supplier_address": None,
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+        }
+    )
+    _login_admin()
+
+    response = client.delete(f"/api/admin/invoices/suppliers/{supplier['id']}")
+
+    assert expense["supplier_id"] == supplier["id"]
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Dodavatele nelze smazat, protože je navázaný na existující výdaje."}
 
 
 def test_ulozeni_nastaveni_fakturace_se_propise_do_novych_faktur() -> None:
@@ -2738,6 +2867,45 @@ def test_seznam_a_detail_prijatych_dokladu_funguji() -> None:
     assert detail["payments"] == []
 
 
+def test_vytvoreni_prijateho_dokladu_se_supplier_id_zkopiruje_snapshot() -> None:
+    supplier = _vytvor_dodavatele(
+        {
+            "name": "Registry Supplier",
+            "email": "registry-supplier@example.com",
+            "phone": "+420111222333",
+            "address": "Plzeň 6",
+            "ico": "45454545",
+            "dic": "CZ45454545",
+            "data_box": "registry12",
+            "country": "Slovensko",
+        }
+    )
+
+    expense = _vytvor_vydaj(
+        {
+            "supplier_id": supplier["id"],
+            "supplier_name": "Ignored Supplier Name",
+            "supplier_email": "ignored@example.com",
+            "supplier_phone": None,
+            "supplier_address": "Ignored address",
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+        }
+    )
+
+    assert expense["supplier_id"] == supplier["id"]
+    assert expense["supplier_name"] == "Registry Supplier"
+    assert expense["supplier_email"] == "registry-supplier@example.com"
+    assert expense["supplier_phone"] == "+420111222333"
+    assert expense["supplier_address"] == "Plzeň 6"
+    assert expense["supplier_ico"] == "45454545"
+    assert expense["supplier_dic"] == "CZ45454545"
+    assert expense["supplier_data_box"] == "registry12"
+    assert expense["supplier_country"] == "Slovensko"
+
+
 def test_uprava_prijateho_dokladu_prepocita_hodnoty() -> None:
     expense = _vytvor_vydaj({"expense_number": "015"})
     _login_admin()
@@ -2781,6 +2949,139 @@ def test_uprava_prijateho_dokladu_prepocita_hodnoty() -> None:
     assert updated["vat_amount"] == 36.0
     assert updated["total"] == 336.0
     assert updated["supplier_name"] == "Upravený dodavatel"
+
+
+def test_uprava_prijateho_dokladu_se_supplier_id_zkopiruje_novy_snapshot() -> None:
+    first_supplier = _vytvor_dodavatele(
+        {
+            "name": "Old Supplier",
+            "email": "old-supplier@example.com",
+            "address": "Praha 2",
+            "ico": "56565656",
+            "dic": "CZ56565656",
+        }
+    )
+    second_supplier = _vytvor_dodavatele(
+        {
+            "name": "New Supplier",
+            "email": "new-supplier@example.com",
+            "phone": "+420444555666",
+            "address": "Brno 9",
+            "ico": "78787878",
+            "dic": "CZ78787878",
+            "data_box": "new-registry",
+            "country": "Rakousko",
+        }
+    )
+    expense = _vytvor_vydaj(
+        {
+            "supplier_id": first_supplier["id"],
+            "supplier_name": None,
+            "supplier_email": None,
+            "supplier_phone": None,
+            "supplier_address": None,
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+        }
+    )
+    _login_admin()
+
+    response = client.put(
+        f"/api/admin/invoices/expenses/{expense['id']}",
+        json={
+            "supplier_id": second_supplier["id"],
+            "expense_number": expense["expense_number"],
+            "issue_date": expense["issue_date"],
+            "received_date": expense["received_date"],
+            "due_date": expense["due_date"],
+            "taxable_supply_date": expense["taxable_supply_date"],
+            "supplier_name": "Ignored Updated Name",
+            "supplier_email": "ignored-updated@example.com",
+            "supplier_phone": None,
+            "supplier_address": "Ignored updated address",
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+            "currency": expense["currency"],
+            "vat_rate": 21,
+            "status": "open",
+            "note": expense["note"],
+            "payment_method": expense["payment_method"],
+            "bank_account_number": expense["bank_account_number"],
+            "bank_account_prefix": expense["bank_account_prefix"],
+            "bank_code": expense["bank_code"],
+            "bank_iban": expense["bank_iban"],
+            "items": [
+                {"description": "Materiál", "quantity": 2, "unit_price": 1500},
+                {"description": "Doprava", "quantity": 1, "unit_price": 500},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["supplier_id"] == second_supplier["id"]
+    assert updated["supplier_name"] == "New Supplier"
+    assert updated["supplier_email"] == "new-supplier@example.com"
+    assert updated["supplier_phone"] == "+420444555666"
+    assert updated["supplier_address"] == "Brno 9"
+    assert updated["supplier_ico"] == "78787878"
+    assert updated["supplier_dic"] == "CZ78787878"
+    assert updated["supplier_data_box"] == "new-registry"
+    assert updated["supplier_country"] == "Rakousko"
+
+
+def test_uprava_dodavatele_po_vytvoreni_vydaje_nemeni_historicky_snapshot() -> None:
+    supplier = _vytvor_dodavatele(
+        {
+            "name": "Historic Supplier",
+            "email": "historic-supplier@example.com",
+            "address": "Liberec 4",
+            "country": "Česká republika",
+        }
+    )
+    expense = _vytvor_vydaj(
+        {
+            "supplier_id": supplier["id"],
+            "supplier_name": None,
+            "supplier_email": None,
+            "supplier_phone": None,
+            "supplier_address": None,
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+        }
+    )
+    _login_admin()
+
+    update_supplier_response = client.put(
+        f"/api/admin/invoices/suppliers/{supplier['id']}",
+        json={
+            "name": "Historic Supplier Updated",
+            "email": "historic-supplier-updated@example.com",
+            "phone": "+420999000111",
+            "address": "Olomouc 1",
+            "ico": "90909090",
+            "dic": "CZ90909090",
+            "data_box": "historic-supplier",
+            "country": "Německo",
+            "note": "Updated registry supplier",
+        },
+    )
+    assert update_supplier_response.status_code == 200
+
+    detail_response = client.get(f"/api/admin/invoices/expenses/{expense['id']}")
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["supplier_id"] == supplier["id"]
+    assert detail["supplier_name"] == "Historic Supplier"
+    assert detail["supplier_email"] == "historic-supplier@example.com"
+    assert detail["supplier_address"] == "Liberec 4"
+    assert detail["supplier_country"] == "Česká republika"
 
 
 def test_smazani_neuhrazeneho_prijateho_dokladu_funguje() -> None:
@@ -3525,6 +3826,40 @@ def test_generate_todos_vytvori_overdue_expense_ale_ne_fully_paid_expense() -> N
         assert paid_todos == []
 
 
+def test_generate_todos_funguje_i_pro_overdue_expense_se_supplier_id() -> None:
+    supplier = _vytvor_dodavatele({"email": "todo-linked-supplier@example.com"})
+    today = date.today()
+    issue_date = (today - timedelta(days=20)).isoformat()
+    received_date = (today - timedelta(days=19)).isoformat()
+    due_date = (today - timedelta(days=7)).isoformat()
+    overdue_expense = _vytvor_vydaj(
+        {
+            "supplier_id": supplier["id"],
+            "supplier_name": None,
+            "supplier_email": None,
+            "supplier_phone": None,
+            "supplier_address": None,
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+            "issue_date": issue_date,
+            "received_date": received_date,
+            "due_date": due_date,
+            "taxable_supply_date": issue_date,
+        }
+    )
+
+    generation = _vygeneruj_toda()
+
+    assert generation["generated_count"] == 1
+    _login_admin()
+    expense_filter_response = client.get(f"/api/admin/invoices/todos?expense_id={overdue_expense['id']}")
+    assert expense_filter_response.status_code == 200
+    assert len(expense_filter_response.json()) == 1
+    assert expense_filter_response.json()[0]["todo_type"] == "expense_overdue"
+
+
 def test_outgoing_csv_export_vyzaduje_admin_auth() -> None:
     anonymous_client = TestClient(app)
 
@@ -3686,6 +4021,54 @@ def test_expenses_csv_export_obsahuje_hlavicku_data_a_filtry() -> None:
     assert date_filter_response.status_code == 200
     assert len(date_rows) == 1
     assert date_rows[0]["id"] == str(expense["id"])
+
+
+def test_expenses_csv_export_pouziva_snapshot_i_pro_supplier_registry() -> None:
+    supplier = _vytvor_dodavatele(
+        {
+            "name": "Snapshot Supplier",
+            "email": "snapshot-supplier@example.com",
+            "address": "Snapshot 1",
+        }
+    )
+    expense = _vytvor_vydaj(
+        {
+            "supplier_id": supplier["id"],
+            "supplier_name": None,
+            "supplier_email": None,
+            "supplier_phone": None,
+            "supplier_address": None,
+            "supplier_ico": None,
+            "supplier_dic": None,
+            "supplier_data_box": None,
+            "supplier_country": None,
+        }
+    )
+    _login_admin()
+    update_supplier_response = client.put(
+        f"/api/admin/invoices/suppliers/{supplier['id']}",
+        json={
+            "name": "Snapshot Supplier Updated",
+            "email": "snapshot-supplier-updated@example.com",
+            "phone": "+420111000999",
+            "address": "Updated Snapshot 2",
+            "ico": "12121212",
+            "dic": "CZ12121212",
+            "data_box": "snapshot-updated",
+            "country": "Polsko",
+            "note": "Updated after expense",
+        },
+    )
+    assert update_supplier_response.status_code == 200
+
+    response = client.get("/api/admin/invoices/exports/expenses.csv?supplier_query=snapshot supplier")
+
+    assert response.status_code == 200
+    rows = _parse_csv_export(response.text)
+    assert len(rows) == 1
+    assert rows[0]["id"] == str(expense["id"])
+    assert rows[0]["supplier_name"] == "Snapshot Supplier"
+    assert rows[0]["supplier_email"] == "snapshot-supplier@example.com"
 
 
 def test_outgoing_xlsx_export_vrati_sešit() -> None:

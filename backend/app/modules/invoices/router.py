@@ -45,6 +45,10 @@ from backend.app.modules.invoices.schemas import (
     InvoicePaymentCreate,
     InvoicePaymentResponse,
     InvoiceRelationsSummaryResponse,
+    InvoiceSupplierCreate,
+    InvoiceSupplierDeleteResponse,
+    InvoiceSupplierResponse,
+    InvoiceSupplierUpdate,
     InvoiceTodoCreate,
     InvoiceTodoDeleteResponse,
     InvoiceTodoGenerateResponse,
@@ -67,6 +71,7 @@ from backend.app.modules.invoices.service import (
     InvoiceExpensePaymentNotFoundError,
     InvoiceNotFoundError,
     InvoicePaymentNotFoundError,
+    InvoiceSupplierNotFoundError,
     InvoiceSubjectNotFoundError,
     InvoiceTodoNotFoundError,
     InvoiceValidationError,
@@ -76,6 +81,7 @@ from backend.app.modules.invoices.service import (
     complete_invoice_todo,
     convert_quote_to_document,
     create_invoice_expense,
+    create_invoice_supplier,
     create_invoice_subject,
     create_invoice_todo,
     create_correction_from_invoice,
@@ -84,6 +90,7 @@ from backend.app.modules.invoices.service import (
     create_tax_document_from_proforma_payment,
     delete_invoice_expense,
     delete_invoice_expense_payment,
+    delete_invoice_supplier,
     delete_invoice_subject,
     delete_invoice_payment,
     delete_invoice_todo,
@@ -94,11 +101,13 @@ from backend.app.modules.invoices.service import (
     get_invoice_detail,
     get_invoice_relations_summary,
     get_invoice_settings,
+    get_invoice_supplier_detail,
     get_invoice_subject_detail,
     get_invoice_todo_detail,
     list_invoice_document_relations,
     list_invoice_expense_payments,
     list_invoice_expenses,
+    list_invoice_suppliers,
     list_invoice_subjects,
     list_invoice_payments,
     list_invoice_todos,
@@ -106,6 +115,7 @@ from backend.app.modules.invoices.service import (
     save_invoice_settings,
     send_invoice_email,
     update_invoice_expense,
+    update_invoice_supplier,
     update_invoice_subject,
     update_invoice_todo,
     update_invoice,
@@ -460,6 +470,69 @@ def admin_delete_invoice_subject(
         deleted_subject_id = delete_invoice_subject(db, subject_id)
         return {"ok": True, "subject_id": deleted_subject_id}
     except InvoiceSubjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/suppliers", response_model=list[InvoiceSupplierResponse])
+def admin_list_invoice_suppliers(
+    search: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    return list_invoice_suppliers(db, search=search)
+
+
+@router.post("/suppliers", response_model=InvoiceSupplierResponse)
+def admin_create_invoice_supplier(
+    body: InvoiceSupplierCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return create_invoice_supplier(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/suppliers/{supplier_id}", response_model=InvoiceSupplierResponse)
+def admin_get_invoice_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_supplier_detail(db, supplier_id)
+    except InvoiceSupplierNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/suppliers/{supplier_id}", response_model=InvoiceSupplierResponse)
+def admin_update_invoice_supplier(
+    supplier_id: int,
+    body: InvoiceSupplierUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return update_invoice_supplier(db, supplier_id, body)
+    except InvoiceSupplierNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/suppliers/{supplier_id}", response_model=InvoiceSupplierDeleteResponse)
+def admin_delete_invoice_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        deleted_supplier_id = delete_invoice_supplier(db, supplier_id)
+        return {"ok": True, "supplier_id": deleted_supplier_id}
+    except InvoiceSupplierNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

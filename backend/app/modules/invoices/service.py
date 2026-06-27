@@ -30,6 +30,7 @@ from backend.app.modules.invoices.models import (
     InvoiceItem,
     InvoicePayment,
     InvoiceSequenceState,
+    InvoiceSupplier,
     InvoiceSubject,
     InvoiceTodo,
 )
@@ -64,6 +65,8 @@ from backend.app.modules.invoices.schemas import (
     InvoiceRelationPaymentSummaryResponse,
     InvoiceRelationsSummaryResponse,
     InvoicePaymentCreate,
+    InvoiceSupplierCreate,
+    InvoiceSupplierUpdate,
     InvoiceSubjectCreate,
     InvoiceSubjectUpdate,
     InvoiceTodoCreate,
@@ -116,6 +119,10 @@ class InvoiceExpensePaymentNotFoundError(LookupError):
 
 class InvoiceSubjectNotFoundError(LookupError):
     """Subjekt faktury neexistuje."""
+
+
+class InvoiceSupplierNotFoundError(LookupError):
+    """Dodavatel neexistuje."""
 
 
 class InvoiceTodoNotFoundError(LookupError):
@@ -336,6 +343,73 @@ def delete_invoice_subject(db: Session, subject_id: int) -> int:
     return subject_id
 
 
+def list_invoice_suppliers(db: Session, search: str | None = None) -> list[InvoiceSupplier]:
+    query = db.query(InvoiceSupplier)
+    if search:
+        cleaned = search.strip()
+        if cleaned:
+            pattern = f"%{cleaned}%"
+            query = query.filter(
+                or_(
+                    InvoiceSupplier.name.ilike(pattern),
+                    InvoiceSupplier.email.ilike(pattern),
+                    InvoiceSupplier.ico.ilike(pattern),
+                    InvoiceSupplier.dic.ilike(pattern),
+                )
+            )
+    return query.order_by(InvoiceSupplier.id.desc()).all()
+
+
+def get_invoice_supplier_detail(db: Session, supplier_id: int) -> InvoiceSupplier:
+    supplier = db.query(InvoiceSupplier).filter(InvoiceSupplier.id == supplier_id).first()
+    if supplier is None:
+        raise InvoiceSupplierNotFoundError("Dodavatel nebyl nalezen.")
+    return supplier
+
+
+def create_invoice_supplier(db: Session, payload: InvoiceSupplierCreate) -> InvoiceSupplier:
+    supplier = InvoiceSupplier(
+        name=payload.name,
+        email=payload.email,
+        phone=payload.phone,
+        address=payload.address,
+        ico=payload.ico,
+        dic=payload.dic,
+        data_box=payload.data_box,
+        country=payload.country,
+        note=payload.note,
+    )
+    db.add(supplier)
+    db.commit()
+    return get_invoice_supplier_detail(db, supplier.id)
+
+
+def update_invoice_supplier(db: Session, supplier_id: int, payload: InvoiceSupplierUpdate) -> InvoiceSupplier:
+    supplier = get_invoice_supplier_detail(db, supplier_id)
+    supplier.name = payload.name
+    supplier.email = payload.email
+    supplier.phone = payload.phone
+    supplier.address = payload.address
+    supplier.ico = payload.ico
+    supplier.dic = payload.dic
+    supplier.data_box = payload.data_box
+    supplier.country = payload.country
+    supplier.note = payload.note
+    db.add(supplier)
+    db.commit()
+    return get_invoice_supplier_detail(db, supplier.id)
+
+
+def delete_invoice_supplier(db: Session, supplier_id: int) -> int:
+    supplier = get_invoice_supplier_detail(db, supplier_id)
+    is_referenced = db.query(InvoiceExpense.id).filter(InvoiceExpense.supplier_id == supplier.id).first() is not None
+    if is_referenced:
+        raise InvoiceValidationError("Dodavatele nelze smazat, protože je navázaný na existující výdaje.")
+    db.delete(supplier)
+    db.commit()
+    return supplier_id
+
+
 def list_invoice_todos(
     db: Session,
     *,
@@ -551,6 +625,8 @@ def list_invoice_expense_payments(db: Session, expense_id: int) -> list[InvoiceE
 
 
 def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> InvoiceExpense:
+    supplier = _resolve_invoice_supplier(db, payload.supplier_id)
+    supplier_snapshot = _resolve_supplier_snapshot_for_create(payload, supplier)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
     totals = _calculate_expense_totals(
         vat_rate=payload.vat_rate,
@@ -559,13 +635,15 @@ def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> Invoic
     try:
         sequence = _reserve_expense_sequence(db, requested_expense_number=payload.expense_number)
         expense = InvoiceExpense(
-            supplier_name=payload.supplier_name,
-            supplier_email=payload.supplier_email,
-            supplier_phone=payload.supplier_phone,
-            supplier_address=payload.supplier_address,
-            supplier_ico=payload.supplier_ico,
-            supplier_dic=payload.supplier_dic,
-            supplier_data_box=payload.supplier_data_box,
+            supplier_id=supplier_snapshot.supplier_id,
+            supplier_name=supplier_snapshot.name,
+            supplier_email=supplier_snapshot.email,
+            supplier_phone=supplier_snapshot.phone,
+            supplier_address=supplier_snapshot.address,
+            supplier_ico=supplier_snapshot.ico,
+            supplier_dic=supplier_snapshot.dic,
+            supplier_data_box=supplier_snapshot.data_box,
+            supplier_country=supplier_snapshot.country,
             expense_number=sequence.expense_number,
             variable_symbol=sequence.variable_symbol,
             issue_date=payload.issue_date,
@@ -604,6 +682,8 @@ def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> Invoic
 
 def update_invoice_expense(db: Session, expense_id: int, payload: InvoiceExpenseUpdate) -> InvoiceExpense:
     expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True)
+    supplier = _resolve_invoice_supplier(db, payload.supplier_id)
+    supplier_snapshot = _resolve_supplier_snapshot_for_update(expense=expense, payload=payload, supplier=supplier)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
     totals = _calculate_expense_totals(
         vat_rate=payload.vat_rate,
@@ -620,13 +700,7 @@ def update_invoice_expense(db: Session, expense_id: int, payload: InvoiceExpense
             current_expense_number=expense.expense_number,
             requested_expense_number=payload.expense_number,
         )
-        expense.supplier_name = payload.supplier_name
-        expense.supplier_email = payload.supplier_email
-        expense.supplier_phone = payload.supplier_phone
-        expense.supplier_address = payload.supplier_address
-        expense.supplier_ico = payload.supplier_ico
-        expense.supplier_dic = payload.supplier_dic
-        expense.supplier_data_box = payload.supplier_data_box
+        _apply_supplier_snapshot_to_expense(expense, supplier_snapshot)
         expense.expense_number = sequence.expense_number
         expense.variable_symbol = sequence.variable_symbol
         expense.issue_date = payload.issue_date
@@ -1265,6 +1339,19 @@ class CustomerSnapshot:
     dic: str | None
 
 
+@dataclass(frozen=True)
+class SupplierSnapshot:
+    supplier_id: int | None
+    name: str
+    email: str
+    phone: str | None
+    address: str
+    ico: str | None
+    dic: str | None
+    data_box: str | None
+    country: str | None
+
+
 def _normalize_invoice_status(value: str | None) -> str:
     if value in STORED_INVOICE_STATUSES:
         return value
@@ -1712,6 +1799,15 @@ def _resolve_invoice_subject(db: Session, subject_id: int | None) -> InvoiceSubj
     return subject
 
 
+def _resolve_invoice_supplier(db: Session, supplier_id: int | None) -> InvoiceSupplier | None:
+    if supplier_id is None:
+        return None
+    supplier = db.query(InvoiceSupplier).filter(InvoiceSupplier.id == supplier_id).first()
+    if supplier is None:
+        raise InvoiceValidationError("Zvolený dodavatel nebyl nalezen.")
+    return supplier
+
+
 def _resolve_customer_snapshot_for_create(payload: InvoiceCreate, subject: InvoiceSubject | None) -> CustomerSnapshot:
     if subject is not None:
         return _build_customer_snapshot_from_subject(subject)
@@ -1766,6 +1862,78 @@ def _build_customer_snapshot_from_subject(subject: InvoiceSubject) -> CustomerSn
         ico=subject.ico,
         dic=subject.dic,
     )
+
+
+def _resolve_supplier_snapshot_for_create(
+    payload: InvoiceExpenseCreate,
+    supplier: InvoiceSupplier | None,
+) -> SupplierSnapshot:
+    if supplier is not None:
+        return _build_supplier_snapshot_from_supplier(supplier)
+    return SupplierSnapshot(
+        supplier_id=None,
+        name=payload.supplier_name or "",
+        email=payload.supplier_email or "",
+        phone=payload.supplier_phone,
+        address=payload.supplier_address or "",
+        ico=payload.supplier_ico,
+        dic=payload.supplier_dic,
+        data_box=payload.supplier_data_box,
+        country=payload.supplier_country,
+    )
+
+
+def _resolve_supplier_snapshot_for_update(
+    *,
+    expense: InvoiceExpense,
+    payload: InvoiceExpenseUpdate,
+    supplier: InvoiceSupplier | None,
+) -> SupplierSnapshot:
+    if "supplier_id" in payload.model_fields_set:
+        if payload.supplier_id is not None:
+            assert supplier is not None
+            return _build_supplier_snapshot_from_supplier(supplier)
+        linked_supplier_id = None
+    else:
+        linked_supplier_id = expense.supplier_id
+
+    return SupplierSnapshot(
+        supplier_id=linked_supplier_id,
+        name=payload.supplier_name or "",
+        email=payload.supplier_email or "",
+        phone=payload.supplier_phone,
+        address=payload.supplier_address or "",
+        ico=payload.supplier_ico,
+        dic=payload.supplier_dic,
+        data_box=payload.supplier_data_box,
+        country=payload.supplier_country,
+    )
+
+
+def _build_supplier_snapshot_from_supplier(supplier: InvoiceSupplier) -> SupplierSnapshot:
+    return SupplierSnapshot(
+        supplier_id=supplier.id,
+        name=supplier.name,
+        email=supplier.email,
+        phone=supplier.phone,
+        address=supplier.address,
+        ico=supplier.ico,
+        dic=supplier.dic,
+        data_box=supplier.data_box,
+        country=supplier.country,
+    )
+
+
+def _apply_supplier_snapshot_to_expense(expense: InvoiceExpense, snapshot: SupplierSnapshot) -> None:
+    expense.supplier_id = snapshot.supplier_id
+    expense.supplier_name = snapshot.name
+    expense.supplier_email = snapshot.email
+    expense.supplier_phone = snapshot.phone
+    expense.supplier_address = snapshot.address
+    expense.supplier_ico = snapshot.ico
+    expense.supplier_dic = snapshot.dic
+    expense.supplier_data_box = snapshot.data_box
+    expense.supplier_country = snapshot.country
 
 
 def _prepare_invoice_item(item) -> PreparedInvoiceItem:

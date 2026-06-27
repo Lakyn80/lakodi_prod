@@ -391,6 +391,55 @@ class InvoiceSubjectDeleteResponse(BaseModel):
     subject_id: int
 
 
+class InvoiceSupplierBase(BaseModel):
+    name: str = Field(min_length=1, max_length=256)
+    email: str = Field(min_length=1, max_length=256)
+    phone: str | None = Field(default=None, max_length=64)
+    address: str = Field(min_length=1, max_length=256)
+    ico: str | None = Field(default=None, max_length=32)
+    dic: str | None = Field(default=None, max_length=32)
+    data_box: str | None = Field(default=None, max_length=64)
+    country: str | None = Field(default=None, max_length=128)
+    note: str | None = None
+
+    @field_validator("name", "email", "address")
+    @classmethod
+    def validate_required_supplier_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Toto pole je povinné.")
+        return cleaned
+
+    @field_validator("phone", "ico", "dic", "data_box", "country", "note")
+    @classmethod
+    def normalize_optional_supplier_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceSupplierCreate(InvoiceSupplierBase):
+    pass
+
+
+class InvoiceSupplierUpdate(InvoiceSupplierBase):
+    pass
+
+
+class InvoiceSupplierResponse(InvoiceSupplierBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvoiceSupplierDeleteResponse(BaseModel):
+    ok: Literal[True]
+    supplier_id: int
+
+
 class QuoteConvertRequest(BaseModel):
     target_document_kind: Literal["invoice", "proforma"]
     issue_date: date | None = None
@@ -478,13 +527,15 @@ class InvoiceExpensePaymentResponse(BaseModel):
 
 class InvoiceExpenseBase(BaseModel):
     expense_number: str | None = Field(default=None, min_length=1, max_length=9)
-    supplier_name: str = Field(min_length=1, max_length=256)
-    supplier_email: str = Field(min_length=1, max_length=256)
+    supplier_id: int | None = Field(default=None, ge=1)
+    supplier_name: str | None = Field(default=None, min_length=1, max_length=256)
+    supplier_email: str | None = Field(default=None, min_length=1, max_length=256)
     supplier_phone: str | None = Field(default=None, max_length=64)
-    supplier_address: str = Field(min_length=1, max_length=256)
+    supplier_address: str | None = Field(default=None, min_length=1, max_length=256)
     supplier_ico: str | None = Field(default=None, max_length=32)
     supplier_dic: str | None = Field(default=None, max_length=32)
     supplier_data_box: str | None = Field(default=None, max_length=64)
+    supplier_country: str | None = Field(default=None, max_length=128)
     issue_date: date
     received_date: date
     due_date: date
@@ -516,9 +567,6 @@ class InvoiceExpenseBase(BaseModel):
         return cleaned
 
     @field_validator(
-        "supplier_name",
-        "supplier_email",
-        "supplier_address",
         "payment_method",
         "bank_account_number",
         "bank_code",
@@ -531,10 +579,14 @@ class InvoiceExpenseBase(BaseModel):
         return cleaned
 
     @field_validator(
+        "supplier_name",
+        "supplier_email",
         "supplier_phone",
+        "supplier_address",
         "supplier_ico",
         "supplier_dic",
         "supplier_data_box",
+        "supplier_country",
         "note",
         "bank_account_prefix",
         "bank_iban",
@@ -571,6 +623,13 @@ class InvoiceExpenseBase(BaseModel):
             raise ValueError("Datum splatnosti nemůže být dříve než datum vystavení.")
         if self.received_date < self.issue_date:
             raise ValueError("Datum přijetí nemůže být dříve než datum vystavení.")
+        if self.supplier_id is None:
+            if not self.supplier_name:
+                raise ValueError("Vyplňte název dodavatele nebo zvolte supplier_id.")
+            if not self.supplier_email:
+                raise ValueError("Vyplňte email dodavatele nebo zvolte supplier_id.")
+            if not self.supplier_address:
+                raise ValueError("Vyplňte adresu dodavatele nebo zvolte supplier_id.")
         return self
 
 
@@ -588,6 +647,7 @@ class InvoiceExpenseSummaryResponse(BaseModel):
     id: int
     expense_number: str
     variable_symbol: str
+    supplier_id: int | None
     supplier_name: str
     supplier_email: str
     supplier_phone: str | None
@@ -595,6 +655,7 @@ class InvoiceExpenseSummaryResponse(BaseModel):
     supplier_ico: str | None
     supplier_dic: str | None
     supplier_data_box: str | None
+    supplier_country: str | None
     issue_date: date
     received_date: date
     due_date: date

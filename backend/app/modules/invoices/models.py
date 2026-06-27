@@ -177,10 +177,30 @@ class InvoiceSubject(Base):
     invoices = relationship("Invoice", back_populates="subject")
 
 
+class InvoiceSupplier(Base):
+    __tablename__ = "invoice_suppliers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(256), nullable=False, index=True)
+    email = Column(String(256), nullable=False, index=True)
+    phone = Column(String(64), nullable=True)
+    address = Column(String(256), nullable=False)
+    ico = Column(String(32), nullable=True, index=True)
+    dic = Column(String(32), nullable=True, index=True)
+    data_box = Column(String(64), nullable=True)
+    country = Column(String(128), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    expenses = relationship("InvoiceExpense", back_populates="supplier")
+
+
 class InvoiceExpense(Base):
     __tablename__ = "invoice_expenses"
 
     id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("invoice_suppliers.id", ondelete="SET NULL"), nullable=True, index=True)
     supplier_name = Column(String(256), nullable=False)
     supplier_email = Column(String(256), nullable=False, index=True)
     supplier_phone = Column(String(64), nullable=True)
@@ -188,6 +208,7 @@ class InvoiceExpense(Base):
     supplier_ico = Column(String(32), nullable=True)
     supplier_dic = Column(String(32), nullable=True)
     supplier_data_box = Column(String(64), nullable=True)
+    supplier_country = Column(String(128), nullable=True)
     expense_number = Column(String(64), nullable=False, unique=True, index=True)
     variable_symbol = Column(String(9), nullable=False, unique=True, index=True)
     issue_date = Column(Date, nullable=False, index=True)
@@ -221,6 +242,7 @@ class InvoiceExpense(Base):
         cascade="all, delete-orphan",
         order_by="InvoiceExpensePayment.paid_at, InvoiceExpensePayment.id",
     )
+    supplier = relationship("InvoiceSupplier", back_populates="expenses")
 
 
 class InvoiceExpenseItem(Base):

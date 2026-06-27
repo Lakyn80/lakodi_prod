@@ -801,3 +801,79 @@
   - The task did not backfill or repair existing relation rows; it only made relation reads resilient to missing linked records.
   - Invoice detail response was intentionally not extended with relation data to avoid changing existing clients without a direct need.
   - No push, no deploy, no CD.
+
+## Úkol 14 Backend supplier registry
+
+- Date: 2026-06-27
+- Goal: Add a reusable backend supplier registry for received invoices/expenses while preserving expense snapshot history as the accounting source of truth.
+- Scope: Backend-only invoicing models, SQLite compatibility helpers, schemas, service logic, admin supplier CRUD endpoints, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added persistent backend supplier registry model/table:
+    - `InvoiceSupplier`
+    - `invoice_suppliers`
+  - Added safe SQLite backfill helper for `invoice_suppliers` columns and search indexes:
+    - `name`
+    - `email`
+    - `ico`
+    - `dic`
+  - Extended `invoice_expenses` with safe nullable supplier-link fields:
+    - `supplier_id`
+    - `supplier_country`
+  - Added safe SQLite index on:
+    - `invoice_expenses.supplier_id`
+  - Existing expense snapshot fields were preserved unchanged and existing rows remain valid with `supplier_id = null`.
+- Backend changes:
+  - Added admin-only supplier registry CRUD endpoints under:
+    - `GET /api/admin/invoices/suppliers`
+    - `POST /api/admin/invoices/suppliers`
+    - `GET /api/admin/invoices/suppliers/{supplier_id}`
+    - `PUT /api/admin/invoices/suppliers/{supplier_id}`
+    - `DELETE /api/admin/invoices/suppliers/{supplier_id}`
+  - Added supplier list search support for:
+    - `name`
+    - `email`
+    - `ico`
+    - `dic`
+  - Added safe delete behavior:
+    - unreferenced supplier can be deleted
+    - referenced supplier is blocked from hard delete
+  - Added nullable `supplier_id` integration on expenses while keeping expense supplier snapshot fields as the historical source of truth.
+  - Added optional `supplier_country` expense snapshot field so supplier registry snapshots can be copied fully without changing export format.
+  - Expense create/update behavior now supports two clear paths:
+    - manual snapshot path without `supplier_id`
+    - supplier-registry path with `supplier_id`
+  - Clear precedence rule:
+    - if `supplier_id` is provided, supplier registry snapshot wins and request supplier snapshot fields are ignored/overridden
+  - Updating a supplier master record does not retroactively change existing expense snapshots.
+  - Existing expense CSV/XLSX export path remains snapshot-based.
+  - Existing expense overdue todo generation remains snapshot/runtime-state based and does not require supplier master data.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "dodavatel or supplier or prijateho_dokladu_se_supplier_id or historicky_snapshot or expenses_csv_export_pouziva_snapshot or generate_todos_funguje_i_pro_overdue_expense_se_supplier_id"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "dodavatel or supplier or prijateho_dokladu_se_supplier_id or historicky_snapshot or expenses_csv_export_pouziva_snapshot or generate_todos_funguje_i_pro_overdue_expense_se_supplier_id"` -> `11 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> reached `100%`; `151` collected and exit code `0`, so `151 passed`
+  - `python -m pytest -q` -> reached `100%`; `156` collected and exit code `0`, so `156 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `151 collected`
+  - `python -m pytest --collect-only -q` -> `156 collected`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice supplier registry`
+- Local commit hash if created: pending until local commit
+- Final status: implemented, backend-tested, ready for local commit
+- Notes / risks:
+  - Expense snapshots intentionally remain authoritative for accounting history even when a reusable supplier master record is linked.
+  - If `supplier_id` is omitted on expense update, the existing manual snapshot update flow remains compatible; explicit `supplier_id` is required to resync from registry data or unlink intentionally.
+  - Supplier delete is intentionally conservative and blocks hard delete when any expense still references the supplier record.
+  - No push, no deploy, no CD.
