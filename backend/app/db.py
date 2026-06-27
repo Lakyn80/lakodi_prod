@@ -277,6 +277,78 @@ def _ensure_invoice_expense_tables():
             )
 
 
+def _ensure_invoice_bank_matching_tables():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        transaction_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_bank_transactions'")
+        ).fetchone()
+        if transaction_exists:
+            rows = conn.execute(text("PRAGMA table_info(invoice_bank_transactions)")).fetchall()
+            columns = {row[1] for row in rows}
+            add_map = {
+                "external_id": "ALTER TABLE invoice_bank_transactions ADD COLUMN external_id VARCHAR(256)",
+                "fingerprint": "ALTER TABLE invoice_bank_transactions ADD COLUMN fingerprint VARCHAR(128)",
+                "account_iban": "ALTER TABLE invoice_bank_transactions ADD COLUMN account_iban VARCHAR(34)",
+                "account_number": "ALTER TABLE invoice_bank_transactions ADD COLUMN account_number VARCHAR(32)",
+                "bank_code": "ALTER TABLE invoice_bank_transactions ADD COLUMN bank_code VARCHAR(16)",
+                "transaction_date": "ALTER TABLE invoice_bank_transactions ADD COLUMN transaction_date DATE",
+                "booked_date": "ALTER TABLE invoice_bank_transactions ADD COLUMN booked_date DATE",
+                "amount": "ALTER TABLE invoice_bank_transactions ADD COLUMN amount NUMERIC(12, 2)",
+                "currency": "ALTER TABLE invoice_bank_transactions ADD COLUMN currency VARCHAR(8)",
+                "variable_symbol": "ALTER TABLE invoice_bank_transactions ADD COLUMN variable_symbol VARCHAR(32)",
+                "constant_symbol": "ALTER TABLE invoice_bank_transactions ADD COLUMN constant_symbol VARCHAR(32)",
+                "specific_symbol": "ALTER TABLE invoice_bank_transactions ADD COLUMN specific_symbol VARCHAR(32)",
+                "counterparty_name": "ALTER TABLE invoice_bank_transactions ADD COLUMN counterparty_name VARCHAR(256)",
+                "counterparty_account": "ALTER TABLE invoice_bank_transactions ADD COLUMN counterparty_account VARCHAR(64)",
+                "counterparty_iban": "ALTER TABLE invoice_bank_transactions ADD COLUMN counterparty_iban VARCHAR(34)",
+                "message": "ALTER TABLE invoice_bank_transactions ADD COLUMN message TEXT",
+                "raw_payload": "ALTER TABLE invoice_bank_transactions ADD COLUMN raw_payload TEXT",
+                "direction": "ALTER TABLE invoice_bank_transactions ADD COLUMN direction VARCHAR(16)",
+                "status": "ALTER TABLE invoice_bank_transactions ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'imported'",
+                "created_at": "ALTER TABLE invoice_bank_transactions ADD COLUMN created_at DATETIME",
+                "updated_at": "ALTER TABLE invoice_bank_transactions ADD COLUMN updated_at DATETIME",
+            }
+            for col, sql in add_map.items():
+                if col not in columns:
+                    conn.execute(text(sql))
+
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_bank_transactions_external_id ON invoice_bank_transactions (external_id)"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_bank_transactions_fingerprint ON invoice_bank_transactions (fingerprint)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_bank_transactions_variable_symbol ON invoice_bank_transactions (variable_symbol)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_bank_transactions_transaction_date ON invoice_bank_transactions (transaction_date)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_bank_transactions_status ON invoice_bank_transactions (status)"))
+
+        match_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_payment_matches'")
+        ).fetchone()
+        if match_exists:
+            rows = conn.execute(text("PRAGMA table_info(invoice_payment_matches)")).fetchall()
+            columns = {row[1] for row in rows}
+            add_map = {
+                "bank_transaction_id": "ALTER TABLE invoice_payment_matches ADD COLUMN bank_transaction_id INTEGER",
+                "invoice_id": "ALTER TABLE invoice_payment_matches ADD COLUMN invoice_id INTEGER",
+                "expense_id": "ALTER TABLE invoice_payment_matches ADD COLUMN expense_id INTEGER",
+                "invoice_payment_id": "ALTER TABLE invoice_payment_matches ADD COLUMN invoice_payment_id INTEGER",
+                "expense_payment_id": "ALTER TABLE invoice_payment_matches ADD COLUMN expense_payment_id INTEGER",
+                "match_type": "ALTER TABLE invoice_payment_matches ADD COLUMN match_type VARCHAR(64)",
+                "confidence": "ALTER TABLE invoice_payment_matches ADD COLUMN confidence INTEGER",
+                "status": "ALTER TABLE invoice_payment_matches ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'suggested'",
+                "reason": "ALTER TABLE invoice_payment_matches ADD COLUMN reason TEXT",
+                "created_at": "ALTER TABLE invoice_payment_matches ADD COLUMN created_at DATETIME",
+                "applied_at": "ALTER TABLE invoice_payment_matches ADD COLUMN applied_at DATETIME",
+            }
+            for col, sql in add_map.items():
+                if col not in columns:
+                    conn.execute(text(sql))
+
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_payment_matches_bank_transaction_id ON invoice_payment_matches (bank_transaction_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_payment_matches_invoice_id ON invoice_payment_matches (invoice_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_payment_matches_expense_id ON invoice_payment_matches (expense_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_payment_matches_status ON invoice_payment_matches (status)"))
+
+
 def _ensure_invoice_settings_columns():
     if not DATABASE_URL.startswith("sqlite"):
         return
@@ -490,6 +562,7 @@ def init_db():
     _ensure_invoice_subjects_table()
     _ensure_invoice_suppliers_table()
     _ensure_invoice_expense_tables()
+    _ensure_invoice_bank_matching_tables()
     _ensure_invoice_settings_columns()
     _ensure_invoice_sequence_state_columns()
     _ensure_invoice_document_relations_table()

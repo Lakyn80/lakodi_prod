@@ -31,6 +31,10 @@ from backend.app.modules.invoices.schemas import (
     AresCompanyLookupResponse,
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
+    InvoiceBankTransactionIgnoreResponse,
+    InvoiceBankTransactionImportRequest,
+    InvoiceBankTransactionImportResponse,
+    InvoiceBankTransactionResponse,
     InvoiceCreate,
     InvoiceDocumentRelationResponse,
     InvoiceDefaultsResponse,
@@ -42,6 +46,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpensePaymentResponse,
     InvoiceExpenseSummaryResponse,
     InvoiceExpenseUpdate,
+    InvoicePaymentMatchResponse,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
     InvoiceRelationsSummaryResponse,
@@ -67,14 +72,17 @@ from backend.app.modules.invoices.schemas import (
     QuoteConvertRequest,
 )
 from backend.app.modules.invoices.service import (
+    InvoiceBankTransactionNotFoundError,
     InvoiceExpenseNotFoundError,
     InvoiceExpensePaymentNotFoundError,
     InvoiceNotFoundError,
+    InvoicePaymentMatchNotFoundError,
     InvoicePaymentNotFoundError,
     InvoiceSupplierNotFoundError,
     InvoiceSubjectNotFoundError,
     InvoiceTodoNotFoundError,
     InvoiceValidationError,
+    apply_invoice_payment_match,
     add_invoice_expense_payment,
     add_invoice_payment,
     cancel_invoice_todo,
@@ -94,8 +102,10 @@ from backend.app.modules.invoices.service import (
     delete_invoice_subject,
     delete_invoice_payment,
     delete_invoice_todo,
+    generate_invoice_payment_matches,
     generate_invoice_todos,
     get_document_creation_defaults,
+    get_invoice_bank_transaction_detail,
     get_invoice_expense_detail,
     generate_invoice_pdf,
     get_invoice_detail,
@@ -104,6 +114,9 @@ from backend.app.modules.invoices.service import (
     get_invoice_supplier_detail,
     get_invoice_subject_detail,
     get_invoice_todo_detail,
+    ignore_invoice_bank_transaction,
+    import_invoice_bank_transactions,
+    list_invoice_bank_transactions,
     list_invoice_document_relations,
     list_invoice_expense_payments,
     list_invoice_expenses,
@@ -114,6 +127,8 @@ from backend.app.modules.invoices.service import (
     list_invoices,
     save_invoice_settings,
     send_invoice_email,
+    reject_invoice_payment_match,
+    list_invoice_payment_matches,
     update_invoice_expense,
     update_invoice_supplier,
     update_invoice_subject,
@@ -533,6 +548,126 @@ def admin_delete_invoice_supplier(
         deleted_supplier_id = delete_invoice_supplier(db, supplier_id)
         return {"ok": True, "supplier_id": deleted_supplier_id}
     except InvoiceSupplierNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/bank-transactions", response_model=list[InvoiceBankTransactionResponse])
+def admin_list_invoice_bank_transactions(
+    status: str | None = Query(default=None),
+    direction: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_bank_transactions(db, status=status, direction=direction)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/bank-transactions/import", response_model=InvoiceBankTransactionImportResponse)
+def admin_import_invoice_bank_transactions(
+    body: InvoiceBankTransactionImportRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        result = import_invoice_bank_transactions(db, body)
+        return {
+            "imported_count": result.imported_count,
+            "skipped_duplicate_count": result.skipped_duplicate_count,
+            "imported_transaction_ids": result.imported_transaction_ids,
+            "skipped_duplicate_identifiers": result.skipped_duplicate_identifiers,
+        }
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/bank-transactions/{transaction_id}", response_model=InvoiceBankTransactionResponse)
+def admin_get_invoice_bank_transaction(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_bank_transaction_detail(db, transaction_id)
+    except InvoiceBankTransactionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/bank-transactions/{transaction_id}/ignore", response_model=InvoiceBankTransactionIgnoreResponse)
+def admin_ignore_invoice_bank_transaction(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        transaction = ignore_invoice_bank_transaction(db, transaction_id)
+        return {"ok": True, "transaction_id": transaction.id, "status": transaction.status}
+    except InvoiceBankTransactionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/bank-transactions/{transaction_id}/matches", response_model=list[InvoicePaymentMatchResponse])
+def admin_list_invoice_bank_transaction_matches(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_payment_matches(db, transaction_id)
+    except InvoiceBankTransactionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/bank-transactions/{transaction_id}/matches/generate", response_model=list[InvoicePaymentMatchResponse])
+def admin_generate_invoice_bank_transaction_matches(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return generate_invoice_payment_matches(db, transaction_id)
+    except InvoiceBankTransactionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/bank-transactions/{transaction_id}/matches/{match_id}/apply",
+    response_model=InvoicePaymentMatchResponse,
+)
+def admin_apply_invoice_bank_transaction_match(
+    transaction_id: int,
+    match_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return apply_invoice_payment_match(db, transaction_id, match_id)
+    except (InvoiceBankTransactionNotFoundError, InvoicePaymentMatchNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (InvoiceValidationError, InvoiceNotFoundError, InvoiceExpenseNotFoundError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/bank-transactions/{transaction_id}/matches/{match_id}/reject",
+    response_model=InvoicePaymentMatchResponse,
+)
+def admin_reject_invoice_bank_transaction_match(
+    transaction_id: int,
+    match_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return reject_invoice_payment_match(db, transaction_id, match_id)
+    except (InvoiceBankTransactionNotFoundError, InvoicePaymentMatchNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

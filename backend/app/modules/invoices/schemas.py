@@ -1,7 +1,7 @@
 """Pydantic schémata pro faktury."""
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
@@ -22,6 +22,10 @@ InvoiceTodoType = Literal[
     "manual",
 ]
 InvoiceTodoStatus = Literal["open", "completed", "cancelled"]
+BankTransactionDirection = Literal["incoming", "outgoing"]
+BankTransactionStatus = Literal["imported", "matched", "ignored"]
+PaymentMatchType = Literal["variable_symbol_amount", "variable_symbol_only", "amount_only", "manual"]
+PaymentMatchStatus = Literal["suggested", "applied", "rejected"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -438,6 +442,134 @@ class InvoiceSupplierResponse(InvoiceSupplierBase):
 class InvoiceSupplierDeleteResponse(BaseModel):
     ok: Literal[True]
     supplier_id: int
+
+
+class InvoiceBankTransactionImportItem(BaseModel):
+    external_id: str | None = Field(default=None, max_length=256)
+    account_iban: str | None = Field(default=None, max_length=34)
+    account_number: str | None = Field(default=None, max_length=32)
+    bank_code: str | None = Field(default=None, max_length=16)
+    transaction_date: date
+    booked_date: date | None = None
+    amount: Decimal
+    currency: str = Field(min_length=1, max_length=8)
+    variable_symbol: str | None = Field(default=None, max_length=32)
+    constant_symbol: str | None = Field(default=None, max_length=32)
+    specific_symbol: str | None = Field(default=None, max_length=32)
+    counterparty_name: str | None = Field(default=None, max_length=256)
+    counterparty_account: str | None = Field(default=None, max_length=64)
+    counterparty_iban: str | None = Field(default=None, max_length=34)
+    message: str | None = None
+    direction: BankTransactionDirection
+    raw_payload: dict[str, Any] | list[Any] | str | None = None
+
+    @field_validator("amount")
+    @classmethod
+    def validate_positive_amount(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Částka transakce musí být větší než nula.")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def normalize_transaction_currency(cls, value: str) -> str:
+        cleaned = value.strip().upper()
+        if not cleaned:
+            raise ValueError("Měna je povinná.")
+        return cleaned
+
+    @field_validator(
+        "external_id",
+        "account_iban",
+        "account_number",
+        "bank_code",
+        "variable_symbol",
+        "constant_symbol",
+        "specific_symbol",
+        "counterparty_name",
+        "counterparty_account",
+        "counterparty_iban",
+        "message",
+    )
+    @classmethod
+    def normalize_optional_transaction_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceBankTransactionImportRequest(BaseModel):
+    transactions: list[InvoiceBankTransactionImportItem]
+
+    @field_validator("transactions")
+    @classmethod
+    def validate_transactions_not_empty(
+        cls, value: list[InvoiceBankTransactionImportItem]
+    ) -> list[InvoiceBankTransactionImportItem]:
+        if not value:
+            raise ValueError("Import musí obsahovat alespoň jednu transakci.")
+        return value
+
+
+class InvoiceBankTransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    external_id: str | None
+    account_iban: str | None
+    account_number: str | None
+    bank_code: str | None
+    transaction_date: date
+    booked_date: date | None
+    amount: Decimal
+    currency: str
+    variable_symbol: str | None
+    constant_symbol: str | None
+    specific_symbol: str | None
+    counterparty_name: str | None
+    counterparty_account: str | None
+    counterparty_iban: str | None
+    message: str | None
+    raw_payload: str | None
+    direction: BankTransactionDirection
+    status: BankTransactionStatus
+    created_at: datetime
+    updated_at: datetime
+
+    @field_serializer("amount", when_used="json")
+    def serialize_transaction_amount(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceBankTransactionImportResponse(BaseModel):
+    imported_count: int
+    skipped_duplicate_count: int
+    imported_transaction_ids: list[int] = Field(default_factory=list)
+    skipped_duplicate_identifiers: list[str] = Field(default_factory=list)
+
+
+class InvoiceBankTransactionIgnoreResponse(BaseModel):
+    ok: Literal[True]
+    transaction_id: int
+    status: BankTransactionStatus
+
+
+class InvoicePaymentMatchResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    bank_transaction_id: int
+    invoice_id: int | None
+    expense_id: int | None
+    invoice_payment_id: int | None
+    expense_payment_id: int | None
+    match_type: PaymentMatchType
+    confidence: int
+    status: PaymentMatchStatus
+    reason: str | None
+    created_at: datetime
+    applied_at: datetime | None
 
 
 class QuoteConvertRequest(BaseModel):

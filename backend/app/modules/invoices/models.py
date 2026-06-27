@@ -272,6 +272,59 @@ class InvoiceExpensePayment(Base):
     expense = relationship("InvoiceExpense", back_populates="payments")
 
 
+class InvoiceBankTransaction(Base):
+    __tablename__ = "invoice_bank_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    external_id = Column(String(256), nullable=True, unique=True, index=True)
+    fingerprint = Column(String(128), nullable=False, unique=True, index=True)
+    account_iban = Column(String(34), nullable=True)
+    account_number = Column(String(32), nullable=True)
+    bank_code = Column(String(16), nullable=True)
+    transaction_date = Column(Date, nullable=False, index=True)
+    booked_date = Column(Date, nullable=True, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(8), nullable=False)
+    variable_symbol = Column(String(32), nullable=True, index=True)
+    constant_symbol = Column(String(32), nullable=True)
+    specific_symbol = Column(String(32), nullable=True)
+    counterparty_name = Column(String(256), nullable=True)
+    counterparty_account = Column(String(64), nullable=True)
+    counterparty_iban = Column(String(34), nullable=True)
+    message = Column(Text, nullable=True)
+    raw_payload = Column(Text, nullable=True)
+    direction = Column(String(16), nullable=False, index=True)
+    status = Column(String(16), nullable=False, default="imported", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    matches = relationship(
+        "InvoicePaymentMatch",
+        back_populates="bank_transaction",
+        cascade="all, delete-orphan",
+        order_by="InvoicePaymentMatch.created_at, InvoicePaymentMatch.id",
+    )
+
+
+class InvoicePaymentMatch(Base):
+    __tablename__ = "invoice_payment_matches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bank_transaction_id = Column(Integer, ForeignKey("invoice_bank_transactions.id", ondelete="CASCADE"), nullable=False, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="SET NULL"), nullable=True, index=True)
+    invoice_payment_id = Column(Integer, ForeignKey("invoice_payments.id", ondelete="SET NULL"), nullable=True, index=True)
+    expense_payment_id = Column(Integer, ForeignKey("invoice_expense_payments.id", ondelete="SET NULL"), nullable=True, index=True)
+    match_type = Column(String(64), nullable=False, index=True)
+    confidence = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False, default="suggested", index=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    applied_at = Column(DateTime(timezone=True), nullable=True)
+
+    bank_transaction = relationship("InvoiceBankTransaction", back_populates="matches")
+
+
 class InvoiceTodo(Base):
     __tablename__ = "invoice_todos"
 

@@ -26,8 +26,10 @@ from backend.app.modules.invoices.models import (
     RELATION_TYPE_INVOICE_FROM_QUOTE,
     RELATION_TYPE_PROFORMA_FROM_QUOTE,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+    InvoiceBankTransaction,
     InvoiceExpense,
     InvoiceDocumentRelation,
+    InvoicePaymentMatch,
     InvoiceSequenceState,
     InvoiceTodo,
 )
@@ -253,6 +255,34 @@ def _pridej_platbu_vydaje(expense_id: int, payload: dict | None = None) -> dict:
     if payload:
         payment_payload.update(payload)
     response = client.post(f"/api/admin/invoices/expenses/{expense_id}/payments", json=payment_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _importuj_bankovni_transakce(transactions: list[dict]) -> dict:
+    _login_admin()
+    response = client.post("/api/admin/invoices/bank-transactions/import", json={"transactions": transactions})
+    assert response.status_code == 200
+    return response.json()
+
+
+def _vygeneruj_matche_bankovni_transakce(transaction_id: int) -> list[dict]:
+    _login_admin()
+    response = client.post(f"/api/admin/invoices/bank-transactions/{transaction_id}/matches/generate")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _ziskej_matche_bankovni_transakce(transaction_id: int) -> list[dict]:
+    _login_admin()
+    response = client.get(f"/api/admin/invoices/bank-transactions/{transaction_id}/matches")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _aplikuj_match_bankovni_transakce(transaction_id: int, match_id: int) -> dict:
+    _login_admin()
+    response = client.post(f"/api/admin/invoices/bank-transactions/{transaction_id}/matches/{match_id}/apply")
     assert response.status_code == 200
     return response.json()
 
@@ -3265,6 +3295,356 @@ def test_uprava_prijateho_dokladu_nepovoli_snizit_total_pod_soucet_plateb() -> N
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Součet plateb nesmí překročit novou celkovou částku přijatého dokladu."}
+
+
+def test_import_bankovnich_transakci_list_detail_a_duplicate_guard_funguji() -> None:
+    first_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "bank-tx-1",
+                "transaction_date": "2026-06-01",
+                "booked_date": "2026-06-02",
+                "amount": 2000,
+                "currency": "czk",
+                "variable_symbol": "123",
+                "message": "Prichozi platba",
+                "direction": "incoming",
+            },
+            {
+                "external_id": "bank-tx-2",
+                "transaction_date": "2026-06-03",
+                "amount": 4235,
+                "currency": "CZK",
+                "variable_symbol": "456",
+                "message": "Odchozi platba",
+                "direction": "outgoing",
+            },
+        ]
+    )
+    second_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "bank-tx-1",
+                "transaction_date": "2026-06-01",
+                "amount": 2000,
+                "currency": "CZK",
+                "variable_symbol": "123",
+                "direction": "incoming",
+            }
+        ]
+    )
+    _login_admin()
+
+    list_response = client.get("/api/admin/invoices/bank-transactions")
+    detail_response = client.get(f"/api/admin/invoices/bank-transactions/{first_import['imported_transaction_ids'][0]}")
+
+    assert first_import["imported_count"] == 2
+    assert first_import["skipped_duplicate_count"] == 0
+    assert second_import["imported_count"] == 0
+    assert second_import["skipped_duplicate_count"] == 1
+    assert list_response.status_code == 200
+    listed = list_response.json()
+    assert len(listed) == 2
+    assert listed[0]["direction"] == "outgoing"
+    assert detail_response.status_code == 200
+    assert detail_response.json()["external_id"] == "bank-tx-1"
+    assert detail_response.json()["status"] == "imported"
+
+
+def test_import_bankovni_transakce_s_neplatnou_castkou_je_odmitnut() -> None:
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/bank-transactions/import",
+        json={
+            "transactions": [
+                {
+                    "external_id": "invalid-bank-tx",
+                    "transaction_date": "2026-06-01",
+                    "amount": 0,
+                    "currency": "CZK",
+                    "direction": "incoming",
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_ignore_bankovni_transakce_funguje() -> None:
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "ignore-bank-tx",
+                "transaction_date": "2026-06-05",
+                "amount": 1000,
+                "currency": "CZK",
+                "direction": "incoming",
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+    _login_admin()
+
+    response = client.post(f"/api/admin/invoices/bank-transactions/{transaction_id}/ignore")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "transaction_id": transaction_id, "status": "ignored"}
+
+
+def test_generate_matches_pro_incoming_transakci_s_variabilnim_symbolem_a_castkou_navrhne_fakturu() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "bank-match-invoice@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-match-1",
+                "transaction_date": "2026-06-10",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+
+    matches = _vygeneruj_matche_bankovni_transakce(imported["imported_transaction_ids"][0])
+
+    assert len(matches) == 1
+    assert matches[0]["invoice_id"] == invoice["id"]
+    assert matches[0]["match_type"] == "variable_symbol_amount"
+    assert matches[0]["confidence"] == 100
+    assert matches[0]["status"] == "suggested"
+
+
+def test_generate_matches_pro_incoming_transakci_nevraci_quote_ani_plne_uhrazenou_fakturu() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "bank-match-quote@example.com",
+        }
+    )
+    paid_invoice = _vytvor_fakturu({"customer_email": "bank-match-paid@example.com"})
+    _pridej_platbu(paid_invoice["id"], {"amount": paid_invoice["total"], "paid_at": "2026-06-10"})
+
+    quote_tx = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-quote-skip",
+                "transaction_date": "2026-06-11",
+                "amount": quote["total"],
+                "currency": "CZK",
+                "variable_symbol": quote["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    paid_tx = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-paid-skip",
+                "transaction_date": "2026-06-12",
+                "amount": paid_invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": paid_invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+
+    quote_matches = _vygeneruj_matche_bankovni_transakce(quote_tx["imported_transaction_ids"][0])
+    paid_matches = _vygeneruj_matche_bankovni_transakce(paid_tx["imported_transaction_ids"][0])
+
+    assert quote_matches == []
+    assert paid_matches == []
+
+
+def test_generate_matches_pro_outgoing_transakci_navrhne_vydaj_a_amount_only_jen_kdyz_je_unikatni() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "bank-match-expense@example.com"})
+    imported_vs = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "outgoing-match-vs",
+                "transaction_date": "2026-06-13",
+                "amount": expense["total"],
+                "currency": "CZK",
+                "variable_symbol": expense["variable_symbol"],
+                "direction": "outgoing",
+            }
+        ]
+    )
+    imported_amount = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "outgoing-match-amount",
+                "transaction_date": "2026-06-14",
+                "amount": expense["total"],
+                "currency": "CZK",
+                "direction": "outgoing",
+            }
+        ]
+    )
+
+    vs_matches = _vygeneruj_matche_bankovni_transakce(imported_vs["imported_transaction_ids"][0])
+    amount_matches = _vygeneruj_matche_bankovni_transakce(imported_amount["imported_transaction_ids"][0])
+
+    assert len(vs_matches) == 1
+    assert vs_matches[0]["expense_id"] == expense["id"]
+    assert vs_matches[0]["match_type"] == "variable_symbol_amount"
+    assert len(amount_matches) == 1
+    assert amount_matches[0]["expense_id"] == expense["id"]
+    assert amount_matches[0]["match_type"] == "amount_only"
+    assert amount_matches[0]["confidence"] == 60
+
+
+def test_opakovana_generace_matchu_nevytvori_duplicitni_suggestions() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "bank-duplicate-match@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-duplicate-match",
+                "transaction_date": "2026-06-15",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+
+    first_matches = _vygeneruj_matche_bankovni_transakce(transaction_id)
+    second_matches = _vygeneruj_matche_bankovni_transakce(transaction_id)
+
+    assert len(first_matches) == 1
+    assert len(second_matches) == 1
+    with SessionLocal() as db:
+        match_count = (
+            db.query(InvoicePaymentMatch)
+            .filter(InvoicePaymentMatch.bank_transaction_id == transaction_id)
+            .count()
+        )
+        assert match_count == 1
+
+
+def test_aplikace_matche_vytvori_platbu_faktury_a_oznaci_transakci_jako_matched() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "bank-apply-invoice@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-apply-invoice",
+                "transaction_date": "2026-06-16",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+    matches = _vygeneruj_matche_bankovni_transakce(transaction_id)
+
+    applied = _aplikuj_match_bankovni_transakce(transaction_id, matches[0]["id"])
+    _login_admin()
+    transaction_detail = client.get(f"/api/admin/invoices/bank-transactions/{transaction_id}").json()
+    invoice_detail = client.get(f"/api/admin/invoices/{invoice['id']}").json()
+
+    assert applied["status"] == "applied"
+    assert applied["invoice_payment_id"] is not None
+    assert transaction_detail["status"] == "matched"
+    assert invoice_detail["payment_status"] == "paid"
+    assert invoice_detail["payments"][0]["payment_method"] == "Bankovní převod"
+
+
+def test_aplikace_matche_vytvori_platbu_vydaje_a_reject_funguje() -> None:
+    expense = _vytvor_vydaj({"supplier_email": "bank-apply-expense@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "outgoing-apply-expense",
+                "transaction_date": "2026-06-17",
+                "amount": expense["total"],
+                "currency": "CZK",
+                "variable_symbol": expense["variable_symbol"],
+                "direction": "outgoing",
+            },
+            {
+                "external_id": "outgoing-reject-expense",
+                "transaction_date": "2026-06-18",
+                "amount": expense["total"],
+                "currency": "CZK",
+                "variable_symbol": expense["variable_symbol"],
+                "direction": "outgoing",
+            },
+        ]
+    )
+    apply_tx_id = imported["imported_transaction_ids"][0]
+    reject_tx_id = imported["imported_transaction_ids"][1]
+
+    apply_matches = _vygeneruj_matche_bankovni_transakce(apply_tx_id)
+    reject_matches = _vygeneruj_matche_bankovni_transakce(reject_tx_id)
+
+    applied = _aplikuj_match_bankovni_transakce(apply_tx_id, apply_matches[0]["id"])
+    _login_admin()
+    reject_response = client.post(
+        f"/api/admin/invoices/bank-transactions/{reject_tx_id}/matches/{reject_matches[0]['id']}/reject"
+    )
+    expense_detail = client.get(f"/api/admin/invoices/expenses/{expense['id']}").json()
+
+    assert applied["status"] == "applied"
+    assert applied["expense_payment_id"] is not None
+    assert reject_response.status_code == 200
+    assert reject_response.json()["status"] == "rejected"
+    assert expense_detail["payment_status"] == "paid"
+
+
+def test_aplikace_matche_nepovoli_overpay_ani_opakovanou_aplikaci_stejne_transakce() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "bank-overpay-invoice@example.com"})
+    overpay_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-overpay-invoice",
+                "transaction_date": "2026-06-19",
+                "amount": 20000,
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    overpay_tx_id = overpay_import["imported_transaction_ids"][0]
+    overpay_matches = _vygeneruj_matche_bankovni_transakce(overpay_tx_id)
+    _login_admin()
+    overpay_response = client.post(
+        f"/api/admin/invoices/bank-transactions/{overpay_tx_id}/matches/{overpay_matches[0]['id']}/apply"
+    )
+
+    assert overpay_response.status_code == 400
+    assert overpay_response.json() == {"detail": "Součet plateb nesmí překročit celkovou částku faktury."}
+
+    second_invoice = _vytvor_fakturu({"customer_email": "bank-repeat-invoice@example.com"})
+    repeat_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "incoming-repeat-invoice",
+                "transaction_date": "2026-06-20",
+                "amount": second_invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": second_invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    repeat_tx_id = repeat_import["imported_transaction_ids"][0]
+    repeat_matches = _vygeneruj_matche_bankovni_transakce(repeat_tx_id)
+    first_applied = _aplikuj_match_bankovni_transakce(repeat_tx_id, repeat_matches[0]["id"])
+    _login_admin()
+    second_apply_response = client.post(
+        f"/api/admin/invoices/bank-transactions/{repeat_tx_id}/matches/{first_applied['id']}/apply"
+    )
+
+    assert second_apply_response.status_code == 400
+    assert second_apply_response.json() == {"detail": "Tato bankovní transakce už byla spárována."}
 
 
 def test_lookup_ares_podle_ico_vrati_namapovana_data() -> None:

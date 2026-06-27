@@ -877,3 +877,99 @@
   - If `supplier_id` is omitted on expense update, the existing manual snapshot update flow remains compatible; explicit `supplier_id` is required to resync from registry data or unlink intentionally.
   - Supplier delete is intentionally conservative and blocks hard delete when any expense still references the supplier record.
   - No push, no deploy, no CD.
+
+## Úkol 15 Backend bank import / payment matching foundation
+
+- Date: 2026-06-27
+- Goal: Add a backend-only foundation for importing normalized bank transactions and conservatively matching them to payable outgoing invoice-domain documents and incoming expenses without any automatic risky apply or live bank integration.
+- Scope: Backend-only invoicing models, SQLite compatibility helpers, schemas, matching/apply service logic, admin bank transaction endpoints, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added persistent backend bank transaction table/model:
+    - `InvoiceBankTransaction`
+    - `invoice_bank_transactions`
+  - Added persistent payment-match table/model:
+    - `InvoicePaymentMatch`
+    - `invoice_payment_matches`
+  - Added safe bank-transaction fields for:
+    - source account data
+    - variable/constant/specific symbols
+    - counterparty data
+    - raw payload snapshot
+    - direction
+    - status
+    - stable `fingerprint` for duplicate guarding when `external_id` is missing
+  - Added safe SQLite indexes for:
+    - `invoice_bank_transactions.external_id`
+    - `invoice_bank_transactions.fingerprint`
+    - `invoice_bank_transactions.variable_symbol`
+    - `invoice_bank_transactions.transaction_date`
+    - `invoice_bank_transactions.status`
+    - `invoice_payment_matches.bank_transaction_id`
+    - `invoice_payment_matches.invoice_id`
+    - `invoice_payment_matches.expense_id`
+    - `invoice_payment_matches.status`
+  - Existing invoice/expense/payment rows were not rewritten.
+- Backend changes:
+  - Added admin-only bank transaction endpoints under:
+    - `GET /api/admin/invoices/bank-transactions`
+    - `POST /api/admin/invoices/bank-transactions/import`
+    - `GET /api/admin/invoices/bank-transactions/{transaction_id}`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/ignore`
+    - `GET /api/admin/invoices/bank-transactions/{transaction_id}/matches`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/matches/generate`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/matches/{match_id}/apply`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/matches/{match_id}/reject`
+  - Import endpoint now accepts normalized generic transaction payloads only; no live bank API/OAuth/scheduler was added.
+  - Duplicate import behavior:
+    - if `external_id` exists, duplicate import is skipped safely
+    - if `external_id` is missing, a stable transaction fingerprint is used to skip duplicates safely
+  - Added conservative match suggestion logic:
+    - incoming transactions -> payable outgoing invoice-domain documents with payment tracking
+    - outgoing transactions -> open/partially paid expenses
+    - exact variable symbol + exact remaining amount -> confidence `100`
+    - exact variable symbol only / partial-payment scenario -> confidence `80`
+    - unique amount-only match -> confidence `60`
+  - Quotes are skipped from matching because they remain non-payable in the current invoicing domain model.
+  - Fully paid and cancelled targets are skipped.
+  - Match generation creates suggestions only and avoids duplicate suggestions for the same transaction/target/type.
+  - Applying a match creates a normal invoice or expense payment record through shared payment validation logic, then marks:
+    - match -> `applied`
+    - bank transaction -> `matched`
+  - Overpay is rejected on apply through the existing payment constraints.
+  - Ignore and reject flows were added without introducing auto-apply behavior.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "bankovni or bankovnich or bank-match or overpay-invoice"`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "bank"`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "bankovni or matches or matche or duplicate_guard or duplicate_suggestions"`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "opakovanou_aplikaci or overpay"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "bankovni or bankovnich or bank-match or overpay-invoice"` -> `3 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "bank"` -> `3 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "bankovni or matches or matche or duplicate_guard or duplicate_suggestions"` -> `9 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q -k "opakovanou_aplikaci or overpay"` -> `1 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> reached `100%`; `161` collected and exit code `0`, so `161 passed`
+  - `python -m pytest -q` -> reached `100%`; `169` collected and exit code `0`, so `169 passed`
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `161 collected`
+  - `python -m pytest --collect-only -q` -> `169 collected`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend bank transaction matching foundation`
+- Local commit hash if created: pending until local commit
+- Final status: implemented, backend-tested, ready for local commit
+- Notes / risks:
+  - This task intentionally adds only normalized import and conservative matching foundation; no live bank integration, scheduler, or automatic import/apply behavior was added.
+  - Current invoice-domain matching follows the existing payable-document semantics of the codebase, so quotes remain excluded and only document kinds with payment tracking are auto-suggested as candidates.
+  - Duplicate guarding uses a stable fingerprint derived from normalized transaction fields; changing normalization rules later would require care for backward compatibility.
+  - No push, no deploy, no CD.

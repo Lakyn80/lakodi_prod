@@ -1,4 +1,6 @@
 """Aplikační logika pro faktury."""
+import hashlib
+import json
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -23,12 +25,14 @@ from backend.app.modules.invoices.models import (
     RELATION_TYPE_PROFORMA_FROM_QUOTE,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
     Invoice,
+    InvoiceBankTransaction,
     InvoiceDocumentRelation,
     InvoiceExpense,
     InvoiceExpenseItem,
     InvoiceExpensePayment,
     InvoiceItem,
     InvoicePayment,
+    InvoicePaymentMatch,
     InvoiceSequenceState,
     InvoiceSupplier,
     InvoiceSubject,
@@ -56,11 +60,14 @@ from backend.app.modules.invoices.pdf_service import InvoicePdfDocument, build_i
 from backend.app.modules.invoices.schemas import (
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
+    InvoiceBankTransactionImportItem,
+    InvoiceBankTransactionImportRequest,
     InvoiceCreate,
     InvoiceDocumentRelationResponse,
     InvoiceExpenseCreate,
     InvoiceExpensePaymentCreate,
     InvoiceExpenseUpdate,
+    InvoicePaymentMatchResponse,
     InvoiceRelationDocumentSummaryResponse,
     InvoiceRelationPaymentSummaryResponse,
     InvoiceRelationsSummaryResponse,
@@ -84,6 +91,12 @@ DEFAULT_EXPENSE_STATUS = "open"
 STORED_EXPENSE_STATUSES = {"open", "cancelled"}
 DEFAULT_TODO_STATUS = "open"
 STORED_TODO_STATUSES = {"open", "completed", "cancelled"}
+DEFAULT_BANK_TRANSACTION_STATUS = "imported"
+STORED_BANK_TRANSACTION_STATUSES = {"imported", "matched", "ignored"}
+STORED_BANK_TRANSACTION_DIRECTIONS = {"incoming", "outgoing"}
+DEFAULT_PAYMENT_MATCH_STATUS = "suggested"
+STORED_PAYMENT_MATCH_STATUSES = {"suggested", "applied", "rejected"}
+SUPPORTED_PAYMENT_MATCH_TYPES = {"variable_symbol_amount", "variable_symbol_only", "amount_only", "manual"}
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 SUPPORTED_RELATION_TYPES = {
@@ -125,6 +138,14 @@ class InvoiceSupplierNotFoundError(LookupError):
     """Dodavatel neexistuje."""
 
 
+class InvoiceBankTransactionNotFoundError(LookupError):
+    """Bankovní transakce neexistuje."""
+
+
+class InvoicePaymentMatchNotFoundError(LookupError):
+    """Návrh párování neexistuje."""
+
+
 class InvoiceTodoNotFoundError(LookupError):
     """Todo nebylo nalezeno."""
 
@@ -139,6 +160,14 @@ class ReverseChargeTexts:
 class InvoiceTodoGenerationResult:
     generated_ids: list[int]
     skipped_existing_count: int
+
+
+@dataclass(frozen=True)
+class ImportBankTransactionsResult:
+    imported_count: int
+    skipped_duplicate_count: int
+    imported_transaction_ids: list[int]
+    skipped_duplicate_identifiers: list[str]
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
@@ -408,6 +437,210 @@ def delete_invoice_supplier(db: Session, supplier_id: int) -> int:
     db.delete(supplier)
     db.commit()
     return supplier_id
+
+
+def list_invoice_bank_transactions(
+    db: Session,
+    *,
+    status: str | None = None,
+    direction: str | None = None,
+) -> list[InvoiceBankTransaction]:
+    query = db.query(InvoiceBankTransaction).order_by(
+        InvoiceBankTransaction.transaction_date.desc(),
+        InvoiceBankTransaction.id.desc(),
+    )
+    normalized_status = _normalize_bank_transaction_status(status, allow_none=True)
+    normalized_direction = _normalize_bank_transaction_direction(direction, allow_none=True)
+    if normalized_status is not None:
+        query = query.filter(InvoiceBankTransaction.status == normalized_status)
+    if normalized_direction is not None:
+        query = query.filter(InvoiceBankTransaction.direction == normalized_direction)
+    return query.all()
+
+
+def import_invoice_bank_transactions(
+    db: Session,
+    payload: InvoiceBankTransactionImportRequest,
+) -> ImportBankTransactionsResult:
+    imported_ids: list[int] = []
+    skipped_identifiers: list[str] = []
+    seen_external_ids: set[str] = set()
+    seen_fingerprints: set[str] = set()
+
+    for item in payload.transactions:
+        fingerprint = _compute_bank_transaction_fingerprint(item)
+        duplicate_identifier = item.external_id or f"fingerprint:{fingerprint[:12]}"
+        if item.external_id is not None and item.external_id in seen_external_ids:
+            skipped_identifiers.append(duplicate_identifier)
+            continue
+        if fingerprint in seen_fingerprints:
+            skipped_identifiers.append(duplicate_identifier)
+            continue
+
+        existing_by_fingerprint = (
+            db.query(InvoiceBankTransaction.id)
+            .filter(InvoiceBankTransaction.fingerprint == fingerprint)
+            .first()
+            is not None
+        )
+        existing_by_external_id = (
+            item.external_id is not None
+            and db.query(InvoiceBankTransaction.id)
+            .filter(InvoiceBankTransaction.external_id == item.external_id)
+            .first()
+            is not None
+        )
+        if existing_by_fingerprint or existing_by_external_id:
+            skipped_identifiers.append(duplicate_identifier)
+            continue
+
+        transaction = InvoiceBankTransaction(
+            external_id=item.external_id,
+            fingerprint=fingerprint,
+            account_iban=item.account_iban,
+            account_number=item.account_number,
+            bank_code=item.bank_code,
+            transaction_date=item.transaction_date,
+            booked_date=item.booked_date,
+            amount=_quantize_money(Decimal(item.amount)),
+            currency=item.currency,
+            variable_symbol=item.variable_symbol,
+            constant_symbol=item.constant_symbol,
+            specific_symbol=item.specific_symbol,
+            counterparty_name=item.counterparty_name,
+            counterparty_account=item.counterparty_account,
+            counterparty_iban=item.counterparty_iban,
+            message=item.message,
+            raw_payload=_serialize_bank_transaction_raw_payload(item.raw_payload),
+            direction=_normalize_bank_transaction_direction(item.direction),
+            status=DEFAULT_BANK_TRANSACTION_STATUS,
+        )
+        db.add(transaction)
+        db.flush()
+        imported_ids.append(transaction.id)
+        if item.external_id is not None:
+            seen_external_ids.add(item.external_id)
+        seen_fingerprints.add(fingerprint)
+
+    db.commit()
+    return ImportBankTransactionsResult(
+        imported_count=len(imported_ids),
+        skipped_duplicate_count=len(skipped_identifiers),
+        imported_transaction_ids=imported_ids,
+        skipped_duplicate_identifiers=skipped_identifiers,
+    )
+
+
+def get_invoice_bank_transaction_detail(db: Session, transaction_id: int) -> InvoiceBankTransaction:
+    transaction = db.query(InvoiceBankTransaction).filter(InvoiceBankTransaction.id == transaction_id).first()
+    if transaction is None:
+        raise InvoiceBankTransactionNotFoundError("Bankovní transakce nebyla nalezena.")
+    return transaction
+
+
+def ignore_invoice_bank_transaction(db: Session, transaction_id: int) -> InvoiceBankTransaction:
+    transaction = get_invoice_bank_transaction_detail(db, transaction_id)
+    if transaction.status == "matched":
+        raise InvoiceValidationError("Spárovanou bankovní transakci nelze ignorovat.")
+    transaction.status = "ignored"
+    db.add(transaction)
+    db.commit()
+    return get_invoice_bank_transaction_detail(db, transaction.id)
+
+
+def list_invoice_payment_matches(db: Session, transaction_id: int) -> list[InvoicePaymentMatch]:
+    _get_invoice_bank_transaction_or_raise(db, transaction_id)
+    return (
+        db.query(InvoicePaymentMatch)
+        .filter(InvoicePaymentMatch.bank_transaction_id == transaction_id)
+        .order_by(InvoicePaymentMatch.confidence.desc(), InvoicePaymentMatch.id.asc())
+        .all()
+    )
+
+
+def generate_invoice_payment_matches(db: Session, transaction_id: int) -> list[InvoicePaymentMatch]:
+    transaction = _get_invoice_bank_transaction_or_raise(db, transaction_id)
+    if transaction.status == "ignored":
+        raise InvoiceValidationError("Ignorované bankovní transakci nelze generovat návrhy párování.")
+    if transaction.status == "matched":
+        return list_invoice_payment_matches(db, transaction_id)
+
+    if transaction.direction == "incoming":
+        _generate_invoice_match_suggestions(db, transaction)
+    else:
+        _generate_expense_match_suggestions(db, transaction)
+
+    db.commit()
+    return list_invoice_payment_matches(db, transaction_id)
+
+
+def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int) -> InvoicePaymentMatch:
+    transaction = _get_invoice_bank_transaction_or_raise(db, transaction_id)
+    match = _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
+    if transaction.status == "ignored":
+        raise InvoiceValidationError("Ignorovanou bankovní transakci nelze aplikovat.")
+    if transaction.status == "matched":
+        raise InvoiceValidationError("Tato bankovní transakce už byla spárována.")
+    if match.status == "applied":
+        raise InvoiceValidationError("Tento návrh párování už byl aplikován.")
+    if match.status == "rejected":
+        raise InvoiceValidationError("Zamítnutý návrh párování nelze aplikovat.")
+    if _transaction_has_any_applied_match(db, transaction.id):
+        raise InvoiceValidationError("Tato bankovní transakce už má aplikované párování.")
+
+    payment_note = _compose_bank_transaction_payment_note(transaction)
+    payment_method = "Bankovní převod"
+    amount = _quantize_money(Decimal(transaction.amount))
+
+    if match.invoice_id is not None:
+        if transaction.direction != "incoming":
+            raise InvoiceValidationError("Příchozí bankovní transakce je povinná pro párování s fakturou.")
+        invoice = get_invoice_detail(db, match.invoice_id)
+        payment = _create_invoice_payment_record(
+            db,
+            invoice=invoice,
+            amount=amount,
+            paid_at=transaction.transaction_date,
+            payment_method=payment_method,
+            note=payment_note,
+        )
+        match.invoice_payment_id = payment.id
+    elif match.expense_id is not None:
+        if transaction.direction != "outgoing":
+            raise InvoiceValidationError("Odchozí bankovní transakce je povinná pro párování s výdajem.")
+        expense = get_invoice_expense_detail(db, match.expense_id)
+        payment = _create_invoice_expense_payment_record(
+            db,
+            expense=expense,
+            amount=amount,
+            paid_at=transaction.transaction_date,
+            payment_method=payment_method,
+            note=payment_note,
+        )
+        match.expense_payment_id = payment.id
+    else:
+        raise InvoiceValidationError("Návrh párování neobsahuje cílový doklad.")
+
+    match.status = "applied"
+    match.applied_at = datetime.now(timezone.utc)
+    transaction.status = "matched"
+    db.add(match)
+    db.add(transaction)
+    db.commit()
+    return _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
+
+
+def reject_invoice_payment_match(db: Session, transaction_id: int, match_id: int) -> InvoicePaymentMatch:
+    _get_invoice_bank_transaction_or_raise(db, transaction_id)
+    match = _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
+    if match.status == "applied":
+        raise InvoiceValidationError("Aplikovaný návrh párování nelze zamítnout.")
+    if match.status == "rejected":
+        return match
+    match.status = "rejected"
+    db.add(match)
+    db.commit()
+    return _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
 
 
 def list_invoice_todos(
@@ -745,9 +978,15 @@ def delete_invoice_expense(db: Session, expense_id: int) -> int:
     return expense_id
 
 
-def add_invoice_expense_payment(db: Session, expense_id: int, payload: InvoiceExpensePaymentCreate) -> InvoiceExpense:
-    expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True, include_payments=True)
-    amount = _quantize_money(Decimal(payload.amount))
+def _create_invoice_expense_payment_record(
+    db: Session,
+    *,
+    expense: InvoiceExpense,
+    amount: Decimal,
+    paid_at: date,
+    payment_method: str,
+    note: str | None,
+) -> InvoiceExpensePayment:
     if amount <= 0:
         raise InvoiceValidationError("Částka platby musí být větší než nula.")
     if _normalize_expense_status(expense.status) == "cancelled":
@@ -762,11 +1001,27 @@ def add_invoice_expense_payment(db: Session, expense_id: int, payload: InvoiceEx
     payment = InvoiceExpensePayment(
         expense_id=expense.id,
         amount=amount,
+        paid_at=paid_at,
+        payment_method=payment_method,
+        note=note,
+    )
+    db.add(payment)
+    db.flush()
+    if "payments" in expense.__dict__:
+        expense.payments.append(payment)
+    return payment
+
+
+def add_invoice_expense_payment(db: Session, expense_id: int, payload: InvoiceExpensePaymentCreate) -> InvoiceExpense:
+    expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True, include_payments=True)
+    _create_invoice_expense_payment_record(
+        db,
+        expense=expense,
+        amount=_quantize_money(Decimal(payload.amount)),
         paid_at=payload.paid_at,
         payment_method=payload.payment_method,
         note=payload.note,
     )
-    db.add(payment)
     db.commit()
     return get_invoice_expense_detail(db, expense.id)
 
@@ -1236,9 +1491,15 @@ def create_correction_from_invoice(
     raise InvoiceValidationError("Opravný doklad se nepodařilo bezpečně vytvořit.")
 
 
-def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
-    invoice = get_invoice_detail(db, invoice_id)
-    amount = _quantize_money(Decimal(payload.amount))
+def _create_invoice_payment_record(
+    db: Session,
+    *,
+    invoice: Invoice,
+    amount: Decimal,
+    paid_at: date,
+    payment_method: str,
+    note: str | None,
+) -> InvoicePayment:
     if amount <= 0:
         raise InvoiceValidationError("Částka platby musí být větší než nula.")
     if not get_document_kind_metadata(invoice.document_kind).allows_payment_tracking:
@@ -1255,11 +1516,27 @@ def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCre
     payment = InvoicePayment(
         invoice_id=invoice.id,
         amount=amount,
+        paid_at=paid_at,
+        payment_method=payment_method,
+        note=note,
+    )
+    db.add(payment)
+    db.flush()
+    if "payments" in invoice.__dict__:
+        invoice.payments.append(payment)
+    return payment
+
+
+def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
+    invoice = get_invoice_detail(db, invoice_id)
+    _create_invoice_payment_record(
+        db,
+        invoice=invoice,
+        amount=_quantize_money(Decimal(payload.amount)),
         paid_at=payload.paid_at,
         payment_method=payload.payment_method,
         note=payload.note,
     )
-    db.add(payment)
     db.commit()
     return get_invoice_detail(db, invoice.id)
 
@@ -1350,6 +1627,50 @@ class SupplierSnapshot:
     dic: str | None
     data_box: str | None
     country: str | None
+
+
+def _normalize_bank_transaction_status(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else DEFAULT_BANK_TRANSACTION_STATUS
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else DEFAULT_BANK_TRANSACTION_STATUS
+    if cleaned not in STORED_BANK_TRANSACTION_STATUSES:
+        supported = ", ".join(sorted(STORED_BANK_TRANSACTION_STATUSES))
+        raise InvoiceValidationError(f"Neplatný stav bankovní transakce. Povolené hodnoty: {supported}.")
+    return cleaned
+
+
+def _normalize_bank_transaction_direction(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else "incoming"
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else "incoming"
+    if cleaned not in STORED_BANK_TRANSACTION_DIRECTIONS:
+        supported = ", ".join(sorted(STORED_BANK_TRANSACTION_DIRECTIONS))
+        raise InvoiceValidationError(f"Neplatný směr bankovní transakce. Povolené hodnoty: {supported}.")
+    return cleaned
+
+
+def _normalize_payment_match_status(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else DEFAULT_PAYMENT_MATCH_STATUS
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else DEFAULT_PAYMENT_MATCH_STATUS
+    if cleaned not in STORED_PAYMENT_MATCH_STATUSES:
+        supported = ", ".join(sorted(STORED_PAYMENT_MATCH_STATUSES))
+        raise InvoiceValidationError(f"Neplatný stav párování. Povolené hodnoty: {supported}.")
+    return cleaned
+
+
+def _normalize_payment_match_type(value: str) -> str:
+    cleaned = value.strip().lower()
+    if cleaned not in SUPPORTED_PAYMENT_MATCH_TYPES:
+        supported = ", ".join(sorted(SUPPORTED_PAYMENT_MATCH_TYPES))
+        raise InvoiceValidationError(f"Neplatný typ párování. Povolené hodnoty: {supported}.")
+    return cleaned
 
 
 def _normalize_invoice_status(value: str | None) -> str:
@@ -1750,6 +2071,31 @@ def _get_invoice_expense_or_raise(
     return expense
 
 
+def _get_invoice_bank_transaction_or_raise(db: Session, transaction_id: int) -> InvoiceBankTransaction:
+    transaction = db.query(InvoiceBankTransaction).filter(InvoiceBankTransaction.id == transaction_id).first()
+    if transaction is None:
+        raise InvoiceBankTransactionNotFoundError("Bankovní transakce nebyla nalezena.")
+    return transaction
+
+
+def _get_invoice_payment_match_or_raise(
+    db: Session,
+    transaction_id: int,
+    match_id: int,
+) -> InvoicePaymentMatch:
+    match = (
+        db.query(InvoicePaymentMatch)
+        .filter(
+            InvoicePaymentMatch.id == match_id,
+            InvoicePaymentMatch.bank_transaction_id == transaction_id,
+        )
+        .first()
+    )
+    if match is None:
+        raise InvoicePaymentMatchNotFoundError("Návrh párování nebyl nalezen.")
+    return match
+
+
 def _validate_todo_links(
     db: Session,
     *,
@@ -1934,6 +2280,248 @@ def _apply_supplier_snapshot_to_expense(expense: InvoiceExpense, snapshot: Suppl
     expense.supplier_dic = snapshot.dic
     expense.supplier_data_box = snapshot.data_box
     expense.supplier_country = snapshot.country
+
+
+def _serialize_bank_transaction_raw_payload(value: object | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _compute_bank_transaction_fingerprint(item: InvoiceBankTransactionImportItem) -> str:
+    fingerprint_payload = {
+        "external_id": item.external_id,
+        "account_iban": item.account_iban,
+        "account_number": item.account_number,
+        "bank_code": item.bank_code,
+        "transaction_date": item.transaction_date.isoformat(),
+        "booked_date": item.booked_date.isoformat() if item.booked_date is not None else None,
+        "amount": f"{_quantize_money(Decimal(item.amount)):.2f}",
+        "currency": item.currency,
+        "variable_symbol": item.variable_symbol,
+        "constant_symbol": item.constant_symbol,
+        "specific_symbol": item.specific_symbol,
+        "counterparty_name": item.counterparty_name,
+        "counterparty_account": item.counterparty_account,
+        "counterparty_iban": item.counterparty_iban,
+        "message": item.message,
+        "direction": _normalize_bank_transaction_direction(item.direction),
+    }
+    normalized = json.dumps(fingerprint_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _compose_bank_transaction_payment_note(transaction: InvoiceBankTransaction) -> str:
+    parts = [f"Bankovní transakce #{transaction.id}"]
+    if transaction.external_id:
+        parts.append(f"external_id={transaction.external_id}")
+    if transaction.variable_symbol:
+        parts.append(f"VS={transaction.variable_symbol}")
+    return " | ".join(parts)
+
+
+def _transaction_has_any_applied_match(db: Session, transaction_id: int) -> bool:
+    return (
+        db.query(InvoicePaymentMatch.id)
+        .filter(
+            InvoicePaymentMatch.bank_transaction_id == transaction_id,
+            InvoicePaymentMatch.status == "applied",
+        )
+        .first()
+        is not None
+    )
+
+
+def _bank_transaction_duplicate_match_exists(
+    db: Session,
+    *,
+    transaction_id: int,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    match_type: str,
+) -> bool:
+    query = db.query(InvoicePaymentMatch.id).filter(
+        InvoicePaymentMatch.bank_transaction_id == transaction_id,
+        InvoicePaymentMatch.match_type == _normalize_payment_match_type(match_type),
+    )
+    if invoice_id is not None:
+        query = query.filter(InvoicePaymentMatch.invoice_id == invoice_id)
+    if expense_id is not None:
+        query = query.filter(InvoicePaymentMatch.expense_id == expense_id)
+    return query.first() is not None
+
+
+def _create_match_suggestion(
+    db: Session,
+    *,
+    transaction_id: int,
+    invoice_id: int | None,
+    expense_id: int | None,
+    match_type: str,
+    confidence: int,
+    reason: str,
+) -> None:
+    normalized_match_type = _normalize_payment_match_type(match_type)
+    if _bank_transaction_duplicate_match_exists(
+        db,
+        transaction_id=transaction_id,
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+        match_type=normalized_match_type,
+    ):
+        return
+    db.add(
+        InvoicePaymentMatch(
+            bank_transaction_id=transaction_id,
+            invoice_id=invoice_id,
+            expense_id=expense_id,
+            match_type=normalized_match_type,
+            confidence=confidence,
+            status=DEFAULT_PAYMENT_MATCH_STATUS,
+            reason=reason,
+        )
+    )
+
+
+def _load_invoice_bank_match_candidates(db: Session) -> list[Invoice]:
+    invoices = (
+        db.query(Invoice)
+        .options(selectinload(Invoice.payments))
+        .order_by(Invoice.id.asc())
+        .all()
+    )
+    candidates: list[Invoice] = []
+    for invoice in invoices:
+        invoice = _attach_invoice_runtime_state(invoice)
+        if not get_document_kind_metadata(invoice.document_kind).allows_payment_tracking:
+            continue
+        if getattr(invoice, "effective_status", None) == "cancelled":
+            continue
+        if _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00")))) <= Decimal("0.00"):
+            continue
+        candidates.append(invoice)
+    return candidates
+
+
+def _load_expense_bank_match_candidates(db: Session) -> list[InvoiceExpense]:
+    expenses = (
+        db.query(InvoiceExpense)
+        .options(selectinload(InvoiceExpense.payments))
+        .order_by(InvoiceExpense.id.asc())
+        .all()
+    )
+    candidates: list[InvoiceExpense] = []
+    for expense in expenses:
+        expense = _attach_expense_runtime_state(expense)
+        if getattr(expense, "effective_status", None) == "cancelled":
+            continue
+        if _quantize_money(Decimal(getattr(expense, "remaining_amount", Decimal("0.00")))) <= Decimal("0.00"):
+            continue
+        candidates.append(expense)
+    return candidates
+
+
+def _generate_invoice_match_suggestions(db: Session, transaction: InvoiceBankTransaction) -> None:
+    amount = _quantize_money(Decimal(transaction.amount))
+    candidates = _load_invoice_bank_match_candidates(db)
+    variable_symbol = (transaction.variable_symbol or "").strip()
+    matched_by_vs: list[Invoice] = []
+    if variable_symbol:
+        for invoice in candidates:
+            if invoice.variable_symbol != variable_symbol:
+                continue
+            matched_by_vs.append(invoice)
+            remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+            if remaining_amount == amount:
+                _create_match_suggestion(
+                    db,
+                    transaction_id=transaction.id,
+                    invoice_id=invoice.id,
+                    expense_id=None,
+                    match_type="variable_symbol_amount",
+                    confidence=100,
+                    reason="Shoda variabilního symbolu a přesná shoda zbývající částky.",
+                )
+            else:
+                _create_match_suggestion(
+                    db,
+                    transaction_id=transaction.id,
+                    invoice_id=invoice.id,
+                    expense_id=None,
+                    match_type="variable_symbol_only",
+                    confidence=80,
+                    reason="Shoda variabilního symbolu, částka vyžaduje kontrolu nebo odpovídá částečné úhradě.",
+                )
+
+    amount_candidates = [
+        invoice
+        for invoice in candidates
+        if _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00")))) == amount
+    ]
+    if len(amount_candidates) == 1 and amount_candidates[0] not in matched_by_vs:
+        invoice = amount_candidates[0]
+        _create_match_suggestion(
+            db,
+            transaction_id=transaction.id,
+            invoice_id=invoice.id,
+            expense_id=None,
+            match_type="amount_only",
+            confidence=60,
+            reason="Unikátní přesná shoda zbývající částky bez spolehlivého variabilního symbolu.",
+        )
+
+
+def _generate_expense_match_suggestions(db: Session, transaction: InvoiceBankTransaction) -> None:
+    amount = _quantize_money(Decimal(transaction.amount))
+    candidates = _load_expense_bank_match_candidates(db)
+    variable_symbol = (transaction.variable_symbol or "").strip()
+    matched_by_vs: list[InvoiceExpense] = []
+    if variable_symbol:
+        for expense in candidates:
+            if expense.variable_symbol != variable_symbol:
+                continue
+            matched_by_vs.append(expense)
+            remaining_amount = _quantize_money(Decimal(getattr(expense, "remaining_amount", Decimal("0.00"))))
+            if remaining_amount == amount:
+                _create_match_suggestion(
+                    db,
+                    transaction_id=transaction.id,
+                    invoice_id=None,
+                    expense_id=expense.id,
+                    match_type="variable_symbol_amount",
+                    confidence=100,
+                    reason="Shoda variabilního symbolu a přesná shoda zbývající částky výdaje.",
+                )
+            else:
+                _create_match_suggestion(
+                    db,
+                    transaction_id=transaction.id,
+                    invoice_id=None,
+                    expense_id=expense.id,
+                    match_type="variable_symbol_only",
+                    confidence=80,
+                    reason="Shoda variabilního symbolu výdaje, částka vyžaduje kontrolu nebo odpovídá částečné úhradě.",
+                )
+
+    amount_candidates = [
+        expense
+        for expense in candidates
+        if _quantize_money(Decimal(getattr(expense, "remaining_amount", Decimal("0.00")))) == amount
+    ]
+    if len(amount_candidates) == 1 and amount_candidates[0] not in matched_by_vs:
+        expense = amount_candidates[0]
+        _create_match_suggestion(
+            db,
+            transaction_id=transaction.id,
+            invoice_id=None,
+            expense_id=expense.id,
+            match_type="amount_only",
+            confidence=60,
+            reason="Unikátní přesná shoda zbývající částky výdaje bez spolehlivého variabilního symbolu.",
+        )
 
 
 def _prepare_invoice_item(item) -> PreparedInvoiceItem:
