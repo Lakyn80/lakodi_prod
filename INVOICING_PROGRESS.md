@@ -1855,3 +1855,59 @@
   - current admin navigation is small and hard-coded, so adding the parallel route later must be done carefully without renaming or reordering away the legacy `Faktury` entry unexpectedly
   - the old frontend invoice client is invoice-only and should not be expanded into a mixed accounting client
   - the deployed backend surface is much broader than the current UI, so the new section should be built module-by-module rather than trying to replace the old page wholesale
+
+## Úkol 22B Create new parallel accounting route/navigation shell only
+
+- Date: 2026-06-28
+- Goal: Create a visible but safe parallel frontend shell at `/admin/ucetnictvi-new` without touching the old invoicing UI or changing backend behavior.
+- Scope: Frontend shell only, isolated components/types/helpers only, safe admin navigation entry only, no old invoice route rewrite, no data migration, no deploy.
+- Files changed:
+  - `frontend/src/app/admin/AdminLayoutClient.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/page.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewModuleGrid.tsx`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `INVOICING_PROGRESS.md`
+- Old invoicing UI touched: `No`
+- Old route `/admin/invoices` changed: `No`
+- Old invoice components changed: `No`
+- Old invoice API helper changed: `No`
+- New route created:
+  - `/admin/ucetnictvi-new`
+- New components created:
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewModuleGrid.tsx`
+- Optional isolated placeholders created:
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/types/accountingNew.ts`
+- Navigation entry added or deferred:
+  - Added safely in `frontend/src/app/admin/AdminLayoutClient.tsx`
+  - Old `Faktury` link was preserved unchanged
+- Admin dashboard shortcut added or deferred:
+  - Deferred
+  - Reason: `frontend/src/app/admin/page.tsx` already contained unrelated dirty local changes, so this task intentionally avoided mixing a new shortcut with those hunks
+- Frontend checks run:
+  - `npm run lint`
+  - `npm run build`
+- Exact check results:
+  - `npm run lint` -> failed due pre-existing repository issues outside this task, especially generated `.next` / `.next_old` type files, `next-env.d.ts`, and existing config warnings
+  - representative existing lint failures:
+    - `.next/types/routes.d.ts`
+    - `.next/types/validator.ts`
+    - `.next_old/types/...`
+    - `next-env.d.ts`
+    - `tailwind.config.ts`
+  - `npm run build` -> passed successfully
+  - build output included the new route:
+    - `/admin/ucetnictvi-new`
+- Backend changes: `None`
+- Database/schema changes: `None`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Add parallel accounting UI shell`
+- Local commit hash: pending until local commit
+- Known risks / follow-ups:
+  - dashboard shortcut is still pending because `frontend/src/app/admin/page.tsx` was already dirty before this task
+  - the new shell is intentionally non-functional and must stay separate from the legacy `frontend/src/lib/invoices.ts` client
+  - future tasks should continue module-by-module under the new route rather than extending the old `/admin/invoices` page
