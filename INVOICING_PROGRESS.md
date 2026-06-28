@@ -1524,3 +1524,58 @@
   - The existing `pytest_asyncio` warning is unrelated to this invoicing stabilization task and remains for separate cleanup
 - Push did not happen.
 - No deploy, no CD.
+
+## Úkol 21 Controlled push / CI/CD deploy
+
+- Date: 2026-06-28
+- Goal: Perform the approved controlled push of the completed backend accounting foundation and confirm CI/CD deployment result before frontend integration begins.
+- Scope: Backend accounting deployment control only, including preflight checks, final local verification, workflow monitoring, production-safe smoke checks, and tracking update.
+- Branch before push: `invoicing/task-20-backend-final-qa`
+- Target branch pushed: `main`
+- Commits included:
+  - `326c15f` - reminders/todos
+  - `4cfc703` - relations read API
+  - `eec402f` - supplier registry
+  - `6123528` - bank transaction matching
+  - `14e8e40` - recurring accounting templates
+  - `d36286d` - reminder email foundation
+  - `72c9567` - attachment inbox foundation
+  - `dfde7e0` - accounting audit events
+  - `33390b9` - backend final QA
+- Files changed:
+  - `INVOICING_PROGRESS.md` only for this post-deploy tracking update
+- Local tests run and exact results:
+  - `python -m pytest backend/tests/test_invoices.py -q` -> all `182` tests passed in `77.418s`
+  - `python -m pytest -q` -> all `190` tests passed in `90.817s`
+  - Both runs still emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- CI workflow result:
+  - Workflow: `CI`
+  - Run id: `28333588658`
+  - Result: `success`
+  - Trigger: `push` on `main`
+- CD workflow result:
+  - Workflow: `CD`
+  - Run id: `28333616985`
+  - Result: `success`
+  - Trigger: automatic `workflow_run` after successful `CI` on `main`
+- Deployment target if known:
+  - `main` is the only live remote branch on `origin`
+  - `CD` deploys automatically from `main`
+  - The deployment path in workflow config is `/home/lucky/projects/apps/lakodi`
+  - Production target is inferred to be `lakodi.cz`
+- Post-deploy smoke checks:
+  - `GET https://lakodi.cz/api/health` -> `200`, body `{"status":"ok"}`
+  - `GET https://lakodi.cz/api/admin/check` without auth -> `200`, body `{"authenticated":false,"role":null}`
+  - `GET https://lakodi.cz/api/admin/invoices` without auth -> `401`, body `{"detail":"Přihlaste se do adminu"}`
+  - Result: backend is up, admin auth guard still works, and no obvious startup/backfill crash was observed
+- Whether frontend was changed: `None`
+- Whether unrelated dirty files were committed: `No`
+- Final git status:
+  - Deployment push completed from `main` at `33390b9`
+  - This tracking update is intentionally left local-only to avoid triggering a second deploy
+  - Unrelated pre-existing dirty files remain in the working tree and were not staged for deploy
+- Final deployed commit hash: `33390b9`
+- Known risks / follow-ups:
+  - `develop` is referenced in workflows but does not exist on `origin`
+  - `cd.yml` would also deploy `develop` to the same server path if that branch is later created, so branch-to-environment separation should be clarified before introducing a staging flow
+  - The `pytest_asyncio` deprecation warning remains for separate cleanup
