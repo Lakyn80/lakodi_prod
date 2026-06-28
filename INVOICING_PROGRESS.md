@@ -1911,3 +1911,66 @@
   - dashboard shortcut is still pending because `frontend/src/app/admin/page.tsx` was already dirty before this task
   - the new shell is intentionally non-functional and must stay separate from the legacy `frontend/src/lib/invoices.ts` client
   - future tasks should continue module-by-module under the new route rather than extending the old `/admin/invoices` page
+
+## Úkol 22B-QA Docker Desktop verification for parallel accounting UI shell
+
+- Date: 2026-06-29
+- Goal: Verify commit `e038c7e` (`Add parallel accounting UI shell`) locally through Docker Desktop / Docker Compose without changing the old invoicing UI, backend behavior, or deployment state.
+- Scope: Local Docker verification only, smoke checks for the new and old admin routes, backend health check, and tracking update.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+- Verification workspace:
+  - Used a clean detached worktree at `C:\l22` checked out to `e038c7e`
+  - Reason: the main working tree already had unrelated dirty local changes
+- Docker/compose notes:
+  - Base compose files:
+    - `docker-compose.yml`
+    - `docker-compose.dev.yml`
+  - The normal dev ports `8016` and `8090` were already occupied by another local Lakodi stack
+  - For this QA run only, a temporary untracked override file `docker-compose.22bqa.yml` was used in the clean worktree to remap:
+    - backend `8016 -> 18016`
+    - frontend `8090 -> 18090`
+- Exact commands run:
+  - `docker compose -p lakodi22bqa -f docker-compose.yml -f docker-compose.dev.yml build`
+  - `docker compose -p lakodi22bqa -f docker-compose.yml -f docker-compose.22bqa.yml down --remove-orphans`
+  - `docker compose -p lakodi22bqa -f docker-compose.yml -f docker-compose.22bqa.yml up -d`
+  - `docker compose -p lakodi22bqa -f docker-compose.yml -f docker-compose.22bqa.yml ps`
+  - `curl.exe -s -i http://localhost:18016/api/health`
+  - `curl.exe -s -i http://localhost:18090/admin/ucetnictvi-new`
+  - `curl.exe -s -i http://localhost:18090/admin/invoices`
+- Build/start result:
+  - `build` passed
+  - `up -d` passed
+  - `ps` showed all three services `Up`:
+    - `lakodi-backend-dev`
+    - `lakodi-frontend-dev`
+    - `lakodi-redis`
+- Startup log result:
+  - Backend log reached normal Uvicorn startup on `0.0.0.0:8016`
+  - Frontend log reached normal Next.js dev startup on `0.0.0.0:8080`
+  - Frontend emitted a non-fatal existing media-sync warning about missing local source folder `/img_dílna` or `/img_dilna`
+- Smoke results:
+  - `GET http://localhost:18016/api/health` -> `200 OK`, body `{"status":"ok"}`
+  - `GET http://localhost:18090/admin/ucetnictvi-new` -> `200 OK`
+  - `GET http://localhost:18090/admin/invoices` -> `200 OK`
+  - New route HTML contained expected markers:
+    - `ÚčetnictvíNew`
+    - `Paralelní sekce`
+    - `Budoucí moduly`
+    - `/admin/invoices`
+  - Old route HTML still resolved to its own page bundle:
+    - found `app/admin/invoices/page.js`
+    - did not find `app/admin/ucetnictvi-new/page.js`
+    - did not find `ÚčetnictvíNew`
+- Old invoicing UI touched during this QA task: `No`
+- Old route `/admin/invoices` changed during this QA task: `No`
+- Backend code changes during this QA task: `None`
+- Database/schema changes during this QA task: `None`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message if committed: `Record Docker verification for accounting UI shell`
+- Local commit hash if committed: pending until local commit
+- Final status: verified locally in Docker Desktop / Docker Compose
+- Notes / risks:
+  - verification required temporary port remapping only because another local Lakodi compose stack was already bound to `8016` and `8090`
+  - no code fix was required for commit `e038c7e`; the shell behaved as expected under the local Docker stack
