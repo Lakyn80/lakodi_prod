@@ -17,7 +17,13 @@ from backend.app.modules.invoices.document_types import (
     normalize_document_kind,
 )
 from backend.app.modules.invoices.cache_service import get_invoice_cache_service
-from backend.app.modules.invoices.email_service import InvoiceEmailDeliveryResult, deliver_invoice_email
+from backend.app.modules.invoices.email_service import (
+    InvoiceEmailConfigurationError,
+    InvoiceEmailDeliveryResult,
+    InvoiceEmailSendError,
+    deliver_invoice_email,
+    deliver_invoice_reminder_email,
+)
 from backend.app.modules.invoices.exporters import build_invoice_export
 from backend.app.modules.invoices.models import (
     RELATION_TYPE_CORRECTION_FOR_INVOICE,
@@ -34,6 +40,7 @@ from backend.app.modules.invoices.models import (
     InvoiceItem,
     InvoicePayment,
     InvoicePaymentMatch,
+    InvoiceReminderEmail,
     InvoiceRecurringGeneration,
     InvoiceRecurringTemplate,
     InvoiceRecurringTemplateItem,
@@ -113,6 +120,9 @@ STORED_RECURRING_INTERVALS = {"daily", "weekly", "monthly", "quarterly", "yearly
 DEFAULT_RECURRING_GENERATION_STATUS = "generated"
 STORED_RECURRING_GENERATION_STATUSES = {"generated", "failed"}
 DEFAULT_RECURRING_EXPENSE_DUE_DAYS = 14
+DEFAULT_REMINDER_EMAIL_STATUS = "prepared"
+STORED_REMINDER_EMAIL_STATUSES = {"prepared", "sent", "failed"}
+STORED_REMINDER_TYPES = {"invoice_overdue", "invoice_payment_reminder", "manual"}
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 SUPPORTED_RELATION_TYPES = {
@@ -194,6 +204,22 @@ class ImportBankTransactionsResult:
 class RecurringGenerationResult:
     template: InvoiceRecurringTemplate
     generation: InvoiceRecurringGeneration
+
+
+@dataclass(frozen=True)
+class InvoiceReminderPreview:
+    invoice: Invoice
+    todo_id: int | None
+    reminder_type: str
+    recipient_email: str
+    subject: str
+    message: str
+
+
+@dataclass(frozen=True)
+class InvoiceReminderSendResult:
+    reminder_email: InvoiceReminderEmail
+    delivery: InvoiceEmailDeliveryResult
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
@@ -1796,6 +1822,110 @@ def send_invoice_email(db: Session, invoice_id: int, to_email: str | None = None
     return deliver_invoice_email(invoice, to_email=to_email, owner_email=settings.owner_email)
 
 
+def preview_invoice_reminder_email(
+    db: Session,
+    invoice_id: int,
+    *,
+    to_email: str | None = None,
+    todo_id: int | None = None,
+    subject: str | None = None,
+    message: str | None = None,
+) -> InvoiceReminderPreview:
+    invoice = get_invoice_detail(db, invoice_id)
+    todo = _resolve_invoice_reminder_todo(db, invoice=invoice, todo_id=todo_id)
+    _validate_invoice_for_reminder(invoice)
+
+    recipient_email = (to_email or invoice.customer_email or "").strip()
+    if not recipient_email:
+        raise InvoiceValidationError("Chybí e-mailová adresa příjemce upomínky.")
+
+    reminder_type = _resolve_reminder_type(invoice, todo)
+    generated_subject = subject or _build_default_reminder_subject(invoice, reminder_type=reminder_type)
+    generated_message = message or _build_default_reminder_message(invoice, reminder_type=reminder_type)
+
+    return InvoiceReminderPreview(
+        invoice=invoice,
+        todo_id=todo.id if todo is not None else None,
+        reminder_type=reminder_type,
+        recipient_email=recipient_email,
+        subject=generated_subject,
+        message=generated_message,
+    )
+
+
+def send_invoice_reminder_email(
+    db: Session,
+    invoice_id: int,
+    *,
+    to_email: str | None = None,
+    todo_id: int | None = None,
+    subject: str | None = None,
+    message: str | None = None,
+) -> InvoiceReminderSendResult:
+    preview = preview_invoice_reminder_email(
+        db,
+        invoice_id,
+        to_email=to_email,
+        todo_id=todo_id,
+        subject=subject,
+        message=message,
+    )
+    settings = get_invoice_settings(db)
+    reminder_email = InvoiceReminderEmail(
+        invoice_id=preview.invoice.id,
+        todo_id=preview.todo_id,
+        reminder_type=_normalize_reminder_type(preview.reminder_type),
+        status=_normalize_reminder_email_status(DEFAULT_REMINDER_EMAIL_STATUS),
+        recipient_email=preview.recipient_email,
+        subject=preview.subject,
+        message=preview.message,
+        sent_at=None,
+        error_message=None,
+    )
+    db.add(reminder_email)
+    db.commit()
+
+    try:
+        delivery = deliver_invoice_reminder_email(
+            preview.invoice,
+            subject=preview.subject,
+            message=preview.message,
+            to_email=preview.recipient_email,
+            owner_email=settings.owner_email,
+        )
+    except (InvoiceEmailConfigurationError, InvoiceEmailSendError) as exc:
+        reminder_email.status = _normalize_reminder_email_status("failed")
+        reminder_email.error_message = str(exc)
+        reminder_email.sent_at = None
+        db.add(reminder_email)
+        db.commit()
+        raise
+    except Exception as exc:
+        reminder_email.status = _normalize_reminder_email_status("failed")
+        reminder_email.error_message = str(exc)
+        reminder_email.sent_at = None
+        db.add(reminder_email)
+        db.commit()
+        raise
+
+    reminder_email.status = _normalize_reminder_email_status("sent")
+    reminder_email.sent_at = _utc_now()
+    reminder_email.error_message = None
+    db.add(reminder_email)
+    db.commit()
+    return InvoiceReminderSendResult(reminder_email=reminder_email, delivery=delivery)
+
+
+def list_invoice_reminder_emails(db: Session, invoice_id: int) -> list[InvoiceReminderEmail]:
+    _get_invoice_or_raise(db, invoice_id, include_items=False, include_payments=False, include_subject=False)
+    return (
+        db.query(InvoiceReminderEmail)
+        .filter(InvoiceReminderEmail.invoice_id == invoice_id)
+        .order_by(InvoiceReminderEmail.created_at.desc(), InvoiceReminderEmail.id.desc())
+        .all()
+    )
+
+
 @dataclass(frozen=True)
 class PreparedInvoiceItem:
     description: str
@@ -1984,6 +2114,125 @@ def _normalize_todo_type(value: str | None, *, allow_none: bool = False) -> str 
     if cleaned not in supported:
         raise InvoiceValidationError("Neplatný typ todo.")
     return cleaned
+
+
+def _normalize_reminder_type(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else "manual"
+    cleaned = value.strip()
+    if not cleaned:
+        return None if allow_none else "manual"
+    if cleaned not in STORED_REMINDER_TYPES:
+        raise InvoiceValidationError("Neplatný typ upomínky.")
+    return cleaned
+
+
+def _normalize_reminder_email_status(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else DEFAULT_REMINDER_EMAIL_STATUS
+    cleaned = value.strip()
+    if not cleaned:
+        return None if allow_none else DEFAULT_REMINDER_EMAIL_STATUS
+    if cleaned not in STORED_REMINDER_EMAIL_STATUSES:
+        raise InvoiceValidationError("Neplatný stav reminder e-mailu.")
+    return cleaned
+
+
+def _resolve_invoice_reminder_todo(
+    db: Session,
+    *,
+    invoice: Invoice,
+    todo_id: int | None,
+) -> InvoiceTodo | None:
+    if todo_id is None:
+        return None
+    try:
+        todo = get_invoice_todo_detail(db, todo_id)
+    except InvoiceTodoNotFoundError as exc:
+        raise InvoiceValidationError("Todo nebylo nalezeno.") from exc
+    if todo.invoice_id != invoice.id:
+        raise InvoiceValidationError("Todo nepatří k této faktuře.")
+    if todo.expense_id is not None:
+        raise InvoiceValidationError("Výdajové todo nelze použít pro fakturační upomínku.")
+    if _normalize_todo_status(todo.status) != "open":
+        raise InvoiceValidationError("Dokončené nebo zrušené todo nelze použít pro odeslání upomínky.")
+    return todo
+
+
+def _validate_invoice_for_reminder(invoice: Invoice) -> None:
+    document_kind = normalize_document_kind(getattr(invoice, "document_kind", None))
+    document_metadata = get_document_kind_metadata(document_kind)
+    if document_kind == "quote":
+        raise InvoiceValidationError("Cenové nabídce nelze odeslat platební upomínku.")
+    if not document_metadata.allows_payment_tracking:
+        raise InvoiceValidationError("Upomínku lze odeslat jen pro platební doklad.")
+    if _normalize_invoice_status(invoice.status) == "cancelled" or getattr(invoice, "effective_status", None) == "cancelled":
+        raise InvoiceValidationError("Zrušenému dokladu nelze odeslat upomínku.")
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    if remaining_amount <= Decimal("0.00"):
+        raise InvoiceValidationError("Doklad nemá žádný zbývající nedoplatek.")
+
+
+def _resolve_reminder_type(invoice: Invoice, todo: InvoiceTodo | None) -> str:
+    if todo is not None and todo.todo_type in STORED_REMINDER_TYPES:
+        return todo.todo_type
+    if getattr(invoice, "effective_status", None) == "overdue":
+        return "invoice_overdue"
+    if getattr(invoice, "payment_status", None) in {"unpaid", "partially_paid"}:
+        return "invoice_payment_reminder"
+    return "manual"
+
+
+def _build_default_reminder_subject(invoice: Invoice, *, reminder_type: str) -> str:
+    document_metadata = get_document_kind_metadata(invoice.document_kind)
+    if reminder_type == "invoice_overdue":
+        return f"Upomínka po splatnosti: {document_metadata.internal_label} {invoice.invoice_number}"
+    if reminder_type == "invoice_payment_reminder":
+        return f"Připomínka úhrady: {document_metadata.internal_label} {invoice.invoice_number}"
+    return f"Upomínka k dokladu {invoice.invoice_number}"
+
+
+def _build_default_reminder_message(invoice: Invoice, *, reminder_type: str) -> str:
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    total_paid = _quantize_money(Decimal(getattr(invoice, "total_paid", Decimal("0.00"))))
+    opening = (
+        f"evidujeme, že doklad {invoice.invoice_number} je po splatnosti."
+        if reminder_type == "invoice_overdue"
+        else f"zasíláme připomínku k úhradě dokladu {invoice.invoice_number}."
+    )
+    lines = [
+        "Dobrý den,",
+        "",
+        opening,
+        f"Odběratel: {invoice.customer_name}",
+        f"Datum splatnosti: {invoice.due_date.isoformat()}",
+        f"Celkem: {_format_email_money(invoice.total)} {invoice.currency}",
+        f"Uhrazeno: {_format_email_money(total_paid)} {invoice.currency}",
+        f"Zbývá uhradit: {_format_email_money(remaining_amount)} {invoice.currency}",
+    ]
+    account_label = _build_invoice_account_label(invoice)
+    if invoice.payment_method:
+        lines.append(f"Způsob platby: {invoice.payment_method}")
+    if account_label:
+        lines.append(f"Bankovní účet: {account_label}")
+    if invoice.bank_iban:
+        lines.append(f"IBAN: {invoice.bank_iban}")
+    if invoice.variable_symbol:
+        lines.append(f"Variabilní symbol: {invoice.variable_symbol}")
+    lines.extend(["", "Děkujeme."])
+    return "\n".join(lines)
+
+
+def _build_invoice_account_label(invoice: Invoice) -> str | None:
+    if not invoice.bank_account_number or not invoice.bank_code:
+        return None
+    if invoice.bank_account_prefix:
+        return f"{invoice.bank_account_prefix}-{invoice.bank_account_number}/{invoice.bank_code}"
+    return f"{invoice.bank_account_number}/{invoice.bank_code}"
+
+
+def _format_email_money(value: Decimal | str | int | float) -> str:
+    return f"{Decimal(value):.2f}"
 
 
 def _resolve_completed_at_for_status(status: str, *, current_value: datetime | None = None) -> datetime | None:

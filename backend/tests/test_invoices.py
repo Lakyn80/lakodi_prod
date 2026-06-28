@@ -30,6 +30,7 @@ from backend.app.modules.invoices.models import (
     InvoiceExpense,
     InvoiceDocumentRelation,
     InvoicePaymentMatch,
+    InvoiceReminderEmail,
     InvoiceRecurringGeneration,
     InvoiceRecurringTemplate,
     InvoiceSequenceState,
@@ -4589,6 +4590,312 @@ def test_generate_todos_funguje_i_pro_overdue_expense_se_supplier_id() -> None:
     assert expense_filter_response.status_code == 200
     assert len(expense_filter_response.json()) == 1
     assert expense_filter_response.json()[0]["todo_type"] == "expense_overdue"
+
+
+def test_preview_upominky_pro_overdue_fakturu_vrati_defaultni_prijemce_predmet_a_text() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "reminder-preview@example.com",
+            "issue_date": "2000-01-01",
+            "due_date": "2000-01-15",
+        }
+    )
+    _login_admin()
+
+    response = client.get(f"/api/admin/invoices/{invoice['id']}/reminder-email/preview")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["invoice_id"] == invoice["id"]
+    assert body["invoice_number"] == invoice["invoice_number"]
+    assert body["todo_id"] is None
+    assert body["reminder_type"] == "invoice_overdue"
+    assert body["recipient_email"] == "reminder-preview@example.com"
+    assert body["subject"] == f"Upomínka po splatnosti: Faktura {invoice['invoice_number']}"
+    assert f"doklad {invoice['invoice_number']} je po splatnosti" in body["message"]
+    assert "Variabilní symbol" in body["message"]
+
+
+def test_preview_upominky_odmitne_quote_plne_uhrazenou_a_neexistujici_fakturu() -> None:
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "customer_email": "quote-reminder@example.com",
+            "issue_date": "2000-01-01",
+            "due_date": "2000-01-15",
+        }
+    )
+    paid_invoice = _vytvor_fakturu(
+        {
+            "customer_email": "paid-reminder@example.com",
+            "issue_date": "2000-02-01",
+            "due_date": "2000-02-10",
+        }
+    )
+    _pridej_platbu(paid_invoice["id"], {"amount": paid_invoice["total"], "paid_at": "2000-02-05"})
+    _login_admin()
+
+    quote_response = client.get(f"/api/admin/invoices/{quote['id']}/reminder-email/preview")
+    paid_response = client.get(f"/api/admin/invoices/{paid_invoice['id']}/reminder-email/preview")
+    missing_response = client.get("/api/admin/invoices/999999/reminder-email/preview")
+
+    assert quote_response.status_code == 400
+    assert quote_response.json() == {"detail": "Cenové nabídce nelze odeslat platební upomínku."}
+    assert paid_response.status_code == 400
+    assert paid_response.json() == {"detail": "Doklad nemá žádný zbývající nedoplatek."}
+    assert missing_response.status_code == 404
+    assert missing_response.json() == {"detail": "Faktura nebyla nalezena."}
+
+
+def test_odeslani_upominky_ulozi_sent_log_a_prilozi_pdf() -> None:
+    _login_admin()
+    settings_response = client.put(
+        "/api/admin/invoices/settings",
+        json={
+            "owner_email": "upominky@lakodi.cz",
+            "payment_method": "Převodem",
+            "bank_account_number": "5997826359",
+            "bank_account_prefix": "",
+            "bank_code": "0800",
+            "bank_iban": "CZ9108000000005997826359",
+        },
+    )
+    assert settings_response.status_code == 200
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "reminder-send@example.com",
+            "issue_date": "2000-03-01",
+            "due_date": "2000-03-10",
+        }
+    )
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+    captured = {}
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{invoice['invoice_number']}.pdf",
+        content=b"%PDF-test-reminder",
+    )
+
+    def fake_send_html_email(to_email: str, subject: str, html: str, attachments=None, bcc=None, cc=None) -> bool:
+        captured["to_email"] = to_email
+        captured["subject"] = subject
+        captured["html"] = html
+        captured["attachments"] = attachments
+        captured["bcc"] = bcc
+        return True
+
+    invoice_email_service.send_html_email = fake_send_html_email
+    try:
+        response = client.post(f"/api/admin/invoices/{invoice['id']}/reminder-email/send")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["invoice_id"] == invoice["id"]
+    assert body["invoice_number"] == invoice["invoice_number"]
+    assert body["todo_id"] is None
+    assert body["reminder_type"] == "invoice_overdue"
+    assert body["sent_to"] == "reminder-send@example.com"
+    assert body["copied_to"] == ["upominky@lakodi.cz"]
+    assert body["status"] == "sent"
+    assert captured["to_email"] == "reminder-send@example.com"
+    assert captured["subject"] == f"Upomínka po splatnosti: Faktura {invoice['invoice_number']}"
+    assert invoice["invoice_number"] in captured["html"]
+    assert "Zbývá uhradit" in captured["html"]
+    assert captured["bcc"] == ["upominky@lakodi.cz"]
+    attachments = captured["attachments"]
+    assert attachments is not None
+    assert len(attachments) == 1
+    assert attachments[0].filename == f"{invoice['invoice_number']}.pdf"
+    assert attachments[0].content == b"%PDF-test-reminder"
+
+    with SessionLocal() as db:
+        logs = db.query(InvoiceReminderEmail).filter(InvoiceReminderEmail.invoice_id == invoice["id"]).all()
+        assert len(logs) == 1
+        assert logs[0].status == "sent"
+        assert logs[0].recipient_email == "reminder-send@example.com"
+        assert logs[0].todo_id is None
+        assert logs[0].sent_at is not None
+        assert logs[0].error_message is None
+
+
+def test_odeslani_upominky_s_explicitnim_emailom_a_todo_id_navaze_log() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "original-reminder@example.com",
+            "issue_date": "2000-04-01",
+            "due_date": "2000-04-12",
+        }
+    )
+    todo = _vytvor_todo(
+        {
+            "invoice_id": invoice["id"],
+            "todo_type": "invoice_overdue",
+            "title": f"Upomínka k faktuře {invoice['invoice_number']}",
+            "due_date": "2000-04-12",
+        }
+    )
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{invoice['invoice_number']}.pdf",
+        content=b"%PDF-test-reminder-explicit",
+    )
+    invoice_email_service.send_html_email = lambda *args, **kwargs: True
+    try:
+        response = client.post(
+            f"/api/admin/invoices/{invoice['id']}/reminder-email/send",
+            json={
+                "to_email": "explicit-reminder@example.com",
+                "todo_id": todo["id"],
+            },
+        )
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sent_to"] == "explicit-reminder@example.com"
+    assert body["todo_id"] == todo["id"]
+    assert body["reminder_type"] == "invoice_overdue"
+
+    with SessionLocal() as db:
+        log = (
+            db.query(InvoiceReminderEmail)
+            .filter(InvoiceReminderEmail.invoice_id == invoice["id"], InvoiceReminderEmail.todo_id == todo["id"])
+            .one()
+        )
+        assert log.recipient_email == "explicit-reminder@example.com"
+        assert log.status == "sent"
+
+
+def test_odeslani_upominky_odmitne_chybejici_prijemce_todo_z_jine_faktury_a_dokoncene_todo() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "valid-reminder@example.com",
+            "issue_date": "2000-05-01",
+            "due_date": "2000-05-10",
+        }
+    )
+    other_invoice = _vytvor_fakturu(
+        {
+            "customer_email": "other-reminder@example.com",
+            "issue_date": "2000-05-02",
+            "due_date": "2000-05-11",
+        }
+    )
+    foreign_todo = _vytvor_todo(
+        {
+            "invoice_id": other_invoice["id"],
+            "todo_type": "invoice_overdue",
+            "title": "Cizí upomínka",
+            "due_date": "2000-05-11",
+        }
+    )
+    own_todo = _vytvor_todo(
+        {
+            "invoice_id": invoice["id"],
+            "todo_type": "invoice_overdue",
+            "title": "Dokončená upomínka",
+            "due_date": "2000-05-10",
+        }
+    )
+    _login_admin()
+    complete_response = client.post(f"/api/admin/invoices/todos/{own_todo['id']}/complete")
+    assert complete_response.status_code == 200
+
+    with SessionLocal() as db:
+        invoice_row = db.execute(
+            text("UPDATE invoices SET customer_email = '' WHERE id = :invoice_id"),
+            {"invoice_id": invoice["id"]},
+        )
+        db.commit()
+        assert invoice_row is not None
+
+    missing_recipient_response = client.post(f"/api/admin/invoices/{invoice['id']}/reminder-email/send")
+    foreign_todo_response = client.post(
+        f"/api/admin/invoices/{invoice['id']}/reminder-email/send",
+        json={"to_email": "manual@example.com", "todo_id": foreign_todo["id"]},
+    )
+    completed_todo_response = client.post(
+        f"/api/admin/invoices/{invoice['id']}/reminder-email/send",
+        json={"to_email": "manual@example.com", "todo_id": own_todo["id"]},
+    )
+
+    assert missing_recipient_response.status_code == 400
+    assert missing_recipient_response.json() == {"detail": "Chybí e-mailová adresa příjemce upomínky."}
+    assert foreign_todo_response.status_code == 400
+    assert foreign_todo_response.json() == {"detail": "Todo nepatří k této faktuře."}
+    assert completed_todo_response.status_code == 400
+    assert completed_todo_response.json() == {"detail": "Dokončené nebo zrušené todo nelze použít pro odeslání upomínky."}
+
+
+def test_selhani_odeslani_upominky_ulozi_failed_log_a_list_endpoint_jej_vrati() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "customer_email": "failed-reminder@example.com",
+            "issue_date": "2000-06-01",
+            "due_date": "2000-06-10",
+        }
+    )
+
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{invoice['invoice_number']}.pdf",
+        content=b"%PDF-test-reminder-failed",
+    )
+    invoice_email_service.send_html_email = lambda *args, **kwargs: False
+    try:
+        response = client.post(f"/api/admin/invoices/{invoice['id']}/reminder-email/send")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Upomínku se nepodařilo odeslat e-mailem."}
+
+    _login_admin()
+    list_response = client.get(f"/api/admin/invoices/{invoice['id']}/reminder-emails")
+
+    assert list_response.status_code == 200
+    logs = list_response.json()
+    assert len(logs) == 1
+    assert logs[0]["invoice_id"] == invoice["id"]
+    assert logs[0]["recipient_email"] == "failed-reminder@example.com"
+    assert logs[0]["status"] == "failed"
+    assert logs[0]["reminder_type"] == "invoice_overdue"
+    assert logs[0]["sent_at"] is None
+    assert logs[0]["error_message"] == "Upomínku se nepodařilo odeslat e-mailem."
+
+    with SessionLocal() as db:
+        log = db.query(InvoiceReminderEmail).filter(InvoiceReminderEmail.invoice_id == invoice["id"]).one()
+        assert log.status == "failed"
+        assert log.error_message == "Upomínku se nepodařilo odeslat e-mailem."
 
 
 def test_outgoing_csv_export_vyzaduje_admin_auth() -> None:

@@ -1067,3 +1067,95 @@
   - Recurring template persistence stores minimal document-generation settings rather than a full parallel accounting domain.
   - Invoice recurring payment overrides are supported conservatively; otherwise current invoice settings defaults remain the source of truth.
   - No push, no deploy, no CD.
+
+## Úkol 17 Backend reminder email sending foundation
+
+- Date: 2026-06-28
+- Goal: Add a backend-only foundation for explicit reminder email preview/sending on overdue or unpaid payable outgoing invoice-domain documents without any scheduler, frontend UI, or automatic todo/email automation.
+- Scope: Backend-only invoicing models, SQLite compatibility helper, reminder schemas, reminder service/router logic, existing invoice email/PDF infrastructure reuse, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/email_service.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added reminder email log table/model:
+    - `InvoiceReminderEmail`
+    - `invoice_reminder_emails`
+  - Added reminder email log fields:
+    - `invoice_id`
+    - `todo_id`
+    - `reminder_type`
+    - `status`
+    - `recipient_email`
+    - `subject`
+    - `message`
+    - `sent_at`
+    - `error_message`
+    - `created_at`
+  - Added safe SQLite indexes for:
+    - `invoice_reminder_emails.invoice_id`
+    - `invoice_reminder_emails.todo_id`
+    - `invoice_reminder_emails.status`
+    - `invoice_reminder_emails.reminder_type`
+    - `invoice_reminder_emails.sent_at`
+  - Existing invoice/todo/payment/export rows were not rewritten.
+- Backend changes:
+  - Added reminder email API schemas for:
+    - preview response
+    - send request
+    - send response
+    - reminder log response
+  - Added admin-only reminder endpoints:
+    - `GET /api/admin/invoices/{invoice_id}/reminder-email/preview`
+    - `POST /api/admin/invoices/{invoice_id}/reminder-email/send`
+    - `GET /api/admin/invoices/{invoice_id}/reminder-emails`
+  - Added reminder validation rules:
+    - invoice must exist
+    - quote is rejected as non-payable
+    - other non-payable document kinds are rejected conservatively
+    - cancelled documents are rejected
+    - zero-remaining/fully-paid documents are rejected
+    - missing recipient is rejected with a clear error
+    - invalid `todo_id` is rejected with a clear error
+    - `todo_id` must belong to the invoice
+    - completed/cancelled todo cannot be used for reminder sending
+  - Added default reminder type resolution:
+    - `invoice_overdue` for overdue unpaid invoices
+    - `invoice_payment_reminder` for other unpaid/partially-paid payable invoices
+    - `manual` when an explicit linked todo is manual
+  - Reused the existing invoice email + PDF infrastructure for reminder sending.
+  - Reminder email sending now:
+    - generates previewable default subject/message
+    - includes invoice number, customer, due date, total, paid amount, remaining amount, and payment instructions
+    - attaches the invoice PDF through the already-tested invoice email path
+    - stores a `prepared` log before delivery
+    - updates log to `sent` on success
+    - updates log to `failed` with `error_message` on delivery/config/PDF failure
+  - Todo integration is intentionally conservative:
+    - linked todo is stored on the reminder log if provided
+    - successful send does **not** auto-complete the todo
+  - Duplicate reminders are intentionally allowed over time; throttling/cadence is left for a later task.
+- Frontend changes: None
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "upomink or reminder"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "upomink or reminder"` -> `6 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `175 passed`
+  - `python -m pytest -q` -> `183 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice reminder email foundation`
+- Local commit hash if created: pending until local commit
+- Final status: implemented, backend-tested, ready for local commit
+- Notes / risks:
+  - No automatic scheduler, background job, recurring mail cadence, or todo-triggered auto-send was added.
+  - Reminder sending currently follows the existing payable-document metadata, so non-payable document kinds remain blocked conservatively.
+  - Reminder sends keep linked todos open by design; completion workflow can be added later if explicitly desired.
+  - Reminder emails reuse the existing invoice PDF attachment path because that path is already covered by backend tests.
+  - No push, no deploy, no CD.

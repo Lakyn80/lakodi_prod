@@ -30,6 +30,8 @@ RecurringTemplateType = Literal["invoice", "expense"]
 RecurringTemplateStatus = Literal["active", "paused", "cancelled"]
 RecurringInterval = Literal["daily", "weekly", "monthly", "quarterly", "yearly"]
 RecurringGenerationStatus = Literal["generated", "failed"]
+InvoiceReminderType = Literal["invoice_overdue", "invoice_payment_reminder", "manual"]
+InvoiceReminderEmailStatus = Literal["prepared", "sent", "failed"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -348,6 +350,59 @@ class InvoiceSendEmailResponse(BaseModel):
     invoice_number: str
     sent_to: str
     copied_to: list[str] = Field(default_factory=list)
+
+
+class InvoiceReminderEmailPreviewResponse(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    todo_id: int | None
+    reminder_type: InvoiceReminderType
+    recipient_email: str
+    subject: str
+    message: str
+
+
+class InvoiceReminderEmailSendRequest(BaseModel):
+    to_email: str | None = Field(default=None, max_length=256)
+    todo_id: int | None = Field(default=None, ge=1)
+    subject: str | None = Field(default=None, max_length=256)
+    message: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("to_email", "subject", "message")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceReminderEmailSendResponse(BaseModel):
+    ok: Literal[True]
+    reminder_email_id: int
+    invoice_id: int
+    invoice_number: str
+    todo_id: int | None
+    reminder_type: InvoiceReminderType
+    sent_to: str
+    copied_to: list[str] = Field(default_factory=list)
+    status: InvoiceReminderEmailStatus
+
+
+class InvoiceReminderEmailLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    invoice_id: int
+    todo_id: int | None
+    reminder_type: InvoiceReminderType
+    status: InvoiceReminderEmailStatus
+    recipient_email: str
+    subject: str
+    message: str
+    sent_at: datetime | None
+    error_message: str | None
+    created_at: datetime
 
 
 class InvoiceSubjectBase(BaseModel):

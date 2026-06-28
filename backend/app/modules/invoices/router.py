@@ -50,6 +50,10 @@ from backend.app.modules.invoices.schemas import (
     InvoicePaymentCreate,
     InvoicePaymentResponse,
     InvoiceRecurringGenerationResponse,
+    InvoiceReminderEmailLogResponse,
+    InvoiceReminderEmailPreviewResponse,
+    InvoiceReminderEmailSendRequest,
+    InvoiceReminderEmailSendResponse,
     InvoiceRecurringTemplateCreate,
     InvoiceRecurringTemplateDeleteResponse,
     InvoiceRecurringTemplateResponse,
@@ -132,6 +136,7 @@ from backend.app.modules.invoices.service import (
     list_invoice_document_relations,
     list_invoice_expense_payments,
     list_invoice_expenses,
+    list_invoice_reminder_emails,
     list_invoice_recurring_generations,
     list_invoice_recurring_templates,
     list_invoice_suppliers,
@@ -140,8 +145,10 @@ from backend.app.modules.invoices.service import (
     list_invoice_todos,
     list_invoices,
     pause_invoice_recurring_template,
+    preview_invoice_reminder_email,
     save_invoice_settings,
     send_invoice_email,
+    send_invoice_reminder_email,
     reject_invoice_payment_match,
     list_invoice_payment_matches,
     update_invoice_expense,
@@ -1107,6 +1114,85 @@ def admin_create_tax_document_from_proforma_payment(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{invoice_id}/reminder-email/preview", response_model=InvoiceReminderEmailPreviewResponse)
+def admin_preview_invoice_reminder_email(
+    invoice_id: int,
+    to_email: str | None = Query(default=None),
+    todo_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        preview = preview_invoice_reminder_email(db, invoice_id, to_email=to_email, todo_id=todo_id)
+        return {
+            "invoice_id": preview.invoice.id,
+            "invoice_number": preview.invoice.invoice_number,
+            "todo_id": preview.todo_id,
+            "reminder_type": preview.reminder_type,
+            "recipient_email": preview.recipient_email,
+            "subject": preview.subject,
+            "message": preview.message,
+        }
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{invoice_id}/reminder-email/send", response_model=InvoiceReminderEmailSendResponse)
+def admin_send_invoice_reminder_email(
+    invoice_id: int,
+    body: InvoiceReminderEmailSendRequest | None = Body(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        payload = body or InvoiceReminderEmailSendRequest()
+        result = send_invoice_reminder_email(
+            db,
+            invoice_id,
+            to_email=payload.to_email,
+            todo_id=payload.todo_id,
+            subject=payload.subject,
+            message=payload.message,
+        )
+        return {
+            "ok": True,
+            "reminder_email_id": result.reminder_email.id,
+            "invoice_id": result.delivery.invoice_id,
+            "invoice_number": result.delivery.invoice_number,
+            "todo_id": result.reminder_email.todo_id,
+            "reminder_type": result.reminder_email.reminder_type,
+            "sent_to": result.delivery.sent_to,
+            "copied_to": list(result.delivery.copied_to),
+            "status": result.reminder_email.status,
+        }
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+    except InvoicePdfGenerationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except InvoiceEmailConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except InvoiceEmailSendError as exc:
+        detail = str(exc) or "Upomínku se nepodařilo odeslat e-mailem."
+        status_code = 400 if "chybí e-mailová adresa příjemce" in detail.lower() else 502
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{invoice_id}/reminder-emails", response_model=list[InvoiceReminderEmailLogResponse])
+def admin_list_invoice_reminder_emails(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_reminder_emails(db, invoice_id)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
 
 
 @router.get("/{invoice_id}/pdf")

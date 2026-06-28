@@ -408,3 +408,19 @@ class InvoiceTodo(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class InvoiceReminderEmail(Base):
+    __tablename__ = "invoice_reminder_emails"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    todo_id = Column(Integer, ForeignKey("invoice_todos.id", ondelete="SET NULL"), nullable=True, index=True)
+    reminder_type = Column(String(64), nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="prepared", index=True)
+    recipient_email = Column(String(256), nullable=False)
+    subject = Column(String(256), nullable=False)
+    message = Column(Text, nullable=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -631,6 +631,41 @@ def _ensure_invoice_todos_table():
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_todos_due_date ON invoice_todos (due_date)"))
 
 
+def _ensure_invoice_reminder_emails_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_reminder_emails'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_reminder_emails)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "invoice_id": "ALTER TABLE invoice_reminder_emails ADD COLUMN invoice_id INTEGER",
+            "todo_id": "ALTER TABLE invoice_reminder_emails ADD COLUMN todo_id INTEGER",
+            "reminder_type": "ALTER TABLE invoice_reminder_emails ADD COLUMN reminder_type VARCHAR(64)",
+            "status": "ALTER TABLE invoice_reminder_emails ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'prepared'",
+            "recipient_email": "ALTER TABLE invoice_reminder_emails ADD COLUMN recipient_email VARCHAR(256)",
+            "subject": "ALTER TABLE invoice_reminder_emails ADD COLUMN subject VARCHAR(256)",
+            "message": "ALTER TABLE invoice_reminder_emails ADD COLUMN message TEXT",
+            "sent_at": "ALTER TABLE invoice_reminder_emails ADD COLUMN sent_at DATETIME",
+            "error_message": "ALTER TABLE invoice_reminder_emails ADD COLUMN error_message TEXT",
+            "created_at": "ALTER TABLE invoice_reminder_emails ADD COLUMN created_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(text("UPDATE invoice_reminder_emails SET status = 'prepared' WHERE status IS NULL"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_reminder_emails_invoice_id ON invoice_reminder_emails (invoice_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_reminder_emails_todo_id ON invoice_reminder_emails (todo_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_reminder_emails_status ON invoice_reminder_emails (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_reminder_emails_reminder_type ON invoice_reminder_emails (reminder_type)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_reminder_emails_sent_at ON invoice_reminder_emails (sent_at)"))
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -655,6 +690,7 @@ def init_db():
     _ensure_invoice_sequence_state_columns()
     _ensure_invoice_document_relations_table()
     _ensure_invoice_todos_table()
+    _ensure_invoice_reminder_emails_table()
 
 
 def get_db():

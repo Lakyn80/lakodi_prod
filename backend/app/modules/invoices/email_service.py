@@ -71,6 +71,42 @@ def deliver_invoice_email(
     )
 
 
+def deliver_invoice_reminder_email(
+    invoice: Invoice,
+    *,
+    subject: str,
+    message: str,
+    to_email: str | None = None,
+    owner_email: str | None = None,
+) -> InvoiceEmailDeliveryResult:
+    export = build_invoice_export(invoice)
+    recipient = (to_email or export.customer.email or "").strip()
+    if not recipient:
+        raise InvoiceEmailSendError("Chybí e-mailová adresa příjemce upomínky.")
+    if not is_email_configured():
+        raise InvoiceEmailConfigurationError("Odesílání e-mailů není nakonfigurované.")
+
+    html = _build_invoice_reminder_email_html(invoice, export, subject=subject, message=message)
+    pdf_document = build_invoice_pdf_document(invoice)
+    attachments = [
+        EmailAttachment(
+            filename=pdf_document.filename,
+            content=pdf_document.content,
+            content_type=pdf_document.content_type,
+        )
+    ]
+    copied_to = _build_copy_recipients(recipient, owner_email=owner_email)
+    if not send_html_email(recipient, subject, html, attachments=attachments, bcc=copied_to):
+        raise InvoiceEmailSendError("Upomínku se nepodařilo odeslat e-mailem.")
+
+    return InvoiceEmailDeliveryResult(
+        invoice_id=export.identity.id,
+        invoice_number=export.identity.invoice_number,
+        sent_to=recipient,
+        copied_to=tuple(copied_to),
+    )
+
+
 def _build_invoice_email_html(export) -> str:
     item_rows = "".join(
         f"""
@@ -135,6 +171,40 @@ def _build_invoice_email_html(export) -> str:
     """
 
 
+def _build_invoice_reminder_email_html(invoice: Invoice, export, *, subject: str, message: str) -> str:
+    total_paid = Decimal(getattr(invoice, "total_paid", Decimal("0.00")))
+    remaining_amount = Decimal(getattr(invoice, "remaining_amount", Decimal("0.00")))
+    account_label = export.payment.account_label or _build_account_label(
+        export.payment.account_number,
+        export.payment.account_prefix,
+        export.payment.bank_code,
+    )
+
+    return f"""
+    <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:760px;margin:0 auto;padding:24px;">
+      <h1 style="margin:0 0 16px;font-size:24px;">{escape(subject)}</h1>
+      <p style="margin:0 0 16px;">Dobrý den, zasíláme připomínku k úhradě dokladu {escape(export.identity.invoice_number)}.</p>
+      <p style="margin:0 0 16px;white-space:pre-line;">{_render_multiline_text_as_html(message)}</p>
+
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:0 0 20px;">
+        <p style="margin:0 0 8px;"><strong>Doklad:</strong> {escape(export.identity.invoice_number)}</p>
+        <p style="margin:0 0 8px;"><strong>Odběratel:</strong> {escape(export.customer.name)}</p>
+        <p style="margin:0 0 8px;"><strong>Datum splatnosti:</strong> {export.identity.due_date}</p>
+        <p style="margin:0 0 8px;"><strong>Celkem:</strong> {_format_money(export.totals.total)} {escape(export.totals.currency)}</p>
+        <p style="margin:0 0 8px;"><strong>Uhrazeno:</strong> {_format_money(total_paid)} {escape(export.totals.currency)}</p>
+        <p style="margin:0;"><strong>Zbývá uhradit:</strong> {_format_money(remaining_amount)} {escape(export.totals.currency)}</p>
+      </div>
+
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;">
+        <p style="margin:0 0 8px;"><strong>Způsob platby:</strong> {escape(export.payment.method)}</p>
+        <p style="margin:0 0 8px;"><strong>Bankovní účet:</strong> {escape(account_label)}</p>
+        <p style="margin:0 0 8px;"><strong>Variabilní symbol:</strong> {escape(export.payment.variable_symbol)}</p>
+        <p style="margin:0;"><strong>IBAN:</strong> {escape(export.payment.iban)}</p>
+      </div>
+    </div>
+    """
+
+
 def _format_money(value: Decimal) -> str:
     return f"{Decimal(value):.2f}"
 
@@ -146,6 +216,18 @@ def _format_decimal(value: Decimal) -> str:
 
 def _build_full_issuer_address(export) -> str:
     return _build_full_address(export.issuer.address, export.issuer.zip, export.issuer.city)
+
+
+def _render_multiline_text_as_html(value: str) -> str:
+    return escape(value).replace("\n", "<br>")
+
+
+def _build_account_label(account_number: str | None, account_prefix: str | None, bank_code: str | None) -> str:
+    if not account_number or not bank_code:
+        return "Platební údaje nejsou vyplněny."
+    if account_prefix:
+        return f"{account_prefix}-{account_number}/{bank_code}"
+    return f"{account_number}/{bank_code}"
 
 
 def _build_full_address(address: str | None, zip_code: str | None, city: str | None) -> str:
