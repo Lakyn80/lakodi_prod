@@ -1579,3 +1579,279 @@
   - `develop` is referenced in workflows but does not exist on `origin`
   - `cd.yml` would also deploy `develop` to the same server path if that branch is later created, so branch-to-environment separation should be clarified before introducing a staging flow
   - The `pytest_asyncio` deprecation warning remains for separate cleanup
+
+## Úkol 22A Frontend audit for parallel new accounting UI
+
+- Date: 2026-06-28
+- Goal: Prepare a safe frontend integration plan for a fully parallel accounting UI while preserving the current invoicing UI and all existing issued invoices exactly as they are.
+- Scope: Frontend/admin audit and planning only, plus backend route inspection for API mapping. No frontend or backend behavior changes.
+- Files inspected:
+  - `frontend/src/app/admin/AdminLayoutClient.tsx`
+  - `frontend/src/app/admin/layout.tsx`
+  - `frontend/src/app/admin/page.tsx`
+  - `frontend/src/app/admin/invoices/page.tsx`
+  - `frontend/src/app/admin/zakazky/[id]/page.tsx`
+  - `frontend/src/app/admin/kalendar/page.tsx`
+  - `frontend/src/lib/api.ts`
+  - `frontend/src/lib/invoices.ts`
+  - `frontend/src/components/admin/invoices/InvoiceForm.tsx`
+  - `frontend/src/components/admin/invoices/InvoiceList.tsx`
+  - `frontend/src/components/admin/invoices/InvoiceDetail.tsx`
+  - `frontend/src/components/admin/invoices/InvoiceSettingsForm.tsx`
+  - `backend/app/modules/invoices/router.py`
+- Old invoicing files/routes/components discovered:
+  - Current route:
+    - `/admin/invoices`
+  - Current page:
+    - `frontend/src/app/admin/invoices/page.tsx`
+  - Current admin navigation entries:
+    - `frontend/src/app/admin/AdminLayoutClient.tsx` -> nav item `Faktury`
+    - `frontend/src/app/admin/page.tsx` -> dashboard shortcut `Fakturace`
+  - Current components:
+    - `frontend/src/components/admin/invoices/InvoiceForm.tsx`
+    - `frontend/src/components/admin/invoices/InvoiceList.tsx`
+    - `frontend/src/components/admin/invoices/InvoiceDetail.tsx`
+    - `frontend/src/components/admin/invoices/InvoiceSettingsForm.tsx`
+  - Current API helper:
+    - `frontend/src/lib/invoices.ts`
+  - Current frontend types/interfaces:
+    - `InvoiceCreatePayload`
+    - `InvoiceItem`
+    - `InvoicePayment`
+    - `InvoicePaymentCreatePayload`
+    - `InvoiceSummary`
+    - `InvoiceDetail`
+    - `AresCompanyLookup`
+    - `SendInvoiceEmailPayload`
+    - `SendInvoiceEmailResponse`
+    - `InvoiceDefaultsResponse`
+    - `InvoiceSettingsPayload`
+    - `InvoiceSettingsResponse`
+    - `AdminApiError`
+- Explicit DO NOT TOUCH boundaries:
+  - `DO NOT TOUCH`:
+    - `/admin/invoices` route and its page-level composition
+    - `frontend/src/lib/invoices.ts`
+    - `frontend/src/components/admin/invoices/*`
+    - existing nav label `Faktury`
+    - existing invoice create/edit/detail/list flow
+    - existing `/api/admin/invoices` client usage
+    - existing invoice PDF/email/payment UX
+    - existing issued invoices loaded through the old UI
+  - Safe to read only:
+    - admin auth/session shell in `frontend/src/app/admin/AdminLayoutClient.tsx`
+    - admin landing page shortcut in `frontend/src/app/admin/page.tsx`
+    - `frontend/src/lib/api.ts`
+    - backend route map in `backend/app/modules/invoices/router.py`
+  - Possible future integration points:
+    - admin nav list can later add one new tab entry without replacing `Faktury`
+    - admin landing page can later add one new shortcut card/button without removing the old one
+    - shared auth/session shell can protect the new route because it already gates admin pages consistently
+  - Unknown/risky:
+    - any reuse of `frontend/src/lib/invoices.ts` for the new UI
+    - any attempt to retrofit the current `/admin/invoices` page into multi-document accounting
+    - any direct write path that mixes legacy issued invoices with new accounting documents before a controlled migration/import plan exists
+- Current old invoicing boundaries by asset:
+  - Routes:
+    - `/admin/invoices` -> `DO NOT TOUCH`
+    - no dedicated `/admin/invoices/[id]` route exists today; detail/edit is embedded in the one page -> `DO NOT TOUCH`
+  - Pages:
+    - `frontend/src/app/admin/invoices/page.tsx` -> `DO NOT TOUCH`
+  - Components:
+    - `InvoiceForm` -> `DO NOT TOUCH`
+    - `InvoiceList` -> `DO NOT TOUCH`
+    - `InvoiceDetail` -> `DO NOT TOUCH`
+    - `InvoiceSettingsForm` -> `DO NOT TOUCH`
+  - API helper:
+    - `frontend/src/lib/invoices.ts` -> `DO NOT TOUCH`
+  - Navigation:
+    - `AdminLayoutClient.tsx` nav item `Faktury` -> `DO NOT TOUCH`
+    - `admin/page.tsx` shortcut link to `/admin/invoices` -> `DO NOT TOUCH`
+  - Backend dependency used by old UI today:
+    - old UI calls only a narrow legacy subset of the deployed accounting backend:
+      - `GET /api/admin/invoices`
+      - `GET /api/admin/invoices/{invoice_id}`
+      - `POST /api/admin/invoices`
+      - `PUT /api/admin/invoices/{invoice_id}`
+      - `GET /api/admin/invoices/defaults`
+      - `GET/PUT /api/admin/invoices/settings`
+      - `GET /api/admin/invoices/ares/{ico}`
+      - `GET /api/admin/invoices/ares/search`
+      - `POST /api/admin/invoices/{invoice_id}/send-email`
+      - `GET /api/admin/invoices/{invoice_id}/payments`
+      - `POST /api/admin/invoices/{invoice_id}/payments`
+      - `DELETE /api/admin/invoices/{invoice_id}/payments/{payment_id}`
+      - `GET /api/admin/invoices/{invoice_id}/pdf`
+    - this helper is tightly coupled to the old page and should remain frozen
+  - Coupling with zakazky/orders:
+    - no direct code-level coupling between the invoice client and zakazky data flow was found
+    - coupling is limited to sibling admin navigation/shortcuts
+  - Coupling with PDF/email:
+    - current detail component directly exposes legacy send-email and PDF download actions
+  - Coupling with client-issued invoices:
+    - current route is the active operational UI for already issued invoices and supports in-place edit, payment registration, email send, and PDF download
+    - therefore it must remain unchanged in this phase
+- Proposed new route:
+  - Preferred route: `/admin/ucetnictvi-new`
+  - Preferred navigation label: `ÚčetnictvíNew`
+  - Alternative labels/routes kept as reserve only:
+    - `/admin/faktury-new` + `FakturyNew`
+    - `/admin/accounting-new` + `AccountingNew`
+- Proposed folder structure:
+  - `frontend/src/app/admin/ucetnictvi-new/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/[documentId]/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/subjects/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/expenses/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/suppliers/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/bank/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/todos/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/recurring/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/attachments/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/audit/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/settings/page.tsx`
+  - `frontend/src/components/admin/accounting-new/`
+  - `frontend/src/lib/accountingNewApi.ts`
+  - `frontend/src/types/accountingNew.ts`
+- Future screen map:
+  - Dashboard:
+    - overview cards
+    - unpaid invoices
+    - overdue invoices
+    - unpaid expenses
+    - bank transactions needing match
+    - open todos
+    - recent audit events
+  - Documents:
+    - invoices
+    - proformas
+    - final invoices
+    - tax documents
+    - corrections
+    - quotes
+  - Document detail:
+    - header/status
+    - customer snapshot
+    - items/totals
+    - payments
+    - relations
+    - reminder emails
+    - attachments
+    - audit events
+  - Subjects/customers
+  - Expenses
+  - Suppliers
+  - Bank transactions/matching
+  - Todos/reminders
+  - Recurring templates
+  - Attachments/inbox
+  - Audit log
+  - Settings/numbering/company defaults
+- Backend API mapping summary:
+  - Core documents:
+    - prefix `/api/admin/invoices`
+    - screens: list `yes`, detail `yes`, create/edit `yes`
+    - risky items: document-kind-aware UX, preserving old UI isolation
+  - Payments:
+    - prefix `/api/admin/invoices/{invoice_id}/payments`, `/api/admin/invoices/expenses/{expense_id}/payments`
+    - screens: list `yes`, detail `yes`, create/edit form `actions only`
+    - risky items: payable vs non-payable document kinds
+  - Tax/final/correction/quote conversion:
+    - prefixes:
+      - `/api/admin/invoices/{invoice_id}/payments/{payment_id}/tax-document`
+      - `/api/admin/invoices/final-invoice`
+      - `/api/admin/invoices/{invoice_id}/correction`
+      - `/api/admin/invoices/{quote_id}/convert`
+    - screens: detail `yes`, action forms `yes`
+    - risky items: multi-step business rules and relation visualization
+  - Subjects:
+    - prefix `/api/admin/invoices/subjects`
+    - screens: list `yes`, detail `yes`, create/edit `yes`
+  - Expenses:
+    - prefix `/api/admin/invoices/expenses`
+    - screens: list `yes`, detail `yes`, create/edit `yes`
+  - Suppliers:
+    - prefix `/api/admin/invoices/suppliers`
+    - screens: list `yes`, detail `yes`, create/edit `yes`
+  - Exports:
+    - prefixes:
+      - `/api/admin/invoices/exports/outgoing.csv`
+      - `/api/admin/invoices/exports/outgoing.xlsx`
+      - `/api/admin/invoices/exports/expenses.csv`
+      - `/api/admin/invoices/exports/expenses.xlsx`
+    - screens: list `no`, detail `no`, create/edit `no`
+    - risky items: browser download UX and filter parity
+  - Todos/reminders:
+    - prefixes:
+      - `/api/admin/invoices/todos`
+      - `/api/admin/invoices/todos/generate`
+      - `/api/admin/invoices/{invoice_id}/reminder-email/*`
+      - `/api/admin/invoices/{invoice_id}/reminder-emails`
+    - screens: list `yes`, detail `yes`, create/edit `actions`
+    - risky items: quote/fully-paid/cancelled edge handling in UI
+  - Relations:
+    - prefixes:
+      - `/api/admin/invoices/relations`
+      - `/api/admin/invoices/{invoice_id}/relations`
+    - screens: list `yes`, detail `yes`, create/edit `no`
+  - Bank transactions/matching:
+    - prefix `/api/admin/invoices/bank-transactions`
+    - screens: list `yes`, detail `yes`, create/edit form `import + match actions`
+    - risky items: apply/reject/ignore flows and match confidence UX
+  - Recurring templates:
+    - prefix `/api/admin/invoices/recurring-templates`
+    - screens: list `yes`, detail `yes`, create/edit `yes`
+    - risky items: generation history and pause/activate/cancel actions
+  - Attachments/inbox:
+    - prefix `/api/admin/invoices/attachments`
+    - screens: list `yes`, detail `yes`, create/edit `upload + link/archive/delete actions`
+    - risky items: safe upload/download UX and link targets
+  - Audit events:
+    - prefixes:
+      - `/api/admin/invoices/audit-events`
+      - `/api/admin/invoices/{invoice_id}/audit-events`
+      - `/api/admin/invoices/expenses/{expense_id}/audit-events`
+    - screens: list `yes`, detail `yes`, create/edit `no`
+    - risky items: high-volume filters and payload presentation
+  - Settings/defaults/ARES:
+    - prefixes:
+      - `/api/admin/invoices/defaults`
+      - `/api/admin/invoices/settings`
+      - `/api/admin/invoices/ares/*`
+    - screens: list `no`, detail `yes`, create/edit `yes`
+    - risky items: separation between old invoice defaults UI and future accounting defaults UI
+- Migration strategy summary:
+  - old issued invoices remain untouched now
+  - the new UI should start as a separate shell and then read/write only the new accounting backend surface
+  - later migration/import must preserve:
+    - old invoice numbers
+    - old PDFs
+    - old statuses
+    - old timestamps where applicable
+  - migration should begin as read-only discovery/import planning
+  - any later write migration must be controlled, auditable, backed up, and dry-run capable
+  - migration should be reversible where feasible, or at minimum produce a complete audit trail and import report
+- Recommended next tasks:
+  - `Úkol 22B`: create new parallel route/navigation shell only
+  - `Úkol 22C`: create new accounting API client and shared types
+  - `Úkol 22D`: dashboard and document list read-only
+  - `Úkol 22E`: document detail read-only
+  - `Úkol 22F`: payments/relations/reminders/attachments read-only/actions
+  - `Úkol 22G`: expenses/suppliers
+  - `Úkol 22H`: bank matching
+  - `Úkol 22I`: recurring templates
+  - `Úkol 22J`: audit log
+  - `Úkol 22K`: frontend QA
+  - `Úkol 23`: controlled old invoice migration/import plan
+  - `Úkol 24`: controlled FE deploy
+- Frontend changes: `None`
+- Backend changes: `None`
+- Database/schema changes: `None`
+- Tests run: None
+- Commit message if committed: `Record frontend accounting integration audit`
+- Local commit hash if committed: pending until local commit
+- Push: `No`
+- Deploy/CD: `No`
+- Known risks / follow-ups:
+  - current admin navigation is small and hard-coded, so adding the parallel route later must be done carefully without renaming or reordering away the legacy `Faktury` entry unexpectedly
+  - the old frontend invoice client is invoice-only and should not be expanded into a mixed accounting client
+  - the deployed backend surface is much broader than the current UI, so the new section should be built module-by-module rather than trying to replace the old page wholesale
