@@ -9,6 +9,7 @@ from sqlalchemy import text
 from backend.app.db import SessionLocal
 from backend.app.main import app
 from backend.app.modules.invoices import ares_service
+from backend.app.modules.invoices import attachment_storage
 from backend.app.modules.invoices.ares_service import (
     AresCompanyNotFoundError,
     AresCompanyLookupResponse,
@@ -26,6 +27,7 @@ from backend.app.modules.invoices.models import (
     RELATION_TYPE_INVOICE_FROM_QUOTE,
     RELATION_TYPE_PROFORMA_FROM_QUOTE,
     RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+    InvoiceAttachment,
     InvoiceBankTransaction,
     InvoiceExpense,
     InvoiceDocumentRelation,
@@ -281,6 +283,12 @@ def _ziskej_matche_bankovni_transakce(transaction_id: int) -> list[dict]:
     response = client.get(f"/api/admin/invoices/bank-transactions/{transaction_id}/matches")
     assert response.status_code == 200
     return response.json()
+
+
+def _nastav_storage_priloh(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    storage_dir = tmp_path / "invoice_attachments"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(attachment_storage, "STORAGE_DIR", storage_dir)
 
 
 def _aplikuj_match_bankovni_transakce(transaction_id: int, match_id: int) -> dict:
@@ -4896,6 +4904,178 @@ def test_selhani_odeslani_upominky_ulozi_failed_log_a_list_endpoint_jej_vrati() 
         log = db.query(InvoiceReminderEmail).filter(InvoiceReminderEmail.invoice_id == invoice["id"]).one()
         assert log.status == "failed"
         assert log.error_message == "Upomínku se nepodařilo odeslat e-mailem."
+
+
+def test_nahrani_nepropojene_prilohy_inbox_list_detail_a_path_traversal_funguji(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    _nastav_storage_priloh(monkeypatch, tmp_path)
+    _login_admin()
+
+    upload_response = client.post(
+        "/api/admin/invoices/attachments",
+        files={"file": ("..\\..\\evil.pdf", b"hello attachment", "application/pdf")},
+        data={"attachment_type": "other", "note": "Inbox soubor"},
+    )
+
+    assert upload_response.status_code == 200
+    attachment = upload_response.json()
+    assert attachment["invoice_id"] is None
+    assert attachment["expense_id"] is None
+    assert attachment["todo_id"] is None
+    assert attachment["bank_transaction_id"] is None
+    assert attachment["attachment_type"] == "other"
+    assert attachment["status"] == "uploaded"
+    assert attachment["original_filename"] == "evil.pdf"
+    assert attachment["content_type"] == "application/pdf"
+    assert attachment["size_bytes"] == len(b"hello attachment")
+    assert attachment["checksum_sha256"]
+
+    _login_admin()
+    list_response = client.get("/api/admin/invoices/attachments")
+    unlinked_response = client.get("/api/admin/invoices/attachments?unlinked_only=true")
+    detail_response = client.get(f"/api/admin/invoices/attachments/{attachment['id']}")
+
+    assert list_response.status_code == 200
+    assert any(item["id"] == attachment["id"] for item in list_response.json())
+    assert unlinked_response.status_code == 200
+    assert any(item["id"] == attachment["id"] for item in unlinked_response.json())
+    assert detail_response.status_code == 200
+    assert detail_response.json()["id"] == attachment["id"]
+
+    with SessionLocal() as db:
+        stored = db.query(InvoiceAttachment).filter(InvoiceAttachment.id == attachment["id"]).one()
+        assert ".." not in stored.stored_filename
+        assert "/" not in stored.stored_filename
+        assert "\\" not in stored.stored_filename
+        assert (attachment_storage.STORAGE_DIR / stored.stored_filename).exists()
+
+
+def test_nahrani_prazdne_prilohy_je_odmitnuto(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _nastav_storage_priloh(monkeypatch, tmp_path)
+    _login_admin()
+
+    response = client.post(
+        "/api/admin/invoices/attachments",
+        files={"file": ("empty.txt", b"", "text/plain")},
+        data={"attachment_type": "other"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Prázdný soubor nelze nahrát."}
+
+
+def test_navazani_prilohy_na_invoice_expense_todo_a_bank_transakci_funguje(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    _nastav_storage_priloh(monkeypatch, tmp_path)
+    invoice = _vytvor_fakturu()
+    expense = _vytvor_vydaj()
+    todo = _vytvor_todo({"invoice_id": invoice["id"], "todo_type": "invoice_overdue", "title": "Link todo"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "attach-bank-1",
+                "transaction_date": "2099-06-01",
+                "amount": 1500,
+                "currency": "CZK",
+                "direction": "incoming",
+                "variable_symbol": invoice["variable_symbol"],
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+    _login_admin()
+    upload_response = client.post(
+        "/api/admin/invoices/attachments",
+        files={"file": ("link.pdf", b"attachment for linking", "application/pdf")},
+        data={"attachment_type": "invoice_document"},
+    )
+    attachment_id = upload_response.json()["id"]
+
+    invoice_link_response = client.post(
+        f"/api/admin/invoices/attachments/{attachment_id}/link",
+        json={"invoice_id": invoice["id"]},
+    )
+    expense_link_response = client.post(
+        f"/api/admin/invoices/attachments/{attachment_id}/link",
+        json={"expense_id": expense["id"]},
+    )
+    todo_link_response = client.post(
+        f"/api/admin/invoices/attachments/{attachment_id}/link",
+        json={"todo_id": todo["id"]},
+    )
+    bank_link_response = client.post(
+        f"/api/admin/invoices/attachments/{attachment_id}/link",
+        json={"bank_transaction_id": transaction_id},
+    )
+
+    assert invoice_link_response.status_code == 200
+    assert invoice_link_response.json()["invoice_id"] == invoice["id"]
+    assert invoice_link_response.json()["status"] == "linked"
+    assert expense_link_response.status_code == 200
+    assert expense_link_response.json()["expense_id"] == expense["id"]
+    assert todo_link_response.status_code == 200
+    assert todo_link_response.json()["todo_id"] == todo["id"]
+    assert bank_link_response.status_code == 200
+    assert bank_link_response.json()["bank_transaction_id"] == transaction_id
+
+
+def test_navazani_prilohy_na_neexistujici_cil_vrati_jasnou_chybu(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    _nastav_storage_priloh(monkeypatch, tmp_path)
+    _login_admin()
+    upload_response = client.post(
+        "/api/admin/invoices/attachments",
+        files={"file": ("missing-target.pdf", b"attachment", "application/pdf")},
+        data={"attachment_type": "other"},
+    )
+    attachment_id = upload_response.json()["id"]
+
+    response = client.post(
+        f"/api/admin/invoices/attachments/{attachment_id}/link",
+        json={"invoice_id": 999999},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Navázaná faktura nebyla nalezena."}
+
+
+def test_download_archive_a_delete_prilohy_funguji(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _nastav_storage_priloh(monkeypatch, tmp_path)
+    _login_admin()
+    upload_response = client.post(
+        "/api/admin/invoices/attachments",
+        files={"file": ("download.txt", b"download me", "text/plain")},
+        data={"attachment_type": "other"},
+    )
+    attachment_id = upload_response.json()["id"]
+
+    download_response = client.get(f"/api/admin/invoices/attachments/{attachment_id}/download")
+    archive_response = client.post(f"/api/admin/invoices/attachments/{attachment_id}/archive")
+    list_archived_response = client.get("/api/admin/invoices/attachments?status=archived")
+
+    assert download_response.status_code == 200
+    assert download_response.content == b"download me"
+    assert "download.txt" in download_response.headers["content-disposition"]
+    assert archive_response.status_code == 200
+    assert archive_response.json() == {"ok": True, "attachment_id": attachment_id, "status": "archived"}
+    assert list_archived_response.status_code == 200
+    assert any(item["id"] == attachment_id and item["status"] == "archived" for item in list_archived_response.json())
+
+    with SessionLocal() as db:
+        stored_filename = db.query(InvoiceAttachment).filter(InvoiceAttachment.id == attachment_id).one().stored_filename
+        assert (attachment_storage.STORAGE_DIR / stored_filename).exists()
+
+    delete_response = client.delete(f"/api/admin/invoices/attachments/{attachment_id}")
+
+    assert delete_response.status_code == 200
+    assert delete_response.json() == {"ok": True, "attachment_id": attachment_id}
+
+    with SessionLocal() as db:
+        assert db.query(InvoiceAttachment).filter(InvoiceAttachment.id == attachment_id).first() is None
+    assert list(attachment_storage.STORAGE_DIR.iterdir()) == []
 
 
 def test_outgoing_csv_export_vyzaduje_admin_auth() -> None:

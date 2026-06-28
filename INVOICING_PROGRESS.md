@@ -1159,3 +1159,113 @@
   - Reminder sends keep linked todos open by design; completion workflow can be added later if explicitly desired.
   - Reminder emails reuse the existing invoice PDF attachment path because that path is already covered by backend tests.
   - No push, no deploy, no CD.
+
+## Úkol 18 Backend attachments / inbox foundation
+
+- Date: 2026-06-28
+- Goal: Add a backend-only foundation for invoice/expense/accounting inbox attachments with local disk storage, DB metadata, explicit linking, archive/delete/download operations, and no OCR or frontend work.
+- Scope: Backend-only invoicing models, SQLite compatibility helper, local attachment storage helper, attachment schemas/service/router logic, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/attachment_storage.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added attachment metadata table/model:
+    - `InvoiceAttachment`
+    - `invoice_attachments`
+  - Added attachment link fields:
+    - `invoice_id`
+    - `expense_id`
+    - `todo_id`
+    - `bank_transaction_id`
+  - Added metadata fields:
+    - `attachment_type`
+    - `status`
+    - `original_filename`
+    - `stored_filename`
+    - `content_type`
+    - `size_bytes`
+    - `checksum_sha256`
+    - `note`
+    - `created_at`
+  - Added safe SQLite indexes for:
+    - `invoice_attachments.invoice_id`
+    - `invoice_attachments.expense_id`
+    - `invoice_attachments.todo_id`
+    - `invoice_attachments.bank_transaction_id`
+    - `invoice_attachments.attachment_type`
+    - `invoice_attachments.status`
+    - `invoice_attachments.created_at`
+    - unique `invoice_attachments.stored_filename`
+  - Existing invoice/expense/payment/todo/export rows were not rewritten.
+- Backend changes:
+  - Added local storage helper:
+    - `backend/app/modules/invoices/attachment_storage.py`
+  - Storage helper behavior:
+    - stores files under `backend/storage/invoice_attachments`
+    - uses generated filenames only
+    - preserves original filename only as metadata
+    - neutralizes path traversal in original filename
+    - computes SHA-256 checksum
+    - rejects empty uploads
+    - enforces default max size `10 MiB`
+  - Added attachment schemas for:
+    - attachment response
+    - link request
+    - archive response
+    - delete response
+  - Added admin-only attachment endpoints:
+    - `GET /api/admin/invoices/attachments`
+    - `POST /api/admin/invoices/attachments`
+    - `GET /api/admin/invoices/attachments/{attachment_id}`
+    - `DELETE /api/admin/invoices/attachments/{attachment_id}`
+    - `POST /api/admin/invoices/attachments/{attachment_id}/link`
+    - `POST /api/admin/invoices/attachments/{attachment_id}/archive`
+    - `GET /api/admin/invoices/attachments/{attachment_id}/download`
+  - Added inbox behavior:
+    - unlinked upload is stored with `status = uploaded`
+    - `unlinked_only=true` filter returns accounting inbox items
+    - later explicit linking updates `status = linked`
+  - Added link validation against existing:
+    - invoice
+    - expense
+    - todo
+    - bank transaction
+  - Added safe delete behavior:
+    - local file is removed from disk if present
+    - attachment DB row is deleted
+  - Dedicated attachment endpoints were kept separate on purpose.
+    Existing invoice detail and expense detail responses were not extended in this task to avoid response-contract risk.
+- Frontend changes: None
+- CI/CD workflow check result:
+  - `.github/workflows/ci.yml` runs only on push to `develop` and `main`
+  - `.github/workflows/cd.yml` runs after successful CI for `develop` and `main`
+  - Result: there is no clearly safe branch push that triggers CI without also creating CD/deploy risk on the tracked deploy branches
+- Whether a feature branch push was safe:
+  - Not safe to achieve CI-only push from the current workflow setup
+  - No feature branch push was performed
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "priloh or attachment or inbox"`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -q -k "priloh or attachment or inbox"` -> `5 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `180 passed`
+  - `python -m pytest -q` -> `188 passed`
+  - All runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend invoice attachment inbox foundation`
+- Local commit hash if created: pending until local commit
+- Pushed branch if CI-only push was safely performed: none
+- Final status: implemented, backend-tested, ready for local commit only
+- Notes / risks:
+  - No OCR, no document parsing, and no automatic inbox processing was added.
+  - Attachment storage is intentionally local-disk only in this phase; no cloud/object storage abstraction was introduced.
+  - Existing invoice/expense detail responses were intentionally left unchanged; future FE should use the dedicated attachment endpoints.
+  - Current workflow setup prevents a safe CI-only push because CI and CD are coupled to deploy branches.
+  - Push did not happen.
+  - No deploy, no CD.

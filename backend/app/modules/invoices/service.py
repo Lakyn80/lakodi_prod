@@ -6,11 +6,21 @@ from calendar import monthrange
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
+from pathlib import Path
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
+from fastapi import UploadFile
+
+from backend.app.modules.invoices.attachment_storage import (
+    InvoiceAttachmentStorageError,
+    attachment_file_exists,
+    delete_invoice_attachment_file,
+    get_invoice_attachment_path,
+    store_invoice_attachment_file,
+)
 from backend.app.modules.invoices.document_types import (
     DEFAULT_DOCUMENT_KIND,
     get_document_kind_metadata,
@@ -37,6 +47,7 @@ from backend.app.modules.invoices.models import (
     InvoiceExpense,
     InvoiceExpenseItem,
     InvoiceExpensePayment,
+    InvoiceAttachment,
     InvoiceItem,
     InvoicePayment,
     InvoicePaymentMatch,
@@ -85,6 +96,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceRelationPaymentSummaryResponse,
     InvoiceRelationsSummaryResponse,
     InvoicePaymentCreate,
+    InvoiceAttachmentLinkRequest,
     InvoiceRecurringGenerationResponse,
     InvoiceRecurringTemplateCreate,
     InvoiceRecurringTemplateUpdate,
@@ -123,6 +135,16 @@ DEFAULT_RECURRING_EXPENSE_DUE_DAYS = 14
 DEFAULT_REMINDER_EMAIL_STATUS = "prepared"
 STORED_REMINDER_EMAIL_STATUSES = {"prepared", "sent", "failed"}
 STORED_REMINDER_TYPES = {"invoice_overdue", "invoice_payment_reminder", "manual"}
+DEFAULT_ATTACHMENT_STATUS = "uploaded"
+STORED_ATTACHMENT_STATUSES = {"uploaded", "linked", "archived"}
+STORED_ATTACHMENT_TYPES = {
+    "invoice_document",
+    "expense_document",
+    "todo_note",
+    "bank_transaction",
+    "payment_proof",
+    "other",
+}
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 SUPPORTED_RELATION_TYPES = {
@@ -180,6 +202,10 @@ class InvoiceTodoNotFoundError(LookupError):
     """Todo nebylo nalezeno."""
 
 
+class InvoiceAttachmentNotFoundError(LookupError):
+    """Příloha nebyla nalezena."""
+
+
 @dataclass(frozen=True)
 class ReverseChargeTexts:
     reason: str
@@ -220,6 +246,12 @@ class InvoiceReminderPreview:
 class InvoiceReminderSendResult:
     reminder_email: InvoiceReminderEmail
     delivery: InvoiceEmailDeliveryResult
+
+
+@dataclass(frozen=True)
+class InvoiceAttachmentDownload:
+    attachment: InvoiceAttachment
+    file_path: Path
 
 REVERSE_CHARGE_RULES: dict[str, ReverseChargeTexts] = {
     "reverse_charge": ReverseChargeTexts(
@@ -1926,6 +1958,139 @@ def list_invoice_reminder_emails(db: Session, invoice_id: int) -> list[InvoiceRe
     )
 
 
+def list_invoice_attachments(
+    db: Session,
+    *,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    todo_id: int | None = None,
+    bank_transaction_id: int | None = None,
+    attachment_type: str | None = None,
+    status: str | None = None,
+    unlinked_only: bool = False,
+) -> list[InvoiceAttachment]:
+    query = db.query(InvoiceAttachment)
+    normalized_attachment_type = _normalize_attachment_type(attachment_type, allow_none=True)
+    normalized_status = _normalize_attachment_status(status, allow_none=True)
+    if invoice_id is not None:
+        query = query.filter(InvoiceAttachment.invoice_id == invoice_id)
+    if expense_id is not None:
+        query = query.filter(InvoiceAttachment.expense_id == expense_id)
+    if todo_id is not None:
+        query = query.filter(InvoiceAttachment.todo_id == todo_id)
+    if bank_transaction_id is not None:
+        query = query.filter(InvoiceAttachment.bank_transaction_id == bank_transaction_id)
+    if normalized_attachment_type is not None:
+        query = query.filter(InvoiceAttachment.attachment_type == normalized_attachment_type)
+    if normalized_status is not None:
+        query = query.filter(InvoiceAttachment.status == normalized_status)
+    if unlinked_only:
+        query = query.filter(
+            InvoiceAttachment.invoice_id.is_(None),
+            InvoiceAttachment.expense_id.is_(None),
+            InvoiceAttachment.todo_id.is_(None),
+            InvoiceAttachment.bank_transaction_id.is_(None),
+        )
+    return query.order_by(InvoiceAttachment.created_at.desc(), InvoiceAttachment.id.desc()).all()
+
+
+def get_invoice_attachment_detail(db: Session, attachment_id: int) -> InvoiceAttachment:
+    return _get_invoice_attachment_or_raise(db, attachment_id)
+
+
+def upload_invoice_attachment(
+    db: Session,
+    *,
+    upload: UploadFile,
+    attachment_type: str | None = None,
+    note: str | None = None,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    todo_id: int | None = None,
+    bank_transaction_id: int | None = None,
+) -> InvoiceAttachment:
+    normalized_attachment_type = _normalize_attachment_type(attachment_type, allow_none=False)
+    normalized_note = _normalize_optional_text(note)
+    validated_links = _validate_attachment_links(
+        db,
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+        todo_id=todo_id,
+        bank_transaction_id=bank_transaction_id,
+    )
+    try:
+        stored = store_invoice_attachment_file(upload)
+    except InvoiceAttachmentStorageError as exc:
+        raise InvoiceValidationError(str(exc)) from exc
+    finally:
+        upload.file.close()
+
+    attachment = InvoiceAttachment(
+        invoice_id=validated_links.invoice_id,
+        expense_id=validated_links.expense_id,
+        todo_id=validated_links.todo_id,
+        bank_transaction_id=validated_links.bank_transaction_id,
+        attachment_type=normalized_attachment_type,
+        status=_resolve_attachment_status_from_links(validated_links),
+        original_filename=stored.original_filename,
+        stored_filename=stored.stored_filename,
+        content_type=stored.content_type,
+        size_bytes=stored.size_bytes,
+        checksum_sha256=stored.checksum_sha256,
+        note=normalized_note,
+    )
+    db.add(attachment)
+    db.commit()
+    return get_invoice_attachment_detail(db, attachment.id)
+
+
+def link_invoice_attachment(db: Session, attachment_id: int, payload: InvoiceAttachmentLinkRequest) -> InvoiceAttachment:
+    attachment = get_invoice_attachment_detail(db, attachment_id)
+    validated_links = _validate_attachment_links(
+        db,
+        invoice_id=payload.invoice_id if "invoice_id" in payload.model_fields_set else attachment.invoice_id,
+        expense_id=payload.expense_id if "expense_id" in payload.model_fields_set else attachment.expense_id,
+        todo_id=payload.todo_id if "todo_id" in payload.model_fields_set else attachment.todo_id,
+        bank_transaction_id=payload.bank_transaction_id
+        if "bank_transaction_id" in payload.model_fields_set
+        else attachment.bank_transaction_id,
+    )
+    attachment.invoice_id = validated_links.invoice_id
+    attachment.expense_id = validated_links.expense_id
+    attachment.todo_id = validated_links.todo_id
+    attachment.bank_transaction_id = validated_links.bank_transaction_id
+    attachment.status = _resolve_attachment_status_from_links(validated_links)
+    db.add(attachment)
+    db.commit()
+    return get_invoice_attachment_detail(db, attachment.id)
+
+
+def archive_invoice_attachment(db: Session, attachment_id: int) -> InvoiceAttachment:
+    attachment = get_invoice_attachment_detail(db, attachment_id)
+    attachment.status = _normalize_attachment_status("archived")
+    db.add(attachment)
+    db.commit()
+    return get_invoice_attachment_detail(db, attachment.id)
+
+
+def delete_invoice_attachment(db: Session, attachment_id: int) -> int:
+    attachment = get_invoice_attachment_detail(db, attachment_id)
+    delete_invoice_attachment_file(attachment.stored_filename)
+    db.delete(attachment)
+    db.commit()
+    return attachment_id
+
+
+def get_invoice_attachment_download(db: Session, attachment_id: int) -> InvoiceAttachmentDownload:
+    attachment = get_invoice_attachment_detail(db, attachment_id)
+    if not attachment_file_exists(attachment.stored_filename):
+        raise InvoiceValidationError("Soubor přílohy nebyl na disku nalezen.")
+    return InvoiceAttachmentDownload(
+        attachment=attachment,
+        file_path=get_invoice_attachment_path(attachment.stored_filename),
+    )
+
+
 @dataclass(frozen=True)
 class PreparedInvoiceItem:
     description: str
@@ -1991,6 +2156,14 @@ class SupplierSnapshot:
     dic: str | None
     data_box: str | None
     country: str | None
+
+
+@dataclass(frozen=True)
+class AttachmentLinks:
+    invoice_id: int | None
+    expense_id: int | None
+    todo_id: int | None
+    bank_transaction_id: int | None
 
 
 def _normalize_bank_transaction_status(value: str | None, *, allow_none: bool = False) -> str | None:
@@ -2136,6 +2309,35 @@ def _normalize_reminder_email_status(value: str | None, *, allow_none: bool = Fa
     if cleaned not in STORED_REMINDER_EMAIL_STATUSES:
         raise InvoiceValidationError("Neplatný stav reminder e-mailu.")
     return cleaned
+
+
+def _normalize_attachment_type(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else "other"
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else "other"
+    if cleaned not in STORED_ATTACHMENT_TYPES:
+        raise InvoiceValidationError("Neplatný typ přílohy.")
+    return cleaned
+
+
+def _normalize_attachment_status(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else DEFAULT_ATTACHMENT_STATUS
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else DEFAULT_ATTACHMENT_STATUS
+    if cleaned not in STORED_ATTACHMENT_STATUSES:
+        raise InvoiceValidationError("Neplatný stav přílohy.")
+    return cleaned
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
 
 
 def _resolve_invoice_reminder_todo(
@@ -2593,6 +2795,13 @@ def _get_invoice_bank_transaction_or_raise(db: Session, transaction_id: int) -> 
     return transaction
 
 
+def _get_invoice_attachment_or_raise(db: Session, attachment_id: int) -> InvoiceAttachment:
+    attachment = db.query(InvoiceAttachment).filter(InvoiceAttachment.id == attachment_id).first()
+    if attachment is None:
+        raise InvoiceAttachmentNotFoundError("Příloha nebyla nalezena.")
+    return attachment
+
+
 def _get_invoice_payment_match_or_raise(
     db: Session,
     transaction_id: int,
@@ -2664,6 +2873,55 @@ def _validate_todo_links(
         except InvoiceExpenseNotFoundError as exc:
             raise InvoiceValidationError("Navázaný výdaj nebyl nalezen.") from exc
     return invoice_id, expense_id
+
+
+def _validate_attachment_links(
+    db: Session,
+    *,
+    invoice_id: int | None,
+    expense_id: int | None,
+    todo_id: int | None,
+    bank_transaction_id: int | None,
+) -> AttachmentLinks:
+    if invoice_id is not None:
+        try:
+            _get_invoice_or_raise(db, invoice_id, include_items=False, include_payments=False, include_subject=False)
+        except InvoiceNotFoundError as exc:
+            raise InvoiceValidationError("Navázaná faktura nebyla nalezena.") from exc
+    if expense_id is not None:
+        try:
+            _get_invoice_expense_or_raise(db, expense_id, include_items=False, include_payments=False)
+        except InvoiceExpenseNotFoundError as exc:
+            raise InvoiceValidationError("Navázaný výdaj nebyl nalezen.") from exc
+    if todo_id is not None:
+        try:
+            get_invoice_todo_detail(db, todo_id)
+        except InvoiceTodoNotFoundError as exc:
+            raise InvoiceValidationError("Navázané todo nebylo nalezeno.") from exc
+    if bank_transaction_id is not None:
+        try:
+            _get_invoice_bank_transaction_or_raise(db, bank_transaction_id)
+        except InvoiceBankTransactionNotFoundError as exc:
+            raise InvoiceValidationError("Navázaná bankovní transakce nebyla nalezena.") from exc
+    return AttachmentLinks(
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+        todo_id=todo_id,
+        bank_transaction_id=bank_transaction_id,
+    )
+
+
+def _resolve_attachment_status_from_links(links: AttachmentLinks) -> str:
+    has_any_link = any(
+        value is not None
+        for value in (
+            links.invoice_id,
+            links.expense_id,
+            links.todo_id,
+            links.bank_transaction_id,
+        )
+    )
+    return _normalize_attachment_status("linked" if has_any_link else "uploaded")
 
 
 def _resolve_invoice_subject(db: Session, subject_id: int | None) -> InvoiceSubject | None:

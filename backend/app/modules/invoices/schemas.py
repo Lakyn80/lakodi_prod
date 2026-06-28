@@ -32,6 +32,15 @@ RecurringInterval = Literal["daily", "weekly", "monthly", "quarterly", "yearly"]
 RecurringGenerationStatus = Literal["generated", "failed"]
 InvoiceReminderType = Literal["invoice_overdue", "invoice_payment_reminder", "manual"]
 InvoiceReminderEmailStatus = Literal["prepared", "sent", "failed"]
+InvoiceAttachmentType = Literal[
+    "invoice_document",
+    "expense_document",
+    "todo_note",
+    "bank_transaction",
+    "payment_proof",
+    "other",
+]
+InvoiceAttachmentStatus = Literal["uploaded", "linked", "archived"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -403,6 +412,53 @@ class InvoiceReminderEmailLogResponse(BaseModel):
     sent_at: datetime | None
     error_message: str | None
     created_at: datetime
+
+
+class InvoiceAttachmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    invoice_id: int | None
+    expense_id: int | None
+    todo_id: int | None
+    bank_transaction_id: int | None
+    attachment_type: InvoiceAttachmentType
+    status: InvoiceAttachmentStatus
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    checksum_sha256: str | None
+    note: str | None
+    created_at: datetime
+
+
+class InvoiceAttachmentLinkRequest(BaseModel):
+    invoice_id: int | None = Field(default=None, ge=1)
+    expense_id: int | None = Field(default=None, ge=1)
+    todo_id: int | None = Field(default=None, ge=1)
+    bank_transaction_id: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_at_least_one_link(self) -> "InvoiceAttachmentLinkRequest":
+        if (
+            self.invoice_id is None
+            and self.expense_id is None
+            and self.todo_id is None
+            and self.bank_transaction_id is None
+        ):
+            raise ValueError("Vyplňte alespoň jeden cíl pro navázání přílohy.")
+        return self
+
+
+class InvoiceAttachmentArchiveResponse(BaseModel):
+    ok: Literal[True]
+    attachment_id: int
+    status: InvoiceAttachmentStatus
+
+
+class InvoiceAttachmentDeleteResponse(BaseModel):
+    ok: Literal[True]
+    attachment_id: int
 
 
 class InvoiceSubjectBase(BaseModel):

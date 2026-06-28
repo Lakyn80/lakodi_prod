@@ -1,7 +1,8 @@
 """API administrace pro faktury."""
 from datetime import date
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.app.db import get_db
@@ -31,6 +32,10 @@ from backend.app.modules.invoices.schemas import (
     AresCompanyLookupResponse,
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
+    InvoiceAttachmentArchiveResponse,
+    InvoiceAttachmentDeleteResponse,
+    InvoiceAttachmentLinkRequest,
+    InvoiceAttachmentResponse,
     InvoiceBankTransactionIgnoreResponse,
     InvoiceBankTransactionImportRequest,
     InvoiceBankTransactionImportResponse,
@@ -87,6 +92,7 @@ from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
     InvoicePaymentMatchNotFoundError,
     InvoicePaymentNotFoundError,
+    InvoiceAttachmentNotFoundError,
     InvoiceRecurringTemplateNotFoundError,
     InvoiceSupplierNotFoundError,
     InvoiceSubjectNotFoundError,
@@ -110,6 +116,7 @@ from backend.app.modules.invoices.service import (
     create_final_invoice_from_proformas,
     create_tax_document_from_proforma_payment,
     delete_invoice_expense,
+    delete_invoice_attachment as delete_invoice_attachment_record,
     delete_invoice_expense_payment,
     delete_invoice_recurring_template,
     delete_invoice_supplier,
@@ -121,6 +128,8 @@ from backend.app.modules.invoices.service import (
     generate_invoice_todos,
     get_document_creation_defaults,
     get_invoice_bank_transaction_detail,
+    get_invoice_attachment_detail,
+    get_invoice_attachment_download,
     get_invoice_expense_detail,
     generate_invoice_pdf,
     get_invoice_detail,
@@ -133,6 +142,7 @@ from backend.app.modules.invoices.service import (
     ignore_invoice_bank_transaction,
     import_invoice_bank_transactions,
     list_invoice_bank_transactions,
+    list_invoice_attachments,
     list_invoice_document_relations,
     list_invoice_expense_payments,
     list_invoice_expenses,
@@ -149,8 +159,11 @@ from backend.app.modules.invoices.service import (
     save_invoice_settings,
     send_invoice_email,
     send_invoice_reminder_email,
+    archive_invoice_attachment,
     reject_invoice_payment_match,
     list_invoice_payment_matches,
+    link_invoice_attachment,
+    upload_invoice_attachment,
     update_invoice_expense,
     update_invoice_recurring_template,
     update_invoice_supplier,
@@ -448,6 +461,132 @@ def admin_delete_invoice_todo(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/attachments", response_model=list[InvoiceAttachmentResponse])
+def admin_list_invoice_attachments(
+    invoice_id: int | None = Query(default=None),
+    expense_id: int | None = Query(default=None),
+    todo_id: int | None = Query(default=None),
+    bank_transaction_id: int | None = Query(default=None),
+    attachment_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    unlinked_only: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_attachments(
+            db,
+            invoice_id=invoice_id,
+            expense_id=expense_id,
+            todo_id=todo_id,
+            bank_transaction_id=bank_transaction_id,
+            attachment_type=attachment_type,
+            status=status,
+            unlinked_only=unlinked_only,
+        )
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/attachments", response_model=InvoiceAttachmentResponse)
+def admin_upload_invoice_attachment(
+    file: UploadFile = File(...),
+    attachment_type: str = Form(default="other"),
+    note: str | None = Form(default=None),
+    invoice_id: int | None = Form(default=None),
+    expense_id: int | None = Form(default=None),
+    todo_id: int | None = Form(default=None),
+    bank_transaction_id: int | None = Form(default=None),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return upload_invoice_attachment(
+            db,
+            upload=file,
+            attachment_type=attachment_type,
+            note=note,
+            invoice_id=invoice_id,
+            expense_id=expense_id,
+            todo_id=todo_id,
+            bank_transaction_id=bank_transaction_id,
+        )
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/attachments/{attachment_id}", response_model=InvoiceAttachmentResponse)
+def admin_get_invoice_attachment(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return get_invoice_attachment_detail(db, attachment_id)
+    except InvoiceAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/attachments/{attachment_id}/link", response_model=InvoiceAttachmentResponse)
+def admin_link_invoice_attachment(
+    attachment_id: int,
+    body: InvoiceAttachmentLinkRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return link_invoice_attachment(db, attachment_id, body)
+    except InvoiceAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/attachments/{attachment_id}/archive", response_model=InvoiceAttachmentArchiveResponse)
+def admin_archive_invoice_attachment(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        attachment = archive_invoice_attachment(db, attachment_id)
+        return {"ok": True, "attachment_id": attachment.id, "status": attachment.status}
+    except InvoiceAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/attachments/{attachment_id}", response_model=InvoiceAttachmentDeleteResponse)
+def admin_delete_invoice_attachment(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        deleted_attachment_id = delete_invoice_attachment_record(db, attachment_id)
+        return {"ok": True, "attachment_id": deleted_attachment_id}
+    except InvoiceAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/attachments/{attachment_id}/download")
+def admin_download_invoice_attachment(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        download = get_invoice_attachment_download(db, attachment_id)
+        return FileResponse(
+            path=str(download.file_path),
+            media_type=download.attachment.content_type,
+            filename=download.attachment.original_filename,
+        )
+    except InvoiceAttachmentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/subjects", response_model=list[InvoiceSubjectResponse])

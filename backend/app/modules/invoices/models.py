@@ -424,3 +424,27 @@ class InvoiceReminderEmail(Base):
     sent_at = Column(DateTime(timezone=True), nullable=True, index=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class InvoiceAttachment(Base):
+    __tablename__ = "invoice_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="SET NULL"), nullable=True, index=True)
+    todo_id = Column(Integer, ForeignKey("invoice_todos.id", ondelete="SET NULL"), nullable=True, index=True)
+    bank_transaction_id = Column(
+        Integer,
+        ForeignKey("invoice_bank_transactions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    attachment_type = Column(String(64), nullable=False, default="other", index=True)
+    status = Column(String(32), nullable=False, default="uploaded", index=True)
+    original_filename = Column(String(512), nullable=False)
+    stored_filename = Column(String(512), nullable=False, unique=True, index=True)
+    content_type = Column(String(256), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    checksum_sha256 = Column(String(64), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)

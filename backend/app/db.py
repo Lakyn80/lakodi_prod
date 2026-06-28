@@ -666,6 +666,53 @@ def _ensure_invoice_reminder_emails_table():
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_reminder_emails_sent_at ON invoice_reminder_emails (sent_at)"))
 
 
+def _ensure_invoice_attachments_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_attachments'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_attachments)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "invoice_id": "ALTER TABLE invoice_attachments ADD COLUMN invoice_id INTEGER",
+            "expense_id": "ALTER TABLE invoice_attachments ADD COLUMN expense_id INTEGER",
+            "todo_id": "ALTER TABLE invoice_attachments ADD COLUMN todo_id INTEGER",
+            "bank_transaction_id": "ALTER TABLE invoice_attachments ADD COLUMN bank_transaction_id INTEGER",
+            "attachment_type": "ALTER TABLE invoice_attachments ADD COLUMN attachment_type VARCHAR(64) NOT NULL DEFAULT 'other'",
+            "status": "ALTER TABLE invoice_attachments ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'uploaded'",
+            "original_filename": "ALTER TABLE invoice_attachments ADD COLUMN original_filename VARCHAR(512)",
+            "stored_filename": "ALTER TABLE invoice_attachments ADD COLUMN stored_filename VARCHAR(512)",
+            "content_type": "ALTER TABLE invoice_attachments ADD COLUMN content_type VARCHAR(256)",
+            "size_bytes": "ALTER TABLE invoice_attachments ADD COLUMN size_bytes INTEGER NOT NULL DEFAULT 0",
+            "checksum_sha256": "ALTER TABLE invoice_attachments ADD COLUMN checksum_sha256 VARCHAR(64)",
+            "note": "ALTER TABLE invoice_attachments ADD COLUMN note TEXT",
+            "created_at": "ALTER TABLE invoice_attachments ADD COLUMN created_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(text("UPDATE invoice_attachments SET attachment_type = 'other' WHERE attachment_type IS NULL"))
+        conn.execute(text("UPDATE invoice_attachments SET status = 'uploaded' WHERE status IS NULL"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_attachments_invoice_id ON invoice_attachments (invoice_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_attachments_expense_id ON invoice_attachments (expense_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_attachments_todo_id ON invoice_attachments (todo_id)"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoice_attachments_bank_transaction_id "
+                "ON invoice_attachments (bank_transaction_id)"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_attachments_attachment_type ON invoice_attachments (attachment_type)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_attachments_status ON invoice_attachments (status)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_attachments_created_at ON invoice_attachments (created_at)"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_attachments_stored_filename ON invoice_attachments (stored_filename)"))
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -691,6 +738,7 @@ def init_db():
     _ensure_invoice_document_relations_table()
     _ensure_invoice_todos_table()
     _ensure_invoice_reminder_emails_table()
+    _ensure_invoice_attachments_table()
 
 
 def get_db():
