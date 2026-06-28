@@ -448,3 +448,51 @@ class InvoiceAttachment(Base):
     checksum_sha256 = Column(String(64), nullable=True)
     note = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+
+
+class InvoiceAccountingEvent(Base):
+    __tablename__ = "invoice_accounting_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_type = Column(String(64), nullable=False, index=True)
+    entity_type = Column(String(64), nullable=False, index=True)
+    entity_id = Column(Integer, nullable=False, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    expense_id = Column(Integer, ForeignKey("invoice_expenses.id", ondelete="SET NULL"), nullable=True, index=True)
+    subject_id = Column(Integer, ForeignKey("invoice_subjects.id", ondelete="SET NULL"), nullable=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("invoice_suppliers.id", ondelete="SET NULL"), nullable=True, index=True)
+    bank_transaction_id = Column(
+        Integer,
+        ForeignKey("invoice_bank_transactions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    payment_match_id = Column(
+        Integer,
+        ForeignKey("invoice_payment_matches.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    todo_id = Column(Integer, ForeignKey("invoice_todos.id", ondelete="SET NULL"), nullable=True, index=True)
+    attachment_id = Column(Integer, ForeignKey("invoice_attachments.id", ondelete="SET NULL"), nullable=True, index=True)
+    recurring_template_id = Column(
+        Integer,
+        ForeignKey("invoice_recurring_templates.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    reminder_email_id = Column(
+        Integer,
+        ForeignKey("invoice_reminder_emails.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    actor_type = Column(String(64), nullable=True)
+    actor_id = Column(Integer, nullable=True)
+    actor_email = Column(String(256), nullable=True)
+    source = Column(String(64), nullable=False, index=True)
+    message = Column(Text, nullable=True)
+    old_values = Column(Text, nullable=True)
+    new_values = Column(Text, nullable=True)
+    event_metadata = Column("metadata", Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)

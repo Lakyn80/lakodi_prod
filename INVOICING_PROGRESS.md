@@ -1267,5 +1267,155 @@
   - Attachment storage is intentionally local-disk only in this phase; no cloud/object storage abstraction was introduced.
   - Existing invoice/expense detail responses were intentionally left unchanged; future FE should use the dedicated attachment endpoints.
   - Current workflow setup prevents a safe CI-only push because CI and CD are coupled to deploy branches.
+- Push did not happen.
+- No deploy, no CD.
+
+## Úkol 19 Backend audit log / accounting events foundation
+
+- Date: 2026-06-28
+- Goal: Add a backend-only append-only audit log foundation for accounting/invoicing operations, plus admin read APIs and representative event emission across the existing invoicing/accounting domain.
+- Scope: Backend-only invoicing models, SQLite compatibility helper, audit service helpers, admin audit endpoints, backend tests, and invoicing tracking.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/app/db.py`
+  - `backend/app/modules/invoices/models.py`
+  - `backend/app/modules/invoices/router.py`
+  - `backend/app/modules/invoices/schemas.py`
+  - `backend/app/modules/invoices/service.py`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes:
+  - Added append-only audit event table/model:
+    - `InvoiceAccountingEvent`
+    - `invoice_accounting_events`
+  - Added audit fields:
+    - `event_type`
+    - `entity_type`
+    - `entity_id`
+    - `invoice_id`
+    - `expense_id`
+    - `subject_id`
+    - `supplier_id`
+    - `bank_transaction_id`
+    - `payment_match_id`
+    - `todo_id`
+    - `attachment_id`
+    - `recurring_template_id`
+    - `reminder_email_id`
+    - `actor_type`
+    - `actor_id`
+    - `actor_email`
+    - `source`
+    - `message`
+    - `old_values`
+    - `new_values`
+    - DB column `metadata` mapped safely in ORM as `event_metadata`
+    - `created_at`
+  - Added safe SQLite backfill helper for the audit table and safe indexes for:
+    - `event_type`
+    - `entity_type`
+    - `entity_id`
+    - `invoice_id`
+    - `expense_id`
+    - `subject_id`
+    - `supplier_id`
+    - `bank_transaction_id`
+    - `payment_match_id`
+    - `todo_id`
+    - `attachment_id`
+    - `recurring_template_id`
+    - `reminder_email_id`
+    - `source`
+    - `created_at`
+- Backend changes:
+  - Added centralized audit helpers in `backend/app/modules/invoices/service.py`:
+    - `create_accounting_event`
+    - `list_accounting_events`
+    - `get_invoice_audit_events`
+    - `get_expense_audit_events`
+    - `build_accounting_event_response`
+  - Added compact/safe payload serialization and response deserialization for `old_values`, `new_values`, and `metadata`.
+  - Added admin-only read endpoints:
+    - `GET /api/admin/invoices/audit-events`
+    - `GET /api/admin/invoices/{invoice_id}/audit-events`
+    - `GET /api/admin/invoices/expenses/{expense_id}/audit-events`
+  - Added audit list filters for:
+    - `event_type`
+    - `entity_type`
+    - `entity_id`
+    - `invoice_id`
+    - `expense_id`
+    - `subject_id`
+    - `supplier_id`
+    - `bank_transaction_id`
+    - `payment_match_id`
+    - `todo_id`
+    - `attachment_id`
+    - `recurring_template_id`
+    - `reminder_email_id`
+    - `source`
+    - `date_from`
+    - `date_to`
+    - `limit`
+    - `offset`
+  - Added representative audit emission for:
+    - invoice create/update/status change
+    - quote conversion
+    - tax document generation
+    - final invoice generation
+    - correction generation
+    - invoice payment add/delete
+    - subject create/update/delete
+    - supplier create/update/delete
+    - expense create/update/delete
+    - expense payment add/delete
+    - manual todo create/update/complete/cancel/delete
+    - generated todos
+    - bank transaction import/ignore
+    - payment match suggestion/apply/reject
+    - recurring template create/update/status change/delete
+    - recurring generation log events
+    - reminder email prepared/sent/failed
+    - attachment upload/link/archive/delete
+  - Kept actor identity nullable because current admin auth flow does not yet expose a normalized actor payload into these service operations.
+  - Kept payloads compact and safe:
+    - no binary file content
+    - no absolute storage paths
+    - no raw SMTP/environment secrets
+    - no large raw bank payload snapshots
+- Frontend changes: None
+- CI/CD workflow check result:
+  - `.github/workflows/ci.yml` runs only on push to `develop` and `main`
+  - `.github/workflows/cd.yml` runs after successful CI for `develop` and `main`
+  - Result: there is still no clearly safe branch push path that guarantees CI without CD/deploy risk
+- Whether a feature branch push was safe:
+  - Not clearly safe
+  - No push was performed
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py -k "audit_endpoint_vyzaduje_admin_auth_a_filtry_razeni_funguji or audit_eventy_se_emituji_napric_domenami_a_payload_je_bezpecny" -q -x`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+  - `python -m pytest --collect-only backend/tests/test_invoices.py -q`
+  - `python -m pytest --collect-only -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py -k "audit_endpoint_vyzaduje_admin_auth_a_filtry_razeni_funguji or audit_eventy_se_emituji_napric_domenami_a_payload_je_bezpecny" -q -x` -> `2 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> timed out in this environment after about `304s`
+  - `python -m pytest -q` -> timed out in this environment after about `305s`
+  - `python -m pytest --collect-only backend/tests/test_invoices.py -q` -> `backend/tests/test_invoices.py: 182`
+  - `python -m pytest --collect-only -q` -> collected:
+    - `backend/tests/test_admin_recovery.py: 3`
+    - `backend/tests/test_convertor.py: 1`
+    - `backend/tests/test_health.py: 1`
+    - `backend/tests/test_invoices.py: 182`
+    - `backend/tests/test_zakazky.py: 3`
+  - All successful pytest runs emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Commit message: `Add backend accounting audit events foundation`
+- Local commit hash if created: pending until local commit
+- Pushed branch if CI-only push was safely performed: none
+- Final status: implemented, targeted backend-tested, ready for local commit only
+- Notes / risks:
+  - Full `backend/tests/test_invoices.py -q` and full `pytest -q` did not finish within the current execution timeout window, so only targeted audit coverage and collect-only verification completed successfully here.
+  - Actor/admin identity is intentionally nullable until auth/session code exposes a stable actor object into these service operations.
+  - `document_relation` audit is stored as compact source/target metadata rather than as a separate dedicated relation audit model.
+  - Audit coverage is practical but not perfectly exhaustive for every historical edge case in the growing invoicing module.
   - Push did not happen.
   - No deploy, no CD.

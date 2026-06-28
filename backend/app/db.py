@@ -713,6 +713,87 @@ def _ensure_invoice_attachments_table():
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_invoice_attachments_stored_filename ON invoice_attachments (stored_filename)"))
 
 
+def _ensure_invoice_accounting_events_table():
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_accounting_events'")
+        ).fetchone()
+        if not exists:
+            return
+        rows = conn.execute(text("PRAGMA table_info(invoice_accounting_events)")).fetchall()
+        columns = {row[1] for row in rows}
+        add_map = {
+            "event_type": "ALTER TABLE invoice_accounting_events ADD COLUMN event_type VARCHAR(64)",
+            "entity_type": "ALTER TABLE invoice_accounting_events ADD COLUMN entity_type VARCHAR(64)",
+            "entity_id": "ALTER TABLE invoice_accounting_events ADD COLUMN entity_id INTEGER NOT NULL DEFAULT 0",
+            "invoice_id": "ALTER TABLE invoice_accounting_events ADD COLUMN invoice_id INTEGER",
+            "expense_id": "ALTER TABLE invoice_accounting_events ADD COLUMN expense_id INTEGER",
+            "subject_id": "ALTER TABLE invoice_accounting_events ADD COLUMN subject_id INTEGER",
+            "supplier_id": "ALTER TABLE invoice_accounting_events ADD COLUMN supplier_id INTEGER",
+            "bank_transaction_id": "ALTER TABLE invoice_accounting_events ADD COLUMN bank_transaction_id INTEGER",
+            "payment_match_id": "ALTER TABLE invoice_accounting_events ADD COLUMN payment_match_id INTEGER",
+            "todo_id": "ALTER TABLE invoice_accounting_events ADD COLUMN todo_id INTEGER",
+            "attachment_id": "ALTER TABLE invoice_accounting_events ADD COLUMN attachment_id INTEGER",
+            "recurring_template_id": "ALTER TABLE invoice_accounting_events ADD COLUMN recurring_template_id INTEGER",
+            "reminder_email_id": "ALTER TABLE invoice_accounting_events ADD COLUMN reminder_email_id INTEGER",
+            "actor_type": "ALTER TABLE invoice_accounting_events ADD COLUMN actor_type VARCHAR(64)",
+            "actor_id": "ALTER TABLE invoice_accounting_events ADD COLUMN actor_id INTEGER",
+            "actor_email": "ALTER TABLE invoice_accounting_events ADD COLUMN actor_email VARCHAR(256)",
+            "source": "ALTER TABLE invoice_accounting_events ADD COLUMN source VARCHAR(64) NOT NULL DEFAULT 'system'",
+            "message": "ALTER TABLE invoice_accounting_events ADD COLUMN message TEXT",
+            "old_values": "ALTER TABLE invoice_accounting_events ADD COLUMN old_values TEXT",
+            "new_values": "ALTER TABLE invoice_accounting_events ADD COLUMN new_values TEXT",
+            "metadata": "ALTER TABLE invoice_accounting_events ADD COLUMN metadata TEXT",
+            "created_at": "ALTER TABLE invoice_accounting_events ADD COLUMN created_at DATETIME",
+        }
+        for col, sql in add_map.items():
+            if col not in columns:
+                conn.execute(text(sql))
+
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_event_type ON invoice_accounting_events (event_type)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_entity_type ON invoice_accounting_events (entity_type)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_entity_id ON invoice_accounting_events (entity_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_invoice_id ON invoice_accounting_events (invoice_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_expense_id ON invoice_accounting_events (expense_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_subject_id ON invoice_accounting_events (subject_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_supplier_id ON invoice_accounting_events (supplier_id)"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_bank_transaction_id "
+                "ON invoice_accounting_events (bank_transaction_id)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_payment_match_id "
+                "ON invoice_accounting_events (payment_match_id)"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_todo_id ON invoice_accounting_events (todo_id)"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_attachment_id "
+                "ON invoice_accounting_events (attachment_id)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_recurring_template_id "
+                "ON invoice_accounting_events (recurring_template_id)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_reminder_email_id "
+                "ON invoice_accounting_events (reminder_email_id)"
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_source ON invoice_accounting_events (source)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_invoice_accounting_events_created_at ON invoice_accounting_events (created_at)"))
+
+
 def init_db():
     """Create tables. Call on startup."""
     from backend.app.modules.zakazky import models  # noqa: F401
@@ -739,6 +820,7 @@ def init_db():
     _ensure_invoice_todos_table()
     _ensure_invoice_reminder_emails_table()
     _ensure_invoice_attachments_table()
+    _ensure_invoice_accounting_events_table()
 
 
 def get_db():

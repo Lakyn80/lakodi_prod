@@ -41,6 +41,7 @@ InvoiceAttachmentType = Literal[
     "other",
 ]
 InvoiceAttachmentStatus = Literal["uploaded", "linked", "archived"]
+AccountingEventSource = Literal["admin_api", "system", "import", "generation", "email", "bank_matching"]
 
 
 class InvoiceItemCreate(BaseModel):
@@ -459,6 +460,32 @@ class InvoiceAttachmentArchiveResponse(BaseModel):
 class InvoiceAttachmentDeleteResponse(BaseModel):
     ok: Literal[True]
     attachment_id: int
+
+
+class InvoiceAccountingEventResponse(BaseModel):
+    id: int
+    event_type: str
+    entity_type: str
+    entity_id: int
+    invoice_id: int | None
+    expense_id: int | None
+    subject_id: int | None
+    supplier_id: int | None
+    bank_transaction_id: int | None
+    payment_match_id: int | None
+    todo_id: int | None
+    attachment_id: int | None
+    recurring_template_id: int | None
+    reminder_email_id: int | None
+    actor_type: str | None
+    actor_id: int | None
+    actor_email: str | None
+    source: AccountingEventSource
+    message: str | None
+    old_values: dict[str, Any] | list[Any] | str | None
+    new_values: dict[str, Any] | list[Any] | str | None
+    metadata: dict[str, Any] | list[Any] | str | None
+    created_at: datetime
 
 
 class InvoiceSubjectBase(BaseModel):

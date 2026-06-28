@@ -35,6 +35,7 @@ from backend.app.modules.invoices.models import (
     InvoiceReminderEmail,
     InvoiceRecurringGeneration,
     InvoiceRecurringTemplate,
+    InvoiceAccountingEvent,
     InvoiceSequenceState,
     InvoiceTodo,
 )
@@ -331,6 +332,554 @@ def _vytvor_recurring_sablonu(payload: dict | None = None) -> dict:
     response = client.post("/api/admin/invoices/recurring-templates", json=template_payload)
     assert response.status_code == 200
     return response.json()
+
+
+def _list_audit_events(filters: str = "") -> list[dict]:
+    _login_admin()
+    suffix = f"?{filters}" if filters else ""
+    response = client.get(f"/api/admin/invoices/audit-events{suffix}")
+    assert response.status_code == 200
+    return response.json()
+
+
+def _find_audit_event(
+    events: list[dict],
+    *,
+    event_type: str,
+    entity_type: str,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    subject_id: int | None = None,
+    supplier_id: int | None = None,
+    bank_transaction_id: int | None = None,
+    payment_match_id: int | None = None,
+    todo_id: int | None = None,
+    attachment_id: int | None = None,
+    recurring_template_id: int | None = None,
+    reminder_email_id: int | None = None,
+    source: str | None = None,
+) -> dict:
+    for event in events:
+        if event["event_type"] != event_type or event["entity_type"] != entity_type:
+            continue
+        if invoice_id is not None and event["invoice_id"] != invoice_id:
+            continue
+        if expense_id is not None and event["expense_id"] != expense_id:
+            continue
+        if subject_id is not None and event["subject_id"] != subject_id:
+            continue
+        if supplier_id is not None and event["supplier_id"] != supplier_id:
+            continue
+        if bank_transaction_id is not None and event["bank_transaction_id"] != bank_transaction_id:
+            continue
+        if payment_match_id is not None and event["payment_match_id"] != payment_match_id:
+            continue
+        if todo_id is not None and event["todo_id"] != todo_id:
+            continue
+        if attachment_id is not None and event["attachment_id"] != attachment_id:
+            continue
+        if recurring_template_id is not None and event["recurring_template_id"] != recurring_template_id:
+            continue
+        if reminder_email_id is not None and event["reminder_email_id"] != reminder_email_id:
+            continue
+        if source is not None and event["source"] != source:
+            continue
+        return event
+    raise AssertionError(f"Audit event {event_type}/{entity_type} nebyl nalezen.")
+
+
+def test_audit_endpoint_vyzaduje_admin_auth_a_filtry_razeni_funguji() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "audit-filter@example.com"})
+    expense = _vytvor_vydaj({"supplier_email": "audit-expense@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "audit-filter-bank-tx",
+                "transaction_date": "2026-06-01",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "message": "Audit filter payment",
+                "direction": "incoming",
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+    matches = _vygeneruj_matche_bankovni_transakce(transaction_id)
+    anonymous_client = TestClient(app)
+
+    global_unauthorized = anonymous_client.get("/api/admin/invoices/audit-events")
+    invoice_unauthorized = anonymous_client.get(f"/api/admin/invoices/{invoice['id']}/audit-events")
+    expense_unauthorized = anonymous_client.get(f"/api/admin/invoices/expenses/{expense['id']}/audit-events")
+
+    assert global_unauthorized.status_code == 401
+    assert global_unauthorized.json() == {"detail": "Přihlaste se do adminu"}
+    assert invoice_unauthorized.status_code == 401
+    assert invoice_unauthorized.json() == {"detail": "Přihlaste se do adminu"}
+    assert expense_unauthorized.status_code == 401
+    assert expense_unauthorized.json() == {"detail": "Přihlaste se do adminu"}
+
+    all_events = _list_audit_events()
+    event_ids = [event["id"] for event in all_events]
+    assert event_ids == sorted(event_ids, reverse=True)
+
+    invoice_created = _list_audit_events(f"event_type=created&entity_type=invoice&invoice_id={invoice['id']}")
+    assert len(invoice_created) == 1
+    assert invoice_created[0]["entity_id"] == invoice["id"]
+
+    expense_created = _list_audit_events(f"entity_type=expense&expense_id={expense['id']}")
+    assert len(expense_created) == 1
+    assert expense_created[0]["event_type"] == "created"
+
+    import_events = _list_audit_events(f"source=import&bank_transaction_id={transaction_id}")
+    assert len(import_events) == 1
+    assert import_events[0]["entity_type"] == "bank_transaction"
+
+    payment_match_events = _list_audit_events(f"payment_match_id={matches[0]['id']}")
+    assert len(payment_match_events) == 1
+    assert payment_match_events[0]["event_type"] == "matched"
+    assert payment_match_events[0]["entity_type"] == "payment_match"
+
+    today = date.today().isoformat()
+    today_events = _list_audit_events(f"date_from={today}&date_to={today}")
+    assert len(today_events) == len(all_events)
+    assert _list_audit_events("date_from=1999-01-01&date_to=1999-01-01") == []
+
+    _login_admin()
+    invoice_response = client.get(f"/api/admin/invoices/{invoice['id']}/audit-events")
+    expense_response = client.get(f"/api/admin/invoices/expenses/{expense['id']}/audit-events")
+
+    assert invoice_response.status_code == 200
+    assert all(event["invoice_id"] == invoice["id"] for event in invoice_response.json())
+    assert expense_response.status_code == 200
+    assert all(event["expense_id"] == expense["id"] for event in expense_response.json())
+
+
+def test_audit_eventy_se_emituji_napric_domenami_a_payload_je_bezpecny(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    _nastav_storage_priloh(monkeypatch, tmp_path)
+
+    subject = _vytvor_subjekt({"email": "audit-subject@example.com"})
+    supplier = _vytvor_dodavatele({"email": "audit-supplier@example.com"})
+
+    _login_admin()
+    subject_update = client.put(
+        f"/api/admin/invoices/subjects/{subject['id']}",
+        json={
+            "name": "Audit Subject Updated",
+            "email": "audit-subject-updated@example.com",
+            "phone": "+420111222333",
+            "address": "Praha audit 1",
+            "ico": "12345679",
+            "dic": "CZ12345679",
+            "data_box": "audit123",
+            "country": "Česká republika",
+            "note": "Updated subject note",
+        },
+    )
+    supplier_update = client.put(
+        f"/api/admin/invoices/suppliers/{supplier['id']}",
+        json={
+            "name": "Audit Supplier Updated",
+            "email": "audit-supplier-updated@example.com",
+            "phone": "+420999888777",
+            "address": "Brno audit 2",
+            "ico": "87654320",
+            "dic": "CZ87654320",
+            "data_box": "audit456",
+            "country": "Česká republika",
+            "note": "Updated supplier note",
+        },
+    )
+    assert subject_update.status_code == 200
+    assert supplier_update.status_code == 200
+
+    invoice = _vytvor_fakturu({"subject_id": subject["id"], "customer_email": "audit-invoice@example.com"})
+    _login_admin()
+    invoice_update = client.put(
+        f"/api/admin/invoices/{invoice['id']}",
+        json={
+            "invoice_number": invoice["invoice_number"],
+            "issue_date": "2099-04-04",
+            "due_date": "2099-04-19",
+            "subject_id": subject["id"],
+            "customer_name": "Audit customer",
+            "customer_email": "audit-invoice@example.com",
+            "customer_phone": "+420123456789",
+            "customer_address": "Praha 10",
+            "customer_ico": "12345678",
+            "customer_dic": "CZ12345678",
+            "note": "Audit invoice updated",
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "status": "issued",
+            "items": [
+                {"description": "Diagnostika", "quantity": 1, "unit_price": 1200},
+                {"description": "Oprava převodovky", "quantity": 2, "unit_price": 3500},
+            ],
+        },
+    )
+    assert invoice_update.status_code == 200
+    paid_invoice = _pridej_platbu(invoice["id"], {"amount": 1000})
+    payment_id = paid_invoice["payments"][0]["id"]
+    _login_admin()
+    delete_payment_response = client.delete(f"/api/admin/invoices/{invoice['id']}/payments/{payment_id}")
+    assert delete_payment_response.status_code == 200
+
+    quote = _vytvor_fakturu(
+        {
+            "document_kind": "quote",
+            "status": "draft",
+            "subject_id": subject["id"],
+            "customer_email": "audit-quote@example.com",
+        }
+    )
+    converted_invoice = _preved_quote(quote["id"], {"target_document_kind": "invoice", "issue_date": "2099-04-20"})
+
+    proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "status": "issued",
+            "subject_id": subject["id"],
+            "customer_email": "audit-proforma@example.com",
+        }
+    )
+    proforma_with_payment = _pridej_platbu(proforma["id"], {"amount": 2500})
+    proforma_payment_id = proforma_with_payment["payments"][0]["id"]
+    tax_document = _vytvor_danovy_doklad_z_platby(proforma["id"], proforma_payment_id)
+
+    second_proforma = _vytvor_fakturu(
+        {
+            "document_kind": "proforma",
+            "status": "issued",
+            "subject_id": subject["id"],
+            "customer_email": "audit-final@example.com",
+        }
+    )
+    final_invoice = _vytvor_konecnou_fakturu([second_proforma["id"]], {"issue_date": "2099-04-21"})
+    correction = _vytvor_opravny_doklad(invoice["id"], {"issue_date": "2099-04-22", "reason": "Audit correction"})
+
+    expense = _vytvor_vydaj({"supplier_id": supplier["id"], "supplier_email": "audit-expense@example.com"})
+    _login_admin()
+    expense_update = client.put(
+        f"/api/admin/invoices/expenses/{expense['id']}",
+        json={
+            "expense_number": expense["expense_number"],
+            "supplier_id": supplier["id"],
+            "supplier_name": "Audit Supplier Updated",
+            "supplier_email": "audit-supplier-updated@example.com",
+            "supplier_phone": "+420999888777",
+            "supplier_address": "Brno audit 2",
+            "supplier_ico": "87654320",
+            "supplier_dic": "CZ87654320",
+            "supplier_data_box": "audit456",
+            "supplier_country": "Česká republika",
+            "issue_date": "2099-05-01",
+            "received_date": "2099-05-02",
+            "due_date": "2099-05-16",
+            "taxable_supply_date": "2099-05-01",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "note": "Audit expense updated",
+            "status": "open",
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_account_prefix": "19",
+            "bank_code": "0800",
+            "bank_iban": "CZ6508000000001234567899",
+            "items": [
+                {"description": "Materiál", "quantity": 2, "unit_price": 1500},
+                {"description": "Doprava", "quantity": 1, "unit_price": 500},
+            ],
+        },
+    )
+    assert expense_update.status_code == 200
+    expense_with_payment = _pridej_platbu_vydaje(expense["id"], {"amount": 1000})
+    expense_payment_id = expense_with_payment["payments"][0]["id"]
+    _login_admin()
+    delete_expense_payment_response = client.delete(
+        f"/api/admin/invoices/expenses/{expense['id']}/payments/{expense_payment_id}"
+    )
+    assert delete_expense_payment_response.status_code == 200
+
+    manual_todo = _vytvor_todo({"invoice_id": invoice["id"], "title": "Manual audit todo"})
+    cancel_todo = _vytvor_todo({"expense_id": expense["id"], "title": "Cancel audit todo"})
+    _login_admin()
+    complete_todo_response = client.post(f"/api/admin/invoices/todos/{manual_todo['id']}/complete")
+    cancel_todo_response = client.post(f"/api/admin/invoices/todos/{cancel_todo['id']}/cancel")
+    assert complete_todo_response.status_code == 200
+    assert cancel_todo_response.status_code == 200
+
+    overdue_invoice = _vytvor_fakturu(
+        {
+            "customer_email": "audit-overdue@example.com",
+            "issue_date": "2000-01-01",
+            "due_date": "2000-01-05",
+        }
+    )
+    generated_todos = _vygeneruj_toda()
+    assert generated_todos["generated_ids"]
+
+    apply_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "audit-apply-bank-tx",
+                "transaction_date": "2026-06-05",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "message": "Audit apply payment",
+                "direction": "incoming",
+            }
+        ]
+    )
+    apply_transaction_id = apply_import["imported_transaction_ids"][0]
+    apply_matches = _vygeneruj_matche_bankovni_transakce(apply_transaction_id)
+    applied_match = _aplikuj_match_bankovni_transakce(apply_transaction_id, apply_matches[0]["id"])
+    assert applied_match["status"] == "applied"
+
+    reject_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "audit-reject-bank-tx",
+                "transaction_date": "2026-06-06",
+                "amount": expense["total"],
+                "currency": "CZK",
+                "variable_symbol": expense["variable_symbol"],
+                "message": "Audit reject payment",
+                "direction": "outgoing",
+            }
+        ]
+    )
+    reject_transaction_id = reject_import["imported_transaction_ids"][0]
+    reject_matches = _vygeneruj_matche_bankovni_transakce(reject_transaction_id)
+    _login_admin()
+    reject_response = client.post(
+        f"/api/admin/invoices/bank-transactions/{reject_transaction_id}/matches/{reject_matches[0]['id']}/reject"
+    )
+    assert reject_response.status_code == 200
+
+    ignore_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "audit-ignore-bank-tx",
+                "transaction_date": "2026-06-07",
+                "amount": 321,
+                "currency": "CZK",
+                "variable_symbol": "999888",
+                "message": "Audit ignore payment",
+                "direction": "incoming",
+            }
+        ]
+    )
+    ignore_transaction_id = ignore_import["imported_transaction_ids"][0]
+    _login_admin()
+    ignore_response = client.post(f"/api/admin/invoices/bank-transactions/{ignore_transaction_id}/ignore")
+    assert ignore_response.status_code == 200
+
+    recurring_proforma = _vytvor_recurring_sablonu(
+        {
+            "document_kind": "proforma",
+            "name": "Recurring proforma audit",
+        }
+    )
+    recurring_expense = _vytvor_recurring_sablonu(
+        {
+            "template_type": "expense",
+            "document_kind": None,
+            "subject_id": None,
+            "supplier_id": supplier["id"],
+            "name": "Recurring expense audit",
+            "business_mode": None,
+            "tax_mode": None,
+            "payment_method": "Bankovní převod",
+            "bank_account_number": "123456789",
+            "bank_account_prefix": "19",
+            "bank_code": "0800",
+            "bank_iban": "CZ6508000000001234567899",
+        }
+    )
+    _login_admin()
+    recurring_proforma_generation = client.post(
+        f"/api/admin/invoices/recurring-templates/{recurring_proforma['id']}/generate"
+    )
+    recurring_expense_generation = client.post(
+        f"/api/admin/invoices/recurring-templates/{recurring_expense['id']}/generate"
+    )
+    assert recurring_proforma_generation.status_code == 200
+    assert recurring_expense_generation.status_code == 200
+
+    reminder_invoice = _vytvor_fakturu(
+        {
+            "customer_email": "audit-reminder@example.com",
+            "issue_date": "2000-03-01",
+            "due_date": "2000-03-10",
+        }
+    )
+    from backend.app.modules.invoices import email_service as invoice_email_service
+
+    original_is_email_configured = invoice_email_service.is_email_configured
+    original_send_html_email = invoice_email_service.send_html_email
+    original_build_invoice_pdf_document = invoice_email_service.build_invoice_pdf_document
+    invoice_email_service.is_email_configured = lambda: True
+    invoice_email_service.build_invoice_pdf_document = lambda _invoice: InvoicePdfDocument(
+        filename=f"{reminder_invoice['invoice_number']}.pdf",
+        content=b"%PDF-audit-reminder",
+    )
+    invoice_email_service.send_html_email = lambda *args, **kwargs: True
+    try:
+        _login_admin()
+        reminder_response = client.post(f"/api/admin/invoices/{reminder_invoice['id']}/reminder-email/send")
+    finally:
+        invoice_email_service.is_email_configured = original_is_email_configured
+        invoice_email_service.send_html_email = original_send_html_email
+        invoice_email_service.build_invoice_pdf_document = original_build_invoice_pdf_document
+    assert reminder_response.status_code == 200
+    reminder_body = reminder_response.json()
+    reminder_email_id = reminder_body["reminder_email_id"]
+
+    _login_admin()
+    upload_response = client.post(
+        "/api/admin/invoices/attachments",
+        files={"file": ("audit-note.txt", b"audit attachment", "text/plain")},
+        data={"attachment_type": "other"},
+    )
+    assert upload_response.status_code == 200
+    attachment = upload_response.json()
+    attachment_id = attachment["id"]
+    link_response = client.post(
+        f"/api/admin/invoices/attachments/{attachment_id}/link",
+        json={"invoice_id": invoice["id"]},
+    )
+    archive_response = client.post(f"/api/admin/invoices/attachments/{attachment_id}/archive")
+    assert link_response.status_code == 200
+    assert archive_response.status_code == 200
+
+    events = _list_audit_events()
+
+    _find_audit_event(events, event_type="created", entity_type="subject", subject_id=subject["id"], source="admin_api")
+    _find_audit_event(events, event_type="updated", entity_type="subject", subject_id=subject["id"], source="admin_api")
+    _find_audit_event(events, event_type="created", entity_type="supplier", supplier_id=supplier["id"], source="admin_api")
+    _find_audit_event(events, event_type="updated", entity_type="supplier", supplier_id=supplier["id"], source="admin_api")
+    _find_audit_event(events, event_type="created", entity_type="invoice", invoice_id=invoice["id"], source="admin_api")
+    _find_audit_event(events, event_type="updated", entity_type="invoice", invoice_id=invoice["id"], source="admin_api")
+    _find_audit_event(events, event_type="payment_added", entity_type="invoice_payment", invoice_id=invoice["id"], source="admin_api")
+    _find_audit_event(events, event_type="payment_deleted", entity_type="invoice_payment", invoice_id=invoice["id"], source="admin_api")
+    _find_audit_event(events, event_type="generated", entity_type="invoice", invoice_id=converted_invoice["id"], source="generation")
+    _find_audit_event(events, event_type="linked", entity_type="document_relation", invoice_id=quote["id"], source="generation")
+    _find_audit_event(events, event_type="generated", entity_type="invoice", invoice_id=tax_document["id"], source="generation")
+    _find_audit_event(events, event_type="generated", entity_type="invoice", invoice_id=final_invoice["id"], source="generation")
+    _find_audit_event(events, event_type="generated", entity_type="invoice", invoice_id=correction["id"], source="generation")
+    _find_audit_event(events, event_type="created", entity_type="expense", expense_id=expense["id"], source="admin_api")
+    _find_audit_event(events, event_type="updated", entity_type="expense", expense_id=expense["id"], source="admin_api")
+    _find_audit_event(events, event_type="payment_added", entity_type="expense_payment", expense_id=expense["id"], source="admin_api")
+    _find_audit_event(events, event_type="payment_deleted", entity_type="expense_payment", expense_id=expense["id"], source="admin_api")
+    _find_audit_event(events, event_type="created", entity_type="todo", todo_id=manual_todo["id"], source="admin_api")
+    _find_audit_event(events, event_type="status_changed", entity_type="todo", todo_id=manual_todo["id"], source="admin_api")
+    _find_audit_event(events, event_type="status_changed", entity_type="todo", todo_id=cancel_todo["id"], source="admin_api")
+    _find_audit_event(events, event_type="generated", entity_type="todo", invoice_id=overdue_invoice["id"], source="system")
+    _find_audit_event(
+        events,
+        event_type="created",
+        entity_type="bank_transaction",
+        bank_transaction_id=apply_transaction_id,
+        source="import",
+    )
+    _find_audit_event(
+        events,
+        event_type="matched",
+        entity_type="payment_match",
+        payment_match_id=apply_matches[0]["id"],
+        source="bank_matching",
+    )
+    _find_audit_event(
+        events,
+        event_type="match_applied",
+        entity_type="payment_match",
+        payment_match_id=apply_matches[0]["id"],
+        source="bank_matching",
+    )
+    _find_audit_event(
+        events,
+        event_type="match_rejected",
+        entity_type="payment_match",
+        payment_match_id=reject_matches[0]["id"],
+        source="bank_matching",
+    )
+    _find_audit_event(
+        events,
+        event_type="ignored",
+        entity_type="bank_transaction",
+        bank_transaction_id=ignore_transaction_id,
+        source="bank_matching",
+    )
+    _find_audit_event(
+        events,
+        event_type="created",
+        entity_type="recurring_template",
+        recurring_template_id=recurring_proforma["id"],
+        source="admin_api",
+    )
+    _find_audit_event(
+        events,
+        event_type="generated",
+        entity_type="recurring_template",
+        recurring_template_id=recurring_proforma["id"],
+        source="generation",
+    )
+    _find_audit_event(
+        events,
+        event_type="generated",
+        entity_type="recurring_template",
+        recurring_template_id=recurring_expense["id"],
+        source="generation",
+    )
+    _find_audit_event(
+        events,
+        event_type="generated",
+        entity_type="reminder_email",
+        reminder_email_id=reminder_email_id,
+        source="email",
+    )
+    _find_audit_event(
+        events,
+        event_type="email_sent",
+        entity_type="reminder_email",
+        reminder_email_id=reminder_email_id,
+        source="email",
+    )
+    upload_event = _find_audit_event(
+        events,
+        event_type="uploaded",
+        entity_type="attachment",
+        attachment_id=attachment_id,
+        source="admin_api",
+    )
+    _find_audit_event(events, event_type="linked", entity_type="attachment", attachment_id=attachment_id, source="admin_api")
+    _find_audit_event(events, event_type="archived", entity_type="attachment", attachment_id=attachment_id, source="admin_api")
+
+    assert upload_event["new_values"]["original_filename"] == "audit-note.txt"
+    assert "stored_filename" not in upload_event["new_values"]
+    assert str(tmp_path) not in str(upload_event)
+
+    with SessionLocal() as db:
+        stored_upload_event = (
+            db.query(InvoiceAccountingEvent)
+            .filter(
+                InvoiceAccountingEvent.event_type == "uploaded",
+                InvoiceAccountingEvent.entity_type == "attachment",
+                InvoiceAccountingEvent.attachment_id == attachment_id,
+            )
+            .one()
+        )
+        assert stored_upload_event.new_values is not None
+        assert "audit attachment" not in stored_upload_event.new_values
+        assert "stored_filename" not in stored_upload_event.new_values
+        assert str(tmp_path) not in stored_upload_event.new_values
 
 
 def test_vytvoreni_seznam_a_detail_faktury() -> None:

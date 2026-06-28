@@ -48,6 +48,7 @@ from backend.app.modules.invoices.models import (
     InvoiceExpenseItem,
     InvoiceExpensePayment,
     InvoiceAttachment,
+    InvoiceAccountingEvent,
     InvoiceItem,
     InvoicePayment,
     InvoicePaymentMatch,
@@ -97,6 +98,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceRelationsSummaryResponse,
     InvoicePaymentCreate,
     InvoiceAttachmentLinkRequest,
+    InvoiceAccountingEventResponse,
     InvoiceRecurringGenerationResponse,
     InvoiceRecurringTemplateCreate,
     InvoiceRecurringTemplateUpdate,
@@ -145,6 +147,7 @@ STORED_ATTACHMENT_TYPES = {
     "payment_proof",
     "other",
 }
+STORED_ACCOUNTING_EVENT_SOURCES = {"admin_api", "system", "import", "generation", "email", "bank_matching"}
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 SUPPORTED_RELATION_TYPES = {
@@ -426,12 +429,23 @@ def create_invoice_subject(db: Session, payload: InvoiceSubjectCreate) -> Invoic
         note=payload.note,
     )
     db.add(subject)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="created",
+        entity_type="subject",
+        entity_id=subject.id,
+        subject_id=subject.id,
+        source="admin_api",
+        new_values=_build_subject_summary(subject),
+    )
     db.commit()
     return get_invoice_subject_detail(db, subject.id)
 
 
 def update_invoice_subject(db: Session, subject_id: int, payload: InvoiceSubjectUpdate) -> InvoiceSubject:
     subject = get_invoice_subject_detail(db, subject_id)
+    before = _build_subject_summary(subject)
     subject.name = payload.name
     subject.email = payload.email
     subject.phone = payload.phone
@@ -442,6 +456,17 @@ def update_invoice_subject(db: Session, subject_id: int, payload: InvoiceSubject
     subject.country = payload.country
     subject.note = payload.note
     db.add(subject)
+    old_values, new_values = _build_diff_payload(before, _build_subject_summary(subject))
+    create_accounting_event(
+        db,
+        event_type="updated",
+        entity_type="subject",
+        entity_id=subject.id,
+        subject_id=subject.id,
+        source="admin_api",
+        old_values=old_values,
+        new_values=new_values,
+    )
     db.commit()
     return get_invoice_subject_detail(db, subject.id)
 
@@ -451,6 +476,15 @@ def delete_invoice_subject(db: Session, subject_id: int) -> int:
     is_referenced = db.query(Invoice.id).filter(Invoice.subject_id == subject.id).first() is not None
     if is_referenced:
         raise InvoiceValidationError("Subjekt nelze smazat, protože je navázaný na existující faktury.")
+    create_accounting_event(
+        db,
+        event_type="deleted",
+        entity_type="subject",
+        entity_id=subject.id,
+        subject_id=subject.id,
+        source="admin_api",
+        old_values=_build_subject_summary(subject),
+    )
     db.delete(subject)
     db.commit()
     return subject_id
@@ -493,12 +527,23 @@ def create_invoice_supplier(db: Session, payload: InvoiceSupplierCreate) -> Invo
         note=payload.note,
     )
     db.add(supplier)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="created",
+        entity_type="supplier",
+        entity_id=supplier.id,
+        supplier_id=supplier.id,
+        source="admin_api",
+        new_values=_build_supplier_summary(supplier),
+    )
     db.commit()
     return get_invoice_supplier_detail(db, supplier.id)
 
 
 def update_invoice_supplier(db: Session, supplier_id: int, payload: InvoiceSupplierUpdate) -> InvoiceSupplier:
     supplier = get_invoice_supplier_detail(db, supplier_id)
+    before = _build_supplier_summary(supplier)
     supplier.name = payload.name
     supplier.email = payload.email
     supplier.phone = payload.phone
@@ -509,6 +554,17 @@ def update_invoice_supplier(db: Session, supplier_id: int, payload: InvoiceSuppl
     supplier.country = payload.country
     supplier.note = payload.note
     db.add(supplier)
+    old_values, new_values = _build_diff_payload(before, _build_supplier_summary(supplier))
+    create_accounting_event(
+        db,
+        event_type="updated",
+        entity_type="supplier",
+        entity_id=supplier.id,
+        supplier_id=supplier.id,
+        source="admin_api",
+        old_values=old_values,
+        new_values=new_values,
+    )
     db.commit()
     return get_invoice_supplier_detail(db, supplier.id)
 
@@ -518,6 +574,15 @@ def delete_invoice_supplier(db: Session, supplier_id: int) -> int:
     is_referenced = db.query(InvoiceExpense.id).filter(InvoiceExpense.supplier_id == supplier.id).first() is not None
     if is_referenced:
         raise InvoiceValidationError("Dodavatele nelze smazat, protože je navázaný na existující výdaje.")
+    create_accounting_event(
+        db,
+        event_type="deleted",
+        entity_type="supplier",
+        entity_id=supplier.id,
+        supplier_id=supplier.id,
+        source="admin_api",
+        old_values=_build_supplier_summary(supplier),
+    )
     db.delete(supplier)
     db.commit()
     return supplier_id
@@ -594,6 +659,18 @@ def create_invoice_recurring_template(
         for item in prepared_items
     ]
     db.add(template)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="created",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        source="admin_api",
+        new_values=_build_recurring_template_summary(template),
+    )
     db.commit()
     return get_invoice_recurring_template_detail(db, template.id)
 
@@ -604,6 +681,7 @@ def update_invoice_recurring_template(
     payload: InvoiceRecurringTemplateUpdate,
 ) -> InvoiceRecurringTemplate:
     template = get_invoice_recurring_template_detail(db, template_id)
+    before = _build_recurring_template_summary(template)
     subject = _resolve_invoice_subject(db, payload.subject_id) if payload.subject_id is not None else None
     supplier = _resolve_invoice_supplier(db, payload.supplier_id) if payload.supplier_id is not None else None
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
@@ -636,30 +714,82 @@ def update_invoice_recurring_template(
         for item in prepared_items
     ]
     db.add(template)
+    old_values, new_values = _build_diff_payload(before, _build_recurring_template_summary(template))
+    create_accounting_event(
+        db,
+        event_type="updated",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        source="admin_api",
+        old_values=old_values,
+        new_values=new_values,
+    )
     db.commit()
     return get_invoice_recurring_template_detail(db, template.id)
 
 
 def pause_invoice_recurring_template(db: Session, template_id: int) -> InvoiceRecurringTemplate:
     template = get_invoice_recurring_template_detail(db, template_id)
+    before = _build_recurring_template_summary(template)
     template.status = "paused"
     db.add(template)
+    create_accounting_event(
+        db,
+        event_type="status_changed",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        source="admin_api",
+        old_values={"status": before["status"]},
+        new_values={"status": template.status},
+    )
     db.commit()
     return get_invoice_recurring_template_detail(db, template.id)
 
 
 def activate_invoice_recurring_template(db: Session, template_id: int) -> InvoiceRecurringTemplate:
     template = get_invoice_recurring_template_detail(db, template_id)
+    before = _build_recurring_template_summary(template)
     template.status = "active"
     db.add(template)
+    create_accounting_event(
+        db,
+        event_type="status_changed",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        source="admin_api",
+        old_values={"status": before["status"]},
+        new_values={"status": template.status},
+    )
     db.commit()
     return get_invoice_recurring_template_detail(db, template.id)
 
 
 def cancel_invoice_recurring_template(db: Session, template_id: int) -> InvoiceRecurringTemplate:
     template = get_invoice_recurring_template_detail(db, template_id)
+    before = _build_recurring_template_summary(template)
     template.status = "cancelled"
     db.add(template)
+    create_accounting_event(
+        db,
+        event_type="status_changed",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        source="admin_api",
+        old_values={"status": before["status"]},
+        new_values={"status": template.status},
+    )
     db.commit()
     return get_invoice_recurring_template_detail(db, template.id)
 
@@ -674,6 +804,17 @@ def delete_invoice_recurring_template(db: Session, template_id: int) -> int:
     )
     if has_generations:
         raise InvoiceValidationError("Recurring šablonu s historií generování nelze smazat.")
+    create_accounting_event(
+        db,
+        event_type="deleted",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        source="admin_api",
+        old_values=_build_recurring_template_summary(template),
+    )
     db.delete(template)
     db.commit()
     return template_id
@@ -724,6 +865,27 @@ def generate_invoice_from_recurring_template(db: Session, template_id: int) -> R
     )
     db.add(template)
     db.add(generation)
+    db.flush()
+    generation_metadata = {
+        "template_id": template.id,
+        "template_type": template.template_type,
+        "document_kind": template.document_kind,
+        "generation_id": generation.id,
+        "run_date": run_date,
+    }
+    create_accounting_event(
+        db,
+        event_type="generated",
+        entity_type="recurring_template",
+        entity_id=template.id,
+        recurring_template_id=template.id,
+        subject_id=template.subject_id,
+        supplier_id=template.supplier_id,
+        invoice_id=generation.generated_invoice_id,
+        expense_id=generation.generated_expense_id,
+        source="generation",
+        new_values=generation_metadata,
+    )
     db.commit()
     return RecurringGenerationResult(
         template=get_invoice_recurring_template_detail(db, template.id),
@@ -809,6 +971,15 @@ def import_invoice_bank_transactions(
         )
         db.add(transaction)
         db.flush()
+        create_accounting_event(
+            db,
+            event_type="created",
+            entity_type="bank_transaction",
+            entity_id=transaction.id,
+            bank_transaction_id=transaction.id,
+            source="import",
+            new_values=_build_bank_transaction_summary(transaction),
+        )
         imported_ids.append(transaction.id)
         if item.external_id is not None:
             seen_external_ids.add(item.external_id)
@@ -834,8 +1005,19 @@ def ignore_invoice_bank_transaction(db: Session, transaction_id: int) -> Invoice
     transaction = get_invoice_bank_transaction_detail(db, transaction_id)
     if transaction.status == "matched":
         raise InvoiceValidationError("Spárovanou bankovní transakci nelze ignorovat.")
+    previous_status = transaction.status
     transaction.status = "ignored"
     db.add(transaction)
+    create_accounting_event(
+        db,
+        event_type="ignored",
+        entity_type="bank_transaction",
+        entity_id=transaction.id,
+        bank_transaction_id=transaction.id,
+        source="bank_matching",
+        old_values={"status": previous_status},
+        new_values={"status": transaction.status},
+    )
     db.commit()
     return get_invoice_bank_transaction_detail(db, transaction.id)
 
@@ -857,13 +1039,32 @@ def generate_invoice_payment_matches(db: Session, transaction_id: int) -> list[I
     if transaction.status == "matched":
         return list_invoice_payment_matches(db, transaction_id)
 
+    existing_ids = {match.id for match in list_invoice_payment_matches(db, transaction_id)}
     if transaction.direction == "incoming":
         _generate_invoice_match_suggestions(db, transaction)
     else:
         _generate_expense_match_suggestions(db, transaction)
 
+    db.flush()
+    matches = list_invoice_payment_matches(db, transaction_id)
+    for match in matches:
+        if match.id in existing_ids:
+            continue
+        create_accounting_event(
+            db,
+            event_type="matched",
+            entity_type="payment_match",
+            entity_id=match.id,
+            invoice_id=match.invoice_id,
+            expense_id=match.expense_id,
+            bank_transaction_id=match.bank_transaction_id,
+            payment_match_id=match.id,
+            source="bank_matching",
+            new_values=_build_payment_match_summary(match),
+            metadata={"transaction_status": transaction.status},
+        )
     db.commit()
-    return list_invoice_payment_matches(db, transaction_id)
+    return matches
 
 
 def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int) -> InvoicePaymentMatch:
@@ -897,6 +1098,18 @@ def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int)
             note=payment_note,
         )
         match.invoice_payment_id = payment.id
+        create_accounting_event(
+            db,
+            event_type="payment_added",
+            entity_type="invoice_payment",
+            entity_id=payment.id,
+            invoice_id=invoice.id,
+            bank_transaction_id=transaction.id,
+            payment_match_id=match.id,
+            source="bank_matching",
+            new_values=_build_invoice_payment_summary_payload(payment),
+            metadata={"match_type": match.match_type},
+        )
     elif match.expense_id is not None:
         if transaction.direction != "outgoing":
             raise InvoiceValidationError("Odchozí bankovní transakce je povinná pro párování s výdajem.")
@@ -910,6 +1123,18 @@ def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int)
             note=payment_note,
         )
         match.expense_payment_id = payment.id
+        create_accounting_event(
+            db,
+            event_type="payment_added",
+            entity_type="expense_payment",
+            entity_id=payment.id,
+            expense_id=expense.id,
+            bank_transaction_id=transaction.id,
+            payment_match_id=match.id,
+            source="bank_matching",
+            new_values=_build_expense_payment_summary_payload(payment),
+            metadata={"match_type": match.match_type},
+        )
     else:
         raise InvoiceValidationError("Návrh párování neobsahuje cílový doklad.")
 
@@ -918,6 +1143,19 @@ def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int)
     transaction.status = "matched"
     db.add(match)
     db.add(transaction)
+    create_accounting_event(
+        db,
+        event_type="match_applied",
+        entity_type="payment_match",
+        entity_id=match.id,
+        invoice_id=match.invoice_id,
+        expense_id=match.expense_id,
+        bank_transaction_id=match.bank_transaction_id,
+        payment_match_id=match.id,
+        source="bank_matching",
+        old_values={"status": "suggested"},
+        new_values=_build_payment_match_summary(match),
+    )
     db.commit()
     return _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
 
@@ -931,6 +1169,19 @@ def reject_invoice_payment_match(db: Session, transaction_id: int, match_id: int
         return match
     match.status = "rejected"
     db.add(match)
+    create_accounting_event(
+        db,
+        event_type="match_rejected",
+        entity_type="payment_match",
+        entity_id=match.id,
+        invoice_id=match.invoice_id,
+        expense_id=match.expense_id,
+        bank_transaction_id=match.bank_transaction_id,
+        payment_match_id=match.id,
+        source="bank_matching",
+        old_values={"status": DEFAULT_PAYMENT_MATCH_STATUS},
+        new_values=_build_payment_match_summary(match),
+    )
     db.commit()
     return _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
 
@@ -996,12 +1247,25 @@ def create_invoice_todo(db: Session, payload: InvoiceTodoCreate) -> InvoiceTodo:
         completed_at=_resolve_completed_at_for_status(normalized_status),
     )
     db.add(todo)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="created",
+        entity_type="todo",
+        entity_id=todo.id,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        todo_id=todo.id,
+        source="admin_api",
+        new_values=_build_todo_summary(todo),
+    )
     db.commit()
     return get_invoice_todo_detail(db, todo.id)
 
 
 def update_invoice_todo(db: Session, todo_id: int, payload: InvoiceTodoUpdate) -> InvoiceTodo:
     todo = get_invoice_todo_detail(db, todo_id)
+    before = _build_todo_summary(todo)
     normalized_status = _normalize_todo_status(payload.status)
     if _should_prevent_open_todo_duplicate(
         todo_type=todo.todo_type,
@@ -1023,24 +1287,63 @@ def update_invoice_todo(db: Session, todo_id: int, payload: InvoiceTodoUpdate) -
     todo.status = normalized_status
     todo.completed_at = _resolve_completed_at_for_status(normalized_status, current_value=todo.completed_at)
     db.add(todo)
+    old_values, new_values = _build_diff_payload(before, _build_todo_summary(todo))
+    create_accounting_event(
+        db,
+        event_type="updated",
+        entity_type="todo",
+        entity_id=todo.id,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        todo_id=todo.id,
+        source="admin_api",
+        old_values=old_values,
+        new_values=new_values,
+    )
     db.commit()
     return get_invoice_todo_detail(db, todo.id)
 
 
 def complete_invoice_todo(db: Session, todo_id: int) -> InvoiceTodo:
     todo = get_invoice_todo_detail(db, todo_id)
+    previous_status = todo.status
     todo.status = "completed"
     todo.completed_at = _resolve_completed_at_for_status("completed", current_value=todo.completed_at)
     db.add(todo)
+    create_accounting_event(
+        db,
+        event_type="status_changed",
+        entity_type="todo",
+        entity_id=todo.id,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        todo_id=todo.id,
+        source="admin_api",
+        old_values={"status": previous_status},
+        new_values={"status": todo.status, "completed_at": todo.completed_at},
+    )
     db.commit()
     return get_invoice_todo_detail(db, todo.id)
 
 
 def cancel_invoice_todo(db: Session, todo_id: int) -> InvoiceTodo:
     todo = get_invoice_todo_detail(db, todo_id)
+    previous_status = todo.status
     todo.status = "cancelled"
     todo.completed_at = None
     db.add(todo)
+    create_accounting_event(
+        db,
+        event_type="status_changed",
+        entity_type="todo",
+        entity_id=todo.id,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        todo_id=todo.id,
+        source="admin_api",
+        old_values={"status": previous_status},
+        new_values={"status": todo.status},
+    )
     db.commit()
     return get_invoice_todo_detail(db, todo.id)
 
@@ -1049,6 +1352,17 @@ def delete_invoice_todo(db: Session, todo_id: int) -> int:
     todo = get_invoice_todo_detail(db, todo_id)
     if todo.status != "open":
         raise InvoiceValidationError("Dokončené nebo zrušené todo nelze smazat.")
+    create_accounting_event(
+        db,
+        event_type="deleted",
+        entity_type="todo",
+        entity_id=todo.id,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        todo_id=todo.id,
+        source="admin_api",
+        old_values=_build_todo_summary(todo),
+    )
     db.delete(todo)
     db.commit()
     return todo_id
@@ -1149,7 +1463,13 @@ def list_invoice_expense_payments(db: Session, expense_id: int) -> list[InvoiceE
     return list(expense.payments)
 
 
-def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> InvoiceExpense:
+def create_invoice_expense(
+    db: Session,
+    payload: InvoiceExpenseCreate,
+    *,
+    audit_source: str = "admin_api",
+    audit_metadata=None,
+) -> InvoiceExpense:
     supplier = _resolve_invoice_supplier(db, payload.supplier_id)
     supplier_snapshot = _resolve_supplier_snapshot_for_create(payload, supplier)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
@@ -1198,6 +1518,18 @@ def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> Invoic
             for item in prepared_items
         ]
         db.add(expense)
+        db.flush()
+        create_accounting_event(
+            db,
+            event_type="created",
+            entity_type="expense",
+            entity_id=expense.id,
+            expense_id=expense.id,
+            supplier_id=expense.supplier_id,
+            source=audit_source,
+            new_values=_build_expense_summary(expense),
+            metadata=audit_metadata,
+        )
         db.commit()
         return get_invoice_expense_detail(db, expense.id)
     except (IntegrityError, InvoiceNumberingError) as exc:
@@ -1207,6 +1539,7 @@ def create_invoice_expense(db: Session, payload: InvoiceExpenseCreate) -> Invoic
 
 def update_invoice_expense(db: Session, expense_id: int, payload: InvoiceExpenseUpdate) -> InvoiceExpense:
     expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True)
+    before = _build_expense_summary(expense)
     supplier = _resolve_invoice_supplier(db, payload.supplier_id)
     supplier_snapshot = _resolve_supplier_snapshot_for_update(expense=expense, payload=payload, supplier=supplier)
     prepared_items = [_prepare_invoice_item(item) for item in payload.items]
@@ -1254,6 +1587,18 @@ def update_invoice_expense(db: Session, expense_id: int, payload: InvoiceExpense
             for item in prepared_items
         ]
         db.add(expense)
+        old_values, new_values = _build_diff_payload(before, _build_expense_summary(expense))
+        create_accounting_event(
+            db,
+            event_type="updated",
+            entity_type="expense",
+            entity_id=expense.id,
+            expense_id=expense.id,
+            supplier_id=expense.supplier_id,
+            source="admin_api",
+            old_values=old_values,
+            new_values=new_values,
+        )
         db.commit()
         return get_invoice_expense_detail(db, expense.id)
     except (IntegrityError, InvoiceNumberingError) as exc:
@@ -1265,6 +1610,16 @@ def delete_invoice_expense(db: Session, expense_id: int) -> int:
     expense = _get_invoice_expense_or_raise(db, expense_id, include_payments=True)
     if expense.payments:
         raise InvoiceValidationError("Přijatý doklad s evidovanými platbami nelze smazat.")
+    create_accounting_event(
+        db,
+        event_type="deleted",
+        entity_type="expense",
+        entity_id=expense.id,
+        expense_id=expense.id,
+        supplier_id=expense.supplier_id,
+        source="admin_api",
+        old_values=_build_expense_summary(expense),
+    )
     db.delete(expense)
     db.commit()
     return expense_id
@@ -1306,13 +1661,23 @@ def _create_invoice_expense_payment_record(
 
 def add_invoice_expense_payment(db: Session, expense_id: int, payload: InvoiceExpensePaymentCreate) -> InvoiceExpense:
     expense = _get_invoice_expense_or_raise(db, expense_id, include_items=True, include_payments=True)
-    _create_invoice_expense_payment_record(
+    payment = _create_invoice_expense_payment_record(
         db,
         expense=expense,
         amount=_quantize_money(Decimal(payload.amount)),
         paid_at=payload.paid_at,
         payment_method=payload.payment_method,
         note=payload.note,
+    )
+    create_accounting_event(
+        db,
+        event_type="payment_added",
+        entity_type="expense_payment",
+        entity_id=payment.id,
+        expense_id=expense.id,
+        supplier_id=expense.supplier_id,
+        source="admin_api",
+        new_values=_build_expense_payment_summary_payload(payment),
     )
     db.commit()
     return get_invoice_expense_detail(db, expense.id)
@@ -1323,6 +1688,16 @@ def delete_invoice_expense_payment(db: Session, expense_id: int, payment_id: int
     payment = next((item for item in expense.payments if item.id == payment_id), None)
     if payment is None:
         raise InvoiceExpensePaymentNotFoundError("Platba přijatého dokladu nebyla nalezena.")
+    create_accounting_event(
+        db,
+        event_type="payment_deleted",
+        entity_type="expense_payment",
+        entity_id=payment.id,
+        expense_id=expense.id,
+        supplier_id=expense.supplier_id,
+        source="admin_api",
+        old_values=_build_expense_payment_summary_payload(payment),
+    )
     db.delete(payment)
     db.commit()
     return get_invoice_expense_detail(db, expense.id)
@@ -1465,6 +1840,31 @@ def convert_quote_to_document(db: Session, quote_id: int, payload: QuoteConvertR
                     relation_type=relation_type,
                 )
             )
+            create_accounting_event(
+                db,
+                event_type="generated",
+                entity_type="invoice",
+                entity_id=generated_invoice.id,
+                invoice_id=generated_invoice.id,
+                subject_id=generated_invoice.subject_id,
+                source="generation",
+                new_values=_build_invoice_summary(generated_invoice),
+                metadata={"source_invoice_id": source_quote.id, "relation_type": relation_type},
+            )
+            create_accounting_event(
+                db,
+                event_type="linked",
+                entity_type="document_relation",
+                entity_id=generated_invoice.id,
+                invoice_id=source_quote.id,
+                subject_id=source_quote.subject_id,
+                source="generation",
+                new_values={
+                    "source_invoice_id": source_quote.id,
+                    "target_invoice_id": generated_invoice.id,
+                    "relation_type": relation_type,
+                },
+            )
             db.commit()
             created_invoice = get_invoice_detail(db, generated_invoice.id)
             _cache_invoice_nonfatal(created_invoice)
@@ -1571,6 +1971,36 @@ def create_tax_document_from_proforma_payment(db: Session, proforma_invoice_id: 
                     relation_type=RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
                 )
             )
+            create_accounting_event(
+                db,
+                event_type="generated",
+                entity_type="invoice",
+                entity_id=generated_invoice.id,
+                invoice_id=generated_invoice.id,
+                subject_id=source_invoice.subject_id,
+                source="generation",
+                new_values=_build_invoice_summary(generated_invoice),
+                metadata={
+                    "source_invoice_id": source_invoice.id,
+                    "source_payment_id": payment.id,
+                    "relation_type": RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+                },
+            )
+            create_accounting_event(
+                db,
+                event_type="linked",
+                entity_type="document_relation",
+                entity_id=generated_invoice.id,
+                invoice_id=source_invoice.id,
+                subject_id=source_invoice.subject_id,
+                source="generation",
+                new_values={
+                    "source_invoice_id": source_invoice.id,
+                    "target_invoice_id": generated_invoice.id,
+                    "source_payment_id": payment.id,
+                    "relation_type": RELATION_TYPE_TAX_DOCUMENT_FOR_PAYMENT,
+                },
+            )
             db.commit()
             created_invoice = get_invoice_detail(db, generated_invoice.id)
             _cache_invoice_nonfatal(created_invoice)
@@ -1670,6 +2100,35 @@ def create_final_invoice_from_proformas(db: Session, payload: FinalInvoiceCreate
                     for source_invoice in source_invoices
                 ]
             )
+            create_accounting_event(
+                db,
+                event_type="generated",
+                entity_type="invoice",
+                entity_id=generated_invoice.id,
+                invoice_id=generated_invoice.id,
+                subject_id=primary_source.subject_id,
+                source="generation",
+                new_values=_build_invoice_summary(generated_invoice),
+                metadata={
+                    "source_invoice_ids": [source_invoice.id for source_invoice in source_invoices],
+                    "relation_type": RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+                },
+            )
+            for source_invoice in source_invoices:
+                create_accounting_event(
+                    db,
+                    event_type="linked",
+                    entity_type="document_relation",
+                    entity_id=generated_invoice.id,
+                    invoice_id=source_invoice.id,
+                    subject_id=source_invoice.subject_id,
+                    source="generation",
+                    new_values={
+                        "source_invoice_id": source_invoice.id,
+                        "target_invoice_id": generated_invoice.id,
+                        "relation_type": RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
+                    },
+                )
             db.commit()
             created_invoice = get_invoice_detail(db, generated_invoice.id)
             _cache_invoice_nonfatal(created_invoice)
@@ -1769,6 +2228,34 @@ def create_correction_from_invoice(
                     relation_type=RELATION_TYPE_CORRECTION_FOR_INVOICE,
                 )
             )
+            create_accounting_event(
+                db,
+                event_type="generated",
+                entity_type="invoice",
+                entity_id=generated_invoice.id,
+                invoice_id=generated_invoice.id,
+                subject_id=source_invoice.subject_id,
+                source="generation",
+                new_values=_build_invoice_summary(generated_invoice),
+                metadata={
+                    "source_invoice_id": source_invoice.id,
+                    "relation_type": RELATION_TYPE_CORRECTION_FOR_INVOICE,
+                },
+            )
+            create_accounting_event(
+                db,
+                event_type="linked",
+                entity_type="document_relation",
+                entity_id=generated_invoice.id,
+                invoice_id=source_invoice.id,
+                subject_id=source_invoice.subject_id,
+                source="generation",
+                new_values={
+                    "source_invoice_id": source_invoice.id,
+                    "target_invoice_id": generated_invoice.id,
+                    "relation_type": RELATION_TYPE_CORRECTION_FOR_INVOICE,
+                },
+            )
             db.commit()
             created_invoice = get_invoice_detail(db, generated_invoice.id)
             _cache_invoice_nonfatal(created_invoice)
@@ -1821,13 +2308,23 @@ def _create_invoice_payment_record(
 
 def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCreate) -> Invoice:
     invoice = get_invoice_detail(db, invoice_id)
-    _create_invoice_payment_record(
+    payment = _create_invoice_payment_record(
         db,
         invoice=invoice,
         amount=_quantize_money(Decimal(payload.amount)),
         paid_at=payload.paid_at,
         payment_method=payload.payment_method,
         note=payload.note,
+    )
+    create_accounting_event(
+        db,
+        event_type="payment_added",
+        entity_type="invoice_payment",
+        entity_id=payment.id,
+        invoice_id=invoice.id,
+        subject_id=invoice.subject_id,
+        source="admin_api",
+        new_values=_build_invoice_payment_summary_payload(payment),
     )
     db.commit()
     return get_invoice_detail(db, invoice.id)
@@ -1838,6 +2335,16 @@ def delete_invoice_payment(db: Session, invoice_id: int, payment_id: int) -> Inv
     payment = next((item for item in invoice.payments if item.id == payment_id), None)
     if payment is None:
         raise InvoicePaymentNotFoundError("Platba faktury nebyla nalezena.")
+    create_accounting_event(
+        db,
+        event_type="payment_deleted",
+        entity_type="invoice_payment",
+        entity_id=payment.id,
+        invoice_id=invoice.id,
+        subject_id=invoice.subject_id,
+        source="admin_api",
+        old_values=_build_invoice_payment_summary_payload(payment),
+    )
     db.delete(payment)
     db.commit()
     return get_invoice_detail(db, invoice.id)
@@ -1915,6 +2422,18 @@ def send_invoice_reminder_email(
         error_message=None,
     )
     db.add(reminder_email)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="generated",
+        entity_type="reminder_email",
+        entity_id=reminder_email.id,
+        invoice_id=preview.invoice.id,
+        todo_id=preview.todo_id,
+        reminder_email_id=reminder_email.id,
+        source="email",
+        new_values=_build_reminder_email_summary(reminder_email),
+    )
     db.commit()
 
     try:
@@ -1930,6 +2449,19 @@ def send_invoice_reminder_email(
         reminder_email.error_message = str(exc)
         reminder_email.sent_at = None
         db.add(reminder_email)
+        create_accounting_event(
+            db,
+            event_type="email_failed",
+            entity_type="reminder_email",
+            entity_id=reminder_email.id,
+            invoice_id=reminder_email.invoice_id,
+            todo_id=reminder_email.todo_id,
+            reminder_email_id=reminder_email.id,
+            source="email",
+            old_values={"status": DEFAULT_REMINDER_EMAIL_STATUS},
+            new_values=_build_reminder_email_summary(reminder_email),
+            metadata={"error_message": reminder_email.error_message},
+        )
         db.commit()
         raise
     except Exception as exc:
@@ -1937,6 +2469,19 @@ def send_invoice_reminder_email(
         reminder_email.error_message = str(exc)
         reminder_email.sent_at = None
         db.add(reminder_email)
+        create_accounting_event(
+            db,
+            event_type="email_failed",
+            entity_type="reminder_email",
+            entity_id=reminder_email.id,
+            invoice_id=reminder_email.invoice_id,
+            todo_id=reminder_email.todo_id,
+            reminder_email_id=reminder_email.id,
+            source="email",
+            old_values={"status": DEFAULT_REMINDER_EMAIL_STATUS},
+            new_values=_build_reminder_email_summary(reminder_email),
+            metadata={"error_message": reminder_email.error_message},
+        )
         db.commit()
         raise
 
@@ -1944,6 +2489,18 @@ def send_invoice_reminder_email(
     reminder_email.sent_at = _utc_now()
     reminder_email.error_message = None
     db.add(reminder_email)
+    create_accounting_event(
+        db,
+        event_type="email_sent",
+        entity_type="reminder_email",
+        entity_id=reminder_email.id,
+        invoice_id=reminder_email.invoice_id,
+        todo_id=reminder_email.todo_id,
+        reminder_email_id=reminder_email.id,
+        source="email",
+        old_values={"status": DEFAULT_REMINDER_EMAIL_STATUS},
+        new_values=_build_reminder_email_summary(reminder_email),
+    )
     db.commit()
     return InvoiceReminderSendResult(reminder_email=reminder_email, delivery=delivery)
 
@@ -2040,12 +2597,27 @@ def upload_invoice_attachment(
         note=normalized_note,
     )
     db.add(attachment)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="uploaded",
+        entity_type="attachment",
+        entity_id=attachment.id,
+        invoice_id=attachment.invoice_id,
+        expense_id=attachment.expense_id,
+        bank_transaction_id=attachment.bank_transaction_id,
+        todo_id=attachment.todo_id,
+        attachment_id=attachment.id,
+        source="admin_api",
+        new_values=_build_attachment_summary(attachment),
+    )
     db.commit()
     return get_invoice_attachment_detail(db, attachment.id)
 
 
 def link_invoice_attachment(db: Session, attachment_id: int, payload: InvoiceAttachmentLinkRequest) -> InvoiceAttachment:
     attachment = get_invoice_attachment_detail(db, attachment_id)
+    before = _build_attachment_summary(attachment)
     validated_links = _validate_attachment_links(
         db,
         invoice_id=payload.invoice_id if "invoice_id" in payload.model_fields_set else attachment.invoice_id,
@@ -2061,20 +2633,63 @@ def link_invoice_attachment(db: Session, attachment_id: int, payload: InvoiceAtt
     attachment.bank_transaction_id = validated_links.bank_transaction_id
     attachment.status = _resolve_attachment_status_from_links(validated_links)
     db.add(attachment)
+    create_accounting_event(
+        db,
+        event_type="linked",
+        entity_type="attachment",
+        entity_id=attachment.id,
+        invoice_id=attachment.invoice_id,
+        expense_id=attachment.expense_id,
+        bank_transaction_id=attachment.bank_transaction_id,
+        todo_id=attachment.todo_id,
+        attachment_id=attachment.id,
+        source="admin_api",
+        old_values=before,
+        new_values=_build_attachment_summary(attachment),
+    )
     db.commit()
     return get_invoice_attachment_detail(db, attachment.id)
 
 
 def archive_invoice_attachment(db: Session, attachment_id: int) -> InvoiceAttachment:
     attachment = get_invoice_attachment_detail(db, attachment_id)
+    previous_status = attachment.status
     attachment.status = _normalize_attachment_status("archived")
     db.add(attachment)
+    create_accounting_event(
+        db,
+        event_type="archived",
+        entity_type="attachment",
+        entity_id=attachment.id,
+        invoice_id=attachment.invoice_id,
+        expense_id=attachment.expense_id,
+        bank_transaction_id=attachment.bank_transaction_id,
+        todo_id=attachment.todo_id,
+        attachment_id=attachment.id,
+        source="admin_api",
+        old_values={"status": previous_status},
+        new_values={"status": attachment.status},
+    )
     db.commit()
     return get_invoice_attachment_detail(db, attachment.id)
 
 
 def delete_invoice_attachment(db: Session, attachment_id: int) -> int:
     attachment = get_invoice_attachment_detail(db, attachment_id)
+    summary = _build_attachment_summary(attachment)
+    create_accounting_event(
+        db,
+        event_type="deleted",
+        entity_type="attachment",
+        entity_id=attachment.id,
+        invoice_id=attachment.invoice_id,
+        expense_id=attachment.expense_id,
+        bank_transaction_id=attachment.bank_transaction_id,
+        todo_id=attachment.todo_id,
+        attachment_id=attachment.id,
+        source="admin_api",
+        old_values=summary,
+    )
     delete_invoice_attachment_file(attachment.stored_filename)
     db.delete(attachment)
     db.commit()
@@ -2089,6 +2704,81 @@ def get_invoice_attachment_download(db: Session, attachment_id: int) -> InvoiceA
         attachment=attachment,
         file_path=get_invoice_attachment_path(attachment.stored_filename),
     )
+
+
+def list_accounting_events(
+    db: Session,
+    *,
+    event_type: str | None = None,
+    entity_type: str | None = None,
+    entity_id: int | None = None,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    subject_id: int | None = None,
+    supplier_id: int | None = None,
+    bank_transaction_id: int | None = None,
+    payment_match_id: int | None = None,
+    todo_id: int | None = None,
+    attachment_id: int | None = None,
+    recurring_template_id: int | None = None,
+    reminder_email_id: int | None = None,
+    source: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> list[InvoiceAccountingEvent]:
+    query = db.query(InvoiceAccountingEvent)
+    normalized_source = _normalize_accounting_event_source(source, allow_none=True)
+    if event_type is not None and event_type.strip():
+        query = query.filter(InvoiceAccountingEvent.event_type == event_type.strip())
+    if entity_type is not None and entity_type.strip():
+        query = query.filter(InvoiceAccountingEvent.entity_type == entity_type.strip())
+    if entity_id is not None:
+        query = query.filter(InvoiceAccountingEvent.entity_id == entity_id)
+    if invoice_id is not None:
+        query = query.filter(InvoiceAccountingEvent.invoice_id == invoice_id)
+    if expense_id is not None:
+        query = query.filter(InvoiceAccountingEvent.expense_id == expense_id)
+    if subject_id is not None:
+        query = query.filter(InvoiceAccountingEvent.subject_id == subject_id)
+    if supplier_id is not None:
+        query = query.filter(InvoiceAccountingEvent.supplier_id == supplier_id)
+    if bank_transaction_id is not None:
+        query = query.filter(InvoiceAccountingEvent.bank_transaction_id == bank_transaction_id)
+    if payment_match_id is not None:
+        query = query.filter(InvoiceAccountingEvent.payment_match_id == payment_match_id)
+    if todo_id is not None:
+        query = query.filter(InvoiceAccountingEvent.todo_id == todo_id)
+    if attachment_id is not None:
+        query = query.filter(InvoiceAccountingEvent.attachment_id == attachment_id)
+    if recurring_template_id is not None:
+        query = query.filter(InvoiceAccountingEvent.recurring_template_id == recurring_template_id)
+    if reminder_email_id is not None:
+        query = query.filter(InvoiceAccountingEvent.reminder_email_id == reminder_email_id)
+    if normalized_source is not None:
+        query = query.filter(InvoiceAccountingEvent.source == normalized_source)
+    if date_from is not None:
+        query = query.filter(InvoiceAccountingEvent.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=timezone.utc))
+    if date_to is not None:
+        query = query.filter(InvoiceAccountingEvent.created_at < datetime.combine(date_to + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc))
+
+    query = query.order_by(InvoiceAccountingEvent.created_at.desc(), InvoiceAccountingEvent.id.desc())
+    if offset is not None and offset > 0:
+        query = query.offset(offset)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    return query.all()
+
+
+def get_invoice_audit_events(db: Session, invoice_id: int) -> list[InvoiceAccountingEvent]:
+    _get_invoice_or_raise(db, invoice_id, include_items=False, include_payments=False, include_subject=False)
+    return list_accounting_events(db, invoice_id=invoice_id)
+
+
+def get_expense_audit_events(db: Session, expense_id: int) -> list[InvoiceAccountingEvent]:
+    _get_invoice_expense_or_raise(db, expense_id, include_items=False, include_payments=False)
+    return list_accounting_events(db, expense_id=expense_id)
 
 
 @dataclass(frozen=True)
@@ -2340,6 +3030,287 @@ def _normalize_optional_text(value: str | None) -> str | None:
     return cleaned or None
 
 
+def _normalize_accounting_event_source(value: str | None, *, allow_none: bool = False) -> str | None:
+    if value is None:
+        return None if allow_none else "system"
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None if allow_none else "system"
+    if cleaned not in STORED_ACCOUNTING_EVENT_SOURCES:
+        raise InvoiceValidationError("Neplatný zdroj auditní události.")
+    return cleaned
+
+
+def _serialize_accounting_event_payload(value):
+    if value is None:
+        return None
+    return json.dumps(_sanitize_event_payload(value), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def _sanitize_event_payload(value):
+    if isinstance(value, dict):
+        sanitized: dict[str, object] = {}
+        for key, item in value.items():
+            if item is None:
+                continue
+            sanitized[str(key)] = _sanitize_event_payload(item)
+        return sanitized
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_event_payload(item) for item in value]
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return f"{value:.2f}"
+    if isinstance(value, Path):
+        return value.name
+    return value
+
+
+def _deserialize_accounting_event_payload(value: str | None):
+    if value is None:
+        return None
+    return json.loads(value)
+
+
+def _build_diff_payload(before: dict, after: dict) -> tuple[dict | None, dict | None]:
+    old_values: dict[str, object] = {}
+    new_values: dict[str, object] = {}
+    for key in sorted(set(before) | set(after)):
+        if before.get(key) != after.get(key):
+            old_values[key] = before.get(key)
+            new_values[key] = after.get(key)
+    return (old_values or None, new_values or None)
+
+
+def _build_invoice_summary(invoice: Invoice) -> dict:
+    return {
+        "id": invoice.id,
+        "document_kind": normalize_document_kind(invoice.document_kind),
+        "invoice_number": invoice.invoice_number,
+        "variable_symbol": invoice.variable_symbol,
+        "status": _normalize_invoice_status(invoice.status),
+        "currency": invoice.currency,
+        "total": f"{Decimal(invoice.total):.2f}",
+        "due_date": invoice.due_date.isoformat(),
+        "subject_id": invoice.subject_id,
+    }
+
+
+def _build_invoice_payment_summary_payload(payment: InvoicePayment) -> dict:
+    return {
+        "id": payment.id,
+        "invoice_id": payment.invoice_id,
+        "amount": f"{Decimal(payment.amount):.2f}",
+        "paid_at": payment.paid_at.isoformat(),
+        "payment_method": payment.payment_method,
+        "note": payment.note,
+    }
+
+
+def _build_expense_summary(expense: InvoiceExpense) -> dict:
+    return {
+        "id": expense.id,
+        "expense_number": expense.expense_number,
+        "variable_symbol": expense.variable_symbol,
+        "status": _normalize_expense_status(expense.status),
+        "currency": expense.currency,
+        "total": f"{Decimal(expense.total):.2f}",
+        "supplier_id": expense.supplier_id,
+        "due_date": expense.due_date.isoformat(),
+    }
+
+
+def _build_expense_payment_summary_payload(payment: InvoiceExpensePayment) -> dict:
+    return {
+        "id": payment.id,
+        "expense_id": payment.expense_id,
+        "amount": f"{Decimal(payment.amount):.2f}",
+        "paid_at": payment.paid_at.isoformat(),
+        "payment_method": payment.payment_method,
+        "note": payment.note,
+    }
+
+
+def _build_subject_summary(subject: InvoiceSubject) -> dict:
+    return {
+        "id": subject.id,
+        "name": subject.name,
+        "email": subject.email,
+        "ico": subject.ico,
+        "dic": subject.dic,
+        "country": subject.country,
+    }
+
+
+def _build_supplier_summary(supplier: InvoiceSupplier) -> dict:
+    return {
+        "id": supplier.id,
+        "name": supplier.name,
+        "email": supplier.email,
+        "ico": supplier.ico,
+        "dic": supplier.dic,
+        "country": supplier.country,
+    }
+
+
+def _build_todo_summary(todo: InvoiceTodo) -> dict:
+    return {
+        "id": todo.id,
+        "invoice_id": todo.invoice_id,
+        "expense_id": todo.expense_id,
+        "todo_type": todo.todo_type,
+        "status": todo.status,
+        "title": todo.title,
+        "due_date": todo.due_date.isoformat(),
+    }
+
+
+def _build_bank_transaction_summary(transaction: InvoiceBankTransaction) -> dict:
+    return {
+        "id": transaction.id,
+        "external_id": transaction.external_id,
+        "transaction_date": transaction.transaction_date.isoformat(),
+        "amount": f"{Decimal(transaction.amount):.2f}",
+        "currency": transaction.currency,
+        "direction": transaction.direction,
+        "status": transaction.status,
+        "variable_symbol": transaction.variable_symbol,
+    }
+
+
+def _build_payment_match_summary(match: InvoicePaymentMatch) -> dict:
+    return {
+        "id": match.id,
+        "bank_transaction_id": match.bank_transaction_id,
+        "invoice_id": match.invoice_id,
+        "expense_id": match.expense_id,
+        "match_type": match.match_type,
+        "confidence": match.confidence,
+        "status": match.status,
+    }
+
+
+def _build_recurring_template_summary(template: InvoiceRecurringTemplate) -> dict:
+    return {
+        "id": template.id,
+        "template_type": template.template_type,
+        "document_kind": template.document_kind,
+        "status": template.status,
+        "name": template.name,
+        "next_run_date": template.next_run_date.isoformat(),
+        "subject_id": template.subject_id,
+        "supplier_id": template.supplier_id,
+    }
+
+
+def _build_reminder_email_summary(reminder_email: InvoiceReminderEmail) -> dict:
+    return {
+        "id": reminder_email.id,
+        "invoice_id": reminder_email.invoice_id,
+        "todo_id": reminder_email.todo_id,
+        "reminder_type": reminder_email.reminder_type,
+        "status": reminder_email.status,
+        "recipient_email": reminder_email.recipient_email,
+    }
+
+
+def _build_attachment_summary(attachment: InvoiceAttachment) -> dict:
+    return {
+        "id": attachment.id,
+        "invoice_id": attachment.invoice_id,
+        "expense_id": attachment.expense_id,
+        "todo_id": attachment.todo_id,
+        "bank_transaction_id": attachment.bank_transaction_id,
+        "attachment_type": attachment.attachment_type,
+        "status": attachment.status,
+        "original_filename": attachment.original_filename,
+        "content_type": attachment.content_type,
+        "size_bytes": attachment.size_bytes,
+        "checksum_sha256": attachment.checksum_sha256,
+    }
+
+
+def build_accounting_event_response(event: InvoiceAccountingEvent) -> InvoiceAccountingEventResponse:
+    return InvoiceAccountingEventResponse(
+        id=event.id,
+        event_type=event.event_type,
+        entity_type=event.entity_type,
+        entity_id=event.entity_id,
+        invoice_id=event.invoice_id,
+        expense_id=event.expense_id,
+        subject_id=event.subject_id,
+        supplier_id=event.supplier_id,
+        bank_transaction_id=event.bank_transaction_id,
+        payment_match_id=event.payment_match_id,
+        todo_id=event.todo_id,
+        attachment_id=event.attachment_id,
+        recurring_template_id=event.recurring_template_id,
+        reminder_email_id=event.reminder_email_id,
+        actor_type=event.actor_type,
+        actor_id=event.actor_id,
+        actor_email=event.actor_email,
+        source=event.source,
+        message=event.message,
+        old_values=_deserialize_accounting_event_payload(event.old_values),
+        new_values=_deserialize_accounting_event_payload(event.new_values),
+        metadata=_deserialize_accounting_event_payload(event.event_metadata),
+        created_at=event.created_at,
+    )
+
+
+def create_accounting_event(
+    db: Session,
+    *,
+    event_type: str,
+    entity_type: str,
+    entity_id: int,
+    source: str,
+    invoice_id: int | None = None,
+    expense_id: int | None = None,
+    subject_id: int | None = None,
+    supplier_id: int | None = None,
+    bank_transaction_id: int | None = None,
+    payment_match_id: int | None = None,
+    todo_id: int | None = None,
+    attachment_id: int | None = None,
+    recurring_template_id: int | None = None,
+    reminder_email_id: int | None = None,
+    actor_type: str | None = None,
+    actor_id: int | None = None,
+    actor_email: str | None = None,
+    message: str | None = None,
+    old_values=None,
+    new_values=None,
+    metadata=None,
+) -> InvoiceAccountingEvent:
+    event = InvoiceAccountingEvent(
+        event_type=event_type.strip(),
+        entity_type=entity_type.strip(),
+        entity_id=entity_id,
+        invoice_id=invoice_id,
+        expense_id=expense_id,
+        subject_id=subject_id,
+        supplier_id=supplier_id,
+        bank_transaction_id=bank_transaction_id,
+        payment_match_id=payment_match_id,
+        todo_id=todo_id,
+        attachment_id=attachment_id,
+        recurring_template_id=recurring_template_id,
+        reminder_email_id=reminder_email_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        actor_email=actor_email,
+        source=_normalize_accounting_event_source(source),
+        message=message,
+        old_values=_serialize_accounting_event_payload(old_values),
+        new_values=_serialize_accounting_event_payload(new_values),
+        event_metadata=_serialize_accounting_event_payload(metadata),
+    )
+    db.add(event)
+    db.flush()
+    return event
+
+
 def _resolve_invoice_reminder_todo(
     db: Session,
     *,
@@ -2510,6 +3481,17 @@ def _create_generated_todo(
     )
     db.add(todo)
     db.flush()
+    create_accounting_event(
+        db,
+        event_type="generated",
+        entity_type="todo",
+        entity_id=todo.id,
+        invoice_id=todo.invoice_id,
+        expense_id=todo.expense_id,
+        todo_id=todo.id,
+        source="system",
+        new_values=_build_todo_summary(todo),
+    )
     return todo
 
 
@@ -3200,6 +4182,8 @@ def _generate_invoice_document_from_recurring_template(
         payment_settings=payment_settings,
         prepared_items=prepared_items,
         totals=totals,
+        audit_source="generation",
+        audit_metadata={"template_id": template.id, "run_date": run_date.isoformat()},
     )
 
 
@@ -3245,7 +4229,12 @@ def _generate_expense_document_from_recurring_template(
         ],
         status="open",
     )
-    return create_invoice_expense(db, payload)
+    return create_invoice_expense(
+        db,
+        payload,
+        audit_source="generation",
+        audit_metadata={"template_id": template.id, "run_date": run_date.isoformat()},
+    )
 
 
 def _serialize_bank_transaction_raw_payload(value: object | None) -> str | None:
@@ -3893,6 +4882,8 @@ def _create_invoice_with_reserved_sequence(
     payment_settings: InvoicePaymentSettingsProfile,
     prepared_items: list[PreparedInvoiceItem],
     totals: InvoiceTotals,
+    audit_source: str = "admin_api",
+    audit_metadata=None,
 ) -> Invoice:
     resolved_currency = (payload.currency or payment_settings.invoice_defaults.default_currency).strip().upper()
     resolved_note = payload.note if payload.note is not None else payment_settings.invoice_defaults.default_note
@@ -3954,6 +4945,18 @@ def _create_invoice_with_reserved_sequence(
             ]
 
             db.add(invoice)
+            db.flush()
+            create_accounting_event(
+                db,
+                event_type="created",
+                entity_type="invoice",
+                entity_id=invoice.id,
+                invoice_id=invoice.id,
+                subject_id=invoice.subject_id,
+                source=audit_source,
+                new_values=_build_invoice_summary(invoice),
+                metadata=audit_metadata,
+            )
             db.commit()
             created_invoice = get_invoice_detail(db, invoice.id)
             _cache_invoice_nonfatal(created_invoice)
@@ -4156,6 +5159,7 @@ def _update_existing_invoice(
     totals: InvoiceTotals,
 ) -> Invoice:
     try:
+        before = _build_invoice_summary(invoice)
         current_document_kind = normalize_document_kind(invoice.document_kind)
         if current_document_kind == "quote" and _quote_has_any_conversion(db, source_invoice_id=invoice.id):
             raise InvoiceValidationError("Převedenou cenovou nabídku už nelze upravovat.")
@@ -4210,6 +5214,31 @@ def _update_existing_invoice(
         ]
 
         db.add(invoice)
+        after = _build_invoice_summary(invoice)
+        old_values, new_values = _build_diff_payload(before, after)
+        create_accounting_event(
+            db,
+            event_type="updated",
+            entity_type="invoice",
+            entity_id=invoice.id,
+            invoice_id=invoice.id,
+            subject_id=invoice.subject_id,
+            source="admin_api",
+            old_values=old_values,
+            new_values=new_values,
+        )
+        if before.get("status") != after.get("status"):
+            create_accounting_event(
+                db,
+                event_type="status_changed",
+                entity_type="invoice",
+                entity_id=invoice.id,
+                invoice_id=invoice.id,
+                subject_id=invoice.subject_id,
+                source="admin_api",
+                old_values={"status": before.get("status")},
+                new_values={"status": after.get("status")},
+            )
         db.commit()
         updated_invoice = get_invoice_detail(db, invoice.id)
         _cache_invoice_nonfatal(updated_invoice)

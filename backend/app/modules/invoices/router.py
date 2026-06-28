@@ -32,6 +32,7 @@ from backend.app.modules.invoices.schemas import (
     AresCompanyLookupResponse,
     CorrectionInvoiceCreateRequest,
     FinalInvoiceCreateRequest,
+    InvoiceAccountingEventResponse,
     InvoiceAttachmentArchiveResponse,
     InvoiceAttachmentDeleteResponse,
     InvoiceAttachmentLinkRequest,
@@ -102,6 +103,7 @@ from backend.app.modules.invoices.service import (
     add_invoice_expense_payment,
     add_invoice_payment,
     activate_invoice_recurring_template,
+    build_accounting_event_response,
     cancel_invoice_recurring_template,
     cancel_invoice_todo,
     complete_invoice_todo,
@@ -132,7 +134,9 @@ from backend.app.modules.invoices.service import (
     get_invoice_attachment_download,
     get_invoice_expense_detail,
     generate_invoice_pdf,
+    get_expense_audit_events,
     get_invoice_detail,
+    get_invoice_audit_events,
     get_invoice_recurring_template_detail,
     get_invoice_relations_summary,
     get_invoice_settings,
@@ -141,6 +145,7 @@ from backend.app.modules.invoices.service import (
     get_invoice_todo_detail,
     ignore_invoice_bank_transaction,
     import_invoice_bank_transactions,
+    list_accounting_events,
     list_invoice_bank_transactions,
     list_invoice_attachments,
     list_invoice_document_relations,
@@ -223,6 +228,56 @@ def admin_create_invoice(
 ):
     try:
         return create_invoice(db, body)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/audit-events", response_model=list[InvoiceAccountingEventResponse])
+def admin_list_invoice_audit_events(
+    event_type: str | None = Query(default=None),
+    entity_type: str | None = Query(default=None),
+    entity_id: int | None = Query(default=None),
+    invoice_id: int | None = Query(default=None),
+    expense_id: int | None = Query(default=None),
+    subject_id: int | None = Query(default=None),
+    supplier_id: int | None = Query(default=None),
+    bank_transaction_id: int | None = Query(default=None),
+    payment_match_id: int | None = Query(default=None),
+    todo_id: int | None = Query(default=None),
+    attachment_id: int | None = Query(default=None),
+    recurring_template_id: int | None = Query(default=None),
+    reminder_email_id: int | None = Query(default=None),
+    source: str | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    limit: int | None = Query(default=None, ge=1, le=500),
+    offset: int | None = Query(default=None, ge=0),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        events = list_accounting_events(
+            db,
+            event_type=event_type,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            invoice_id=invoice_id,
+            expense_id=expense_id,
+            subject_id=subject_id,
+            supplier_id=supplier_id,
+            bank_transaction_id=bank_transaction_id,
+            payment_match_id=payment_match_id,
+            todo_id=todo_id,
+            attachment_id=attachment_id,
+            recurring_template_id=recurring_template_id,
+            reminder_email_id=reminder_email_id,
+            source=source,
+            date_from=date_from,
+            date_to=date_to,
+            limit=limit,
+            offset=offset,
+        )
+        return [build_accounting_event_response(event) for event in events]
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -990,6 +1045,18 @@ def admin_create_invoice_expense(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/expenses/{expense_id}/audit-events", response_model=list[InvoiceAccountingEventResponse])
+def admin_get_invoice_expense_audit_events(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return [build_accounting_event_response(event) for event in get_expense_audit_events(db, expense_id)]
+    except InvoiceExpenseNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.get("/expenses/{expense_id}", response_model=InvoiceExpenseDetailResponse)
 def admin_get_invoice_expense(
     expense_id: int,
@@ -1382,6 +1449,18 @@ def admin_send_invoice_email(
         detail = str(exc) or "Fakturu se nepodařilo odeslat e-mailem."
         status_code = 400 if "chybí e-mailová adresa příjemce" in detail.lower() else 502
         raise HTTPException(status_code=status_code, detail=detail) from exc
+
+
+@router.get("/{invoice_id}/audit-events", response_model=list[InvoiceAccountingEventResponse])
+def admin_get_invoice_audit_events_endpoint(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return [build_accounting_event_response(event) for event in get_invoice_audit_events(db, invoice_id)]
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
 
 
 @router.get("/{invoice_id}", response_model=InvoiceDetailResponse)
