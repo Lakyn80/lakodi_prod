@@ -1419,3 +1419,108 @@
   - Audit coverage is practical but not perfectly exhaustive for every historical edge case in the growing invoicing module.
   - Push did not happen.
   - No deploy, no CD.
+
+## Úkol 20 Backend final QA / test performance / API consistency cleanup
+
+- Date: 2026-06-28
+- Goal: Finish backend-only stabilization before frontend integration by diagnosing the invoicing test timeout, improving test runtime, and verifying API/audit/storage safety across Úkoly 1-19.
+- Scope: Backend invoicing test-performance cleanup, backend API/audit/storage QA review, required verification runs, and tracking update.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `backend/tests/test_invoices.py`
+- Database/schema changes: None
+- Backend changes:
+  - Optimized the shared admin login helper in `backend/tests/test_invoices.py` to reuse an already-authenticated `TestClient` session via `GET /api/admin/check` instead of re-running bcrypt-backed login for almost every helper call.
+  - Left production invoicing, audit, attachment, export, reminder, recurring, and bank-matching code unchanged because the runtime regression was isolated to repeated test auth work rather than a business-logic regression.
+- Frontend changes: None
+- CI/CD workflow check result:
+  - `.github/workflows/ci.yml` runs only on `push` to `develop` and `main`
+  - `.github/workflows/cd.yml` runs only from successful `CI` workflow runs for `develop` and `main`
+  - Result: feature branch pushes do not provide CI, while pushes to the tracked branches carry CD/deploy behavior
+- Whether a feature branch push was safe:
+  - Not safe for the requested CI-only purpose because no branch path currently triggers CI without the deploy-coupled branch rules
+  - Local feature branch created: `invoicing/task-20-backend-final-qa`
+  - No push was performed
+- Timeout diagnosis from Úkol 19:
+  - The earlier ~304-305s timeout was reproducible as suite runtime, not a hang
+  - Pre-fix measurements:
+    - `python -m pytest backend/tests/test_invoices.py -q --durations=25` completed in about `485.1s`
+    - `python -m pytest -q --durations=25` completed in about `495.3s`
+  - Main cause:
+    - repeated `_login_admin()` calls in `backend/tests/test_invoices.py`
+    - each real login costs about `0.522s` because of password verification
+    - the module uses a shared `TestClient`, so many of those logins were redundant
+- Performance findings:
+  - Focused audit hotspot before fix:
+    - `test_audit_eventy_se_emituji_napric_domenami_a_payload_je_bezpecny` took about `30.96s` pre-fix
+  - Focused audit hotspot after fix:
+    - the same test took about `4.14s` standalone and about `2.17s` inside the full invoice-suite durations run
+  - Post-fix suite measurements:
+    - `python -m pytest backend/tests/test_invoices.py -q --durations=25` completed in about `83.6s`
+    - `python -m pytest -q --durations=25` completed in about `94.4s`
+    - `python -m pytest backend/tests/test_invoices.py -q` completed in `73.744s`
+    - `python -m pytest -q` completed in `85.417s`
+  - Remaining slowest cases are PDF/export/admin-recovery tests rather than audit or matching regressions
+- API consistency findings:
+  - Verified admin auth is enforced on the invoicing/accounting admin endpoints that were reviewed, including audit, attachment, export, reminder, recurring, expense, and bank-matching routes
+  - Verified audit list ordering is newest-first and supports the expected filters plus `limit` and `offset`
+  - Verified attachment list ordering is newest-first and download/list/detail responses do not expose absolute filesystem paths
+  - Verified quote/reminder and payable/non-payable behavior remains consistent with existing tests:
+    - quotes are not treated as payable
+    - fully paid and cancelled reminders remain blocked
+    - overpayment protections remain covered by existing tests
+  - No low-risk production API contract change was necessary in this task
+- Audit safety findings:
+  - Audit endpoints remain read-only from the admin/public API surface; no update/delete audit endpoints were found
+  - Audit read endpoints require admin auth
+  - Audit payload sanitization still strips unsafe values:
+    - no binary file contents
+    - no absolute attachment storage paths
+    - no raw `stored_filename` leakage in attachment audit payloads
+    - no SMTP credentials, tokens, or environment secrets were observed in payload builders or existing coverage
+  - Audit event creation remains non-recursive and existing business flows continued to pass after verification
+- Attachment/storage safety findings:
+  - Path traversal is neutralized by filename sanitization on upload and by `Path(stored_filename).name` validation on download/delete lookup
+  - Generated stored filenames are UUID-based and safe
+  - Empty files are rejected
+  - Max file size enforcement remains in place at `10 MB`
+  - Download endpoint is admin-protected and resolves only stored attachment filenames
+  - Attachment tests using temporary storage still clean up their temp files
+- Fixes made:
+  - Reused authenticated test session in the invoice test helper instead of forcing redundant admin logins
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q`
+  - `python -m pytest --collect-only -q`
+  - `python -m pytest backend/tests/test_invoices.py -q --durations=25`
+  - `python -m pytest -q --durations=25`
+  - `python -m pytest backend/tests/test_invoices.py -q -k audit_eventy_se_emituji_napric_domenami_a_payload_je_bezpecny --durations=10`
+  - `python -m pytest backend/tests/test_invoices.py -q`
+  - `python -m pytest -q`
+- Exact test results:
+  - `python -m pytest backend/tests/test_invoices.py --collect-only -q` -> `backend/tests/test_invoices.py: 182`
+  - `python -m pytest --collect-only -q` -> collected:
+    - `backend/tests/test_admin_recovery.py: 3`
+    - `backend/tests/test_convertor.py: 1`
+    - `backend/tests/test_health.py: 1`
+    - `backend/tests/test_invoices.py: 182`
+    - `backend/tests/test_zakazky.py: 3`
+  - `python -m pytest backend/tests/test_invoices.py -q --durations=25` -> completed successfully, all `182` collected invoice tests passed
+  - `python -m pytest -q --durations=25` -> completed successfully, all `190` collected backend tests passed
+  - `python -m pytest backend/tests/test_invoices.py -q -k audit_eventy_se_emituji_napric_domenami_a_payload_je_bezpecny --durations=10` -> `1 passed`
+  - `python -m pytest backend/tests/test_invoices.py -q` -> completed successfully, all `182` collected invoice tests passed
+  - `python -m pytest -q` -> completed successfully, all `190` collected backend tests passed
+  - All pytest runs still emitted the existing `pytest_asyncio` deprecation warning about unset `asyncio_default_fixture_loop_scope`
+- Exact runtime if available:
+  - `python -m pytest backend/tests/test_invoices.py -q --durations=25` -> about `485.1s` before fix, about `83.6s` after fix
+  - `python -m pytest -q --durations=25` -> about `495.3s` before fix, about `94.4s` after fix
+  - `python -m pytest backend/tests/test_invoices.py -q` -> `73.744s`
+  - `python -m pytest -q` -> `85.417s`
+- Commit message: `Stabilize backend accounting tests and API consistency`
+- Local commit hash if created: pending until local commit
+- Pushed branch if CI-only push was safely performed: none
+- Final status: implemented, verified locally, ready for local commit only
+- Remaining risks / known follow-ups:
+  - CI currently does not run on feature branches, so safe CI-only validation is still unavailable until workflow triggers are changed
+  - The existing `pytest_asyncio` warning is unrelated to this invoicing stabilization task and remains for separate cleanup
+- Push did not happen.
+- No deploy, no CD.

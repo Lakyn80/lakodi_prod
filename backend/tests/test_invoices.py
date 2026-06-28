@@ -49,6 +49,10 @@ client = TestClient(app)
 
 
 def _login_admin() -> None:
+    auth_state = client.get("/api/admin/check")
+    assert auth_state.status_code == 200
+    if auth_state.json().get("authenticated") is True:
+        return
     response = client.post(
         "/api/admin/login",
         json={"email": "lakodi@seznam.cz", "password": "admin123"},
