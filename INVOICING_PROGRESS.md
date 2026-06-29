@@ -1974,3 +1974,139 @@
 - Notes / risks:
   - verification required temporary port remapping only because another local Lakodi compose stack was already bound to `8016` and `8090`
   - no code fix was required for commit `e038c7e`; the shell behaved as expected under the local Docker stack
+
+## Úkol 22C New accounting API client/types + read-only dashboard data
+
+- Date: 2026-06-29
+- Goal: Add a separate read-only accounting API client and isolated dashboard types for `/admin/ucetnictvi-new`, then render conservative read-only dashboard data without touching the legacy invoicing UI.
+- Scope: Frontend only, new parallel accounting section only, safe GET-only accounting reads, dashboard rendering, local build verification, Docker Desktop verification, and tracking update.
+- Files changed:
+  - `frontend/src/components/admin/accounting-new/AccountingNewModuleGrid.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `INVOICING_PROGRESS.md`
+- Old invoicing UI touched: `No`
+- Old route `/admin/invoices` changed: `No`
+- Old invoice components changed: `No`
+- Old invoice API helper changed: `No`
+- Backend changes: `None`
+- Database/schema changes: `None`
+- New API client changes:
+  - Replaced the 22B placeholder helper with a separate accounting-only read client in `frontend/src/lib/accountingNew.ts`.
+  - Reused only the generic shared admin API helper from `frontend/src/lib/api.ts` for cookie/session-safe `fetch(..., credentials: "include")`.
+  - Added isolated read-only functions:
+    - `getAccountingNewDashboardData()`
+    - `listAccountingNewInvoices()`
+    - `listAccountingNewExpenses()`
+    - `listAccountingNewTodos()`
+    - `listAccountingNewBankTransactions()`
+    - `listAccountingNewAuditEvents()`
+    - `listAccountingNewRecurringTemplates()`
+    - `listAccountingNewAttachments()`
+    - `listAccountingNewSubjects()`
+    - `listAccountingNewSuppliers()`
+  - Limited the client strictly to `GET` endpoints under `/api/admin/invoices/*`.
+  - Added centralized API/network error normalization and explicit `401` detection for safe auth-required UI states.
+- New types added:
+  - `AccountingNewApiError`
+  - `AccountingNewDocumentSummary`
+  - `AccountingNewExpenseSummary`
+  - `AccountingNewTodoSummary`
+  - `AccountingNewBankTransactionSummary`
+  - `AccountingNewAuditEventSummary`
+  - `AccountingNewRecurringTemplateSummary`
+  - `AccountingNewAttachmentSummary`
+  - `AccountingNewSubjectSummary`
+  - `AccountingNewSupplierSummary`
+  - `AccountingNewDashboardMetrics`
+  - `AccountingNewDashboardData`
+  - `AccountingNewDashboardLoadResult`
+  - preserved/extented module-definition types for the new section only
+- Dashboard read-only behavior:
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx` is now a client component that loads only read-only accounting data.
+  - The page clearly states:
+    - this is the new parallel accounting section
+    - existing issued invoices remain preserved in old `/admin/invoices`
+    - the dashboard is read-only and performs no migration or write actions
+  - The dashboard renders conservative counts only from returned arrays:
+    - loaded documents
+    - documents with remaining balance
+    - loaded expenses
+    - expenses with remaining balance
+    - open / overdue todos
+    - bank transactions loaded
+    - recurring templates loaded
+    - attachments loaded
+    - audit events loaded
+    - subjects loaded
+    - suppliers loaded
+  - Added recent audit-event rendering from `/api/admin/invoices/audit-events`.
+  - Updated module cards to show read-only data badges/details where live GET data exists and to leave settings as a future placeholder.
+- Auth/401 behavior:
+  - If a read-only accounting endpoint returns `401`, the new dashboard shows a safe login-required message instead of crashing or attempting automatic login.
+  - During Docker smoke checks without an authenticated admin session:
+    - `GET /api/admin/invoices` returned `401 Unauthorized`
+    - `/admin/ucetnictvi-new` still rendered safely through the admin wrapper with `Kontroluji přístup`
+- Frontend checks run:
+  - `cd frontend && npm run build`
+- Exact frontend check results:
+  - `npm run build` -> passed
+  - Build output included the new route:
+    - `/admin/ucetnictvi-new`
+  - Existing non-task warnings remained:
+    - `./src/app/galerie/page.tsx` React Hook dependency warning for `selectedCategory`
+    - Browserslist database staleness warning
+    - existing Next.js ESLint plugin configuration warning
+- Docker Desktop commands run:
+  - `docker compose -p lakodi22cqa -f docker-compose.yml -f docker-compose.dev.yml build`
+  - `docker compose -p lakodi22cqa -f docker-compose.yml -f docker-compose.22cqa.yml down --remove-orphans`
+  - `docker compose -p lakodi22cqa -f docker-compose.yml -f docker-compose.22cqa.yml up -d`
+  - `docker compose -p lakodi22cqa -f docker-compose.yml -f docker-compose.22cqa.yml ps`
+  - `curl.exe -s -i http://localhost:18016/api/health`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:18090/admin/ucetnictvi-new`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:18090/admin/invoices`
+  - `curl.exe -s -i http://localhost:18090/api/admin/invoices`
+- Docker/compose verification notes:
+  - Existing local Lakodi containers were already using `8016` and `8090`, so this QA used a temporary untracked override file `docker-compose.22cqa.yml`.
+  - Temporary port remap:
+    - backend `8016 -> 18016`
+    - frontend `8090 -> 18090`
+  - Docker frontend build context was very large because local frontend artifacts are present in the repo; build still completed successfully.
+- Docker build result:
+  - `build` passed
+  - backend image built successfully
+  - frontend image built successfully
+- Docker up/start result:
+  - `up -d` passed
+  - `ps` showed all services `Up`:
+    - `lakodi-backend-dev`
+    - `lakodi-frontend-dev`
+    - `lakodi-redis`
+  - backend startup reached normal Uvicorn startup on `0.0.0.0:8016`
+  - frontend startup reached normal Next.js dev startup on `0.0.0.0:8080`
+  - frontend emitted the existing non-fatal media-sync warning about missing `/img_dílna` or `/img_dilna`
+- Docker smoke check URLs and exact results:
+  - `GET http://localhost:18016/api/health` -> `200 OK`, body `{"status":"ok"}`
+  - `GET http://localhost:18090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:18090/admin/invoices` -> `200`
+  - `GET http://localhost:18090/api/admin/invoices` without auth -> `401 Unauthorized`, body `{"detail":"Přihlaste se do adminu"}`
+  - New route bundle verification:
+    - `/_next/static/chunks/app/admin/ucetnictvi-new/page.js` contained:
+      - `ÚčetnictvíNew`
+      - `Read-only dashboard`
+      - `/admin/invoices`
+  - Legacy route bundle verification:
+    - `/admin/invoices` HTML contained `app/admin/invoices/page.js`
+    - `/admin/invoices` HTML did not contain `app/admin/ucetnictvi-new/page.js`
+    - legacy route bundle did not contain `ÚčetnictvíNew`
+- Whether `/admin/ucetnictvi-new` works through Docker: `Yes`
+- Whether `/admin/invoices` remained available/unchanged through Docker: `Yes`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Add read-only accounting dashboard data`
+- Local commit hash: pending until local commit
+- Known risks / follow-ups:
+  - the read-only dashboard currently loads whole GET collections and then derives conservative counts client-side; later tasks may want pagination/filtering if data volume grows
+  - because the admin wrapper performs auth checking on the client, the initial HTML for `/admin/ucetnictvi-new` shows the safe auth-check shell first and the route-specific read-only copy is confirmed from the route bundle plus runtime client rendering
+  - the settings area remains intentionally placeholder-only in this task to avoid adding any write UI
