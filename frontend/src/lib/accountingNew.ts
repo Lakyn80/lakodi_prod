@@ -6,9 +6,17 @@ import type {
   AccountingNewBankTransactionSummary,
   AccountingNewDashboardData,
   AccountingNewDashboardLoadResult,
-  AccountingNewDocumentSummary,
+  AccountingNewDocumentDetail,
+  AccountingNewDocumentFilters,
+  AccountingNewDocumentItem,
+  AccountingNewDocumentListItem,
+  AccountingNewDocumentRelationDocumentSummary,
+  AccountingNewDocumentRelationPaymentSummary,
+  AccountingNewDocumentRelationSummary,
+  AccountingNewDocumentRelationsSummary,
   AccountingNewExpenseSummary,
   AccountingNewModuleDefinition,
+  AccountingNewPaymentSummary,
   AccountingNewRecurringTemplateSummary,
   AccountingNewSubjectSummary,
   AccountingNewSupplierSummary,
@@ -133,7 +141,24 @@ function emptyDashboard(): AccountingNewDashboardData {
   };
 }
 
-function mapInvoiceSummary(item: {
+function normalizeSearchText(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeDocumentId(id: number | string): string {
+  const normalized = typeof id === "number" ? String(id) : id.trim();
+  if (!/^\d+$/.test(normalized) || Number(normalized) <= 0) {
+    throw new AccountingNewRequestError({
+      resource: "documents",
+      message: "ID dokumentu musí být kladné číslo.",
+      status: 400,
+      requiresLogin: false,
+    });
+  }
+  return normalized;
+}
+
+function mapDocumentListItem(item: {
   id: number;
   invoice_number: string;
   variable_symbol: string;
@@ -150,7 +175,7 @@ function mapInvoiceSummary(item: {
   payment_status: string;
   effective_status: string;
   created_at: string;
-}): AccountingNewDocumentSummary {
+}): AccountingNewDocumentListItem {
   return {
     id: item.id,
     invoiceNumber: item.invoice_number,
@@ -168,6 +193,365 @@ function mapInvoiceSummary(item: {
     paymentStatus: item.payment_status,
     effectiveStatus: item.effective_status,
     createdAt: item.created_at,
+  };
+}
+
+function mapDocumentItem(item: {
+  id: number;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}): AccountingNewDocumentItem {
+  return {
+    id: item.id,
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unit_price,
+    lineTotal: item.line_total,
+  };
+}
+
+function mapPaymentSummary(item: {
+  id: number;
+  invoice_id: number;
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note: string | null;
+  created_at: string;
+}): AccountingNewPaymentSummary {
+  return {
+    id: item.id,
+    invoiceId: item.invoice_id,
+    amount: item.amount,
+    paidAt: item.paid_at,
+    paymentMethod: item.payment_method,
+    note: item.note,
+    createdAt: item.created_at,
+  };
+}
+
+function mapDocumentDetail(item: {
+  id: number;
+  invoice_number: string;
+  variable_symbol: string;
+  document_kind: string;
+  issue_date: string;
+  due_date: string;
+  issuer_name: string;
+  issuer_address: string;
+  issuer_city: string;
+  issuer_zip: string;
+  issuer_ico: string;
+  issuer_dic: string;
+  issuer_data_box: string | null;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  customer_address: string | null;
+  customer_ico: string | null;
+  customer_dic: string | null;
+  subject_id: number | null;
+  note: string | null;
+  business_mode: string;
+  tax_mode: string;
+  currency: string;
+  subtotal: number;
+  vat_rate: number | null;
+  vat_amount: number;
+  total: number;
+  status: string;
+  total_paid: number;
+  remaining_amount: number;
+  payment_status: string;
+  effective_status: string;
+  reverse_charge_reason: string | null;
+  reverse_charge_text: string | null;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string;
+  created_at: string;
+  items: Array<{
+    id: number;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+  payments: Array<{
+    id: number;
+    invoice_id: number;
+    amount: number;
+    paid_at: string;
+    payment_method: string;
+    note: string | null;
+    created_at: string;
+  }>;
+}): AccountingNewDocumentDetail {
+  return {
+    ...mapDocumentListItem(item),
+    issuerName: item.issuer_name,
+    issuerAddress: item.issuer_address,
+    issuerCity: item.issuer_city,
+    issuerZip: item.issuer_zip,
+    issuerIco: item.issuer_ico,
+    issuerDic: item.issuer_dic,
+    issuerDataBox: item.issuer_data_box,
+    customerPhone: item.customer_phone,
+    customerAddress: item.customer_address,
+    customerIco: item.customer_ico,
+    customerDic: item.customer_dic,
+    subjectId: item.subject_id,
+    note: item.note,
+    businessMode: item.business_mode,
+    taxMode: item.tax_mode,
+    subtotal: item.subtotal,
+    vatRate: item.vat_rate,
+    vatAmount: item.vat_amount,
+    reverseChargeReason: item.reverse_charge_reason,
+    reverseChargeText: item.reverse_charge_text,
+    paymentMethod: item.payment_method,
+    bankAccountNumber: item.bank_account_number,
+    bankAccountPrefix: item.bank_account_prefix,
+    bankCode: item.bank_code,
+    bankIban: item.bank_iban,
+    items: item.items.map(mapDocumentItem),
+    payments: item.payments.map(mapPaymentSummary),
+  };
+}
+
+function mapDocumentRelationDocumentSummary(item: {
+  id: number;
+  document_kind: string;
+  invoice_number: string;
+  variable_symbol: string;
+  issue_date: string;
+  due_date: string;
+  customer_name: string;
+  currency: string;
+  total: number;
+  effective_status: string;
+  payment_status: string;
+}): AccountingNewDocumentRelationDocumentSummary {
+  return {
+    id: item.id,
+    documentKind: item.document_kind,
+    invoiceNumber: item.invoice_number,
+    variableSymbol: item.variable_symbol,
+    issueDate: item.issue_date,
+    dueDate: item.due_date,
+    customerName: item.customer_name,
+    currency: item.currency,
+    total: item.total,
+    effectiveStatus: item.effective_status,
+    paymentStatus: item.payment_status,
+  };
+}
+
+function mapDocumentRelationPaymentSummary(item: {
+  id: number;
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note: string | null;
+}): AccountingNewDocumentRelationPaymentSummary {
+  return {
+    id: item.id,
+    amount: item.amount,
+    paidAt: item.paid_at,
+    paymentMethod: item.payment_method,
+    note: item.note,
+  };
+}
+
+function mapDocumentRelationSummary(item: {
+  id: number;
+  relation_type: string;
+  source_invoice_id: number;
+  target_invoice_id: number;
+  source_payment_id: number | null;
+  created_at: string;
+  source_document: {
+    id: number;
+    document_kind: string;
+    invoice_number: string;
+    variable_symbol: string;
+    issue_date: string;
+    due_date: string;
+    customer_name: string;
+    currency: string;
+    total: number;
+    effective_status: string;
+    payment_status: string;
+  } | null;
+  target_document: {
+    id: number;
+    document_kind: string;
+    invoice_number: string;
+    variable_symbol: string;
+    issue_date: string;
+    due_date: string;
+    customer_name: string;
+    currency: string;
+    total: number;
+    effective_status: string;
+    payment_status: string;
+  } | null;
+  source_payment: {
+    id: number;
+    amount: number;
+    paid_at: string;
+    payment_method: string;
+    note: string | null;
+  } | null;
+}): AccountingNewDocumentRelationSummary {
+  return {
+    id: item.id,
+    relationType: item.relation_type,
+    sourceInvoiceId: item.source_invoice_id,
+    targetInvoiceId: item.target_invoice_id,
+    sourcePaymentId: item.source_payment_id,
+    createdAt: item.created_at,
+    sourceDocument: item.source_document ? mapDocumentRelationDocumentSummary(item.source_document) : null,
+    targetDocument: item.target_document ? mapDocumentRelationDocumentSummary(item.target_document) : null,
+    sourcePayment: item.source_payment ? mapDocumentRelationPaymentSummary(item.source_payment) : null,
+  };
+}
+
+function mapDocumentRelationsSummary(item: {
+  invoice_id: number;
+  outgoing_relations: Array<{
+    id: number;
+    relation_type: string;
+    source_invoice_id: number;
+    target_invoice_id: number;
+    source_payment_id: number | null;
+    created_at: string;
+    source_document: {
+      id: number;
+      document_kind: string;
+      invoice_number: string;
+      variable_symbol: string;
+      issue_date: string;
+      due_date: string;
+      customer_name: string;
+      currency: string;
+      total: number;
+      effective_status: string;
+      payment_status: string;
+    } | null;
+    target_document: {
+      id: number;
+      document_kind: string;
+      invoice_number: string;
+      variable_symbol: string;
+      issue_date: string;
+      due_date: string;
+      customer_name: string;
+      currency: string;
+      total: number;
+      effective_status: string;
+      payment_status: string;
+    } | null;
+    source_payment: {
+      id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+    } | null;
+  }>;
+  incoming_relations: Array<{
+    id: number;
+    relation_type: string;
+    source_invoice_id: number;
+    target_invoice_id: number;
+    source_payment_id: number | null;
+    created_at: string;
+    source_document: {
+      id: number;
+      document_kind: string;
+      invoice_number: string;
+      variable_symbol: string;
+      issue_date: string;
+      due_date: string;
+      customer_name: string;
+      currency: string;
+      total: number;
+      effective_status: string;
+      payment_status: string;
+    } | null;
+    target_document: {
+      id: number;
+      document_kind: string;
+      invoice_number: string;
+      variable_symbol: string;
+      issue_date: string;
+      due_date: string;
+      customer_name: string;
+      currency: string;
+      total: number;
+      effective_status: string;
+      payment_status: string;
+    } | null;
+    source_payment: {
+      id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+    } | null;
+  }>;
+  all_relations: Array<{
+    id: number;
+    relation_type: string;
+    source_invoice_id: number;
+    target_invoice_id: number;
+    source_payment_id: number | null;
+    created_at: string;
+    source_document: {
+      id: number;
+      document_kind: string;
+      invoice_number: string;
+      variable_symbol: string;
+      issue_date: string;
+      due_date: string;
+      customer_name: string;
+      currency: string;
+      total: number;
+      effective_status: string;
+      payment_status: string;
+    } | null;
+    target_document: {
+      id: number;
+      document_kind: string;
+      invoice_number: string;
+      variable_symbol: string;
+      issue_date: string;
+      due_date: string;
+      customer_name: string;
+      currency: string;
+      total: number;
+      effective_status: string;
+      payment_status: string;
+    } | null;
+    source_payment: {
+      id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+    } | null;
+  }>;
+}): AccountingNewDocumentRelationsSummary {
+  return {
+    invoiceId: item.invoice_id,
+    outgoingRelations: item.outgoing_relations.map(mapDocumentRelationSummary),
+    incomingRelations: item.incoming_relations.map(mapDocumentRelationSummary),
+    allRelations: item.all_relations.map(mapDocumentRelationSummary),
   };
 }
 
@@ -457,8 +841,14 @@ async function buildApiError(resource: string, response: Response): Promise<Acco
     }
   } catch {
     if (response.status === 401) {
-      message = "Pro načtení read-only accounting dashboardu je nutné přihlášení do adminu.";
+      message = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
+    } else if (response.status === 404) {
+      message = "Požadovaný accounting dokument nebyl nalezen.";
     }
+  }
+
+  if (response.status === 401) {
+    message = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
   }
 
   return {
@@ -525,9 +915,42 @@ function isOverdueTodo(todo: AccountingNewTodoSummary): boolean {
   return dueAt < Date.now();
 }
 
+function matchesDocumentFilters(document: AccountingNewDocumentListItem, filters: AccountingNewDocumentFilters): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      document.invoiceNumber,
+      document.variableSymbol,
+      document.customerName,
+      document.customerEmail,
+      document.documentKind,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.documentKind && filters.documentKind !== "all" && document.documentKind !== filters.documentKind) {
+    return false;
+  }
+
+  if (filters.paymentStatus && filters.paymentStatus !== "all" && document.paymentStatus !== filters.paymentStatus) {
+    return false;
+  }
+
+  if (filters.effectiveStatus && filters.effectiveStatus !== "all" && document.effectiveStatus !== filters.effectiveStatus) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function listAccountingNewInvoices(
   params: AccountingNewListParams = {},
-): Promise<AccountingNewDocumentSummary[]> {
+): Promise<AccountingNewDocumentListItem[]> {
   const data = await fetchAccountingNewJson<
     Array<{
       id: number;
@@ -549,7 +972,272 @@ export async function listAccountingNewInvoices(
     }>
   >("documents", "", params.signal);
 
-  return data.map(mapInvoiceSummary);
+  return data.map(mapDocumentListItem);
+}
+
+export async function listAccountingNewDocuments(
+  filters: AccountingNewDocumentFilters = {},
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentListItem[]> {
+  const documents = await listAccountingNewInvoices(params);
+  return documents.filter((document) => matchesDocumentFilters(document, filters));
+}
+
+export async function getAccountingNewDocument(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentDetail> {
+  const normalizedId = normalizeDocumentId(id);
+  const data = await fetchAccountingNewJson<{
+    id: number;
+    invoice_number: string;
+    variable_symbol: string;
+    document_kind: string;
+    issue_date: string;
+    due_date: string;
+    issuer_name: string;
+    issuer_address: string;
+    issuer_city: string;
+    issuer_zip: string;
+    issuer_ico: string;
+    issuer_dic: string;
+    issuer_data_box: string | null;
+    customer_name: string;
+    customer_email: string;
+    customer_phone: string | null;
+    customer_address: string | null;
+    customer_ico: string | null;
+    customer_dic: string | null;
+    subject_id: number | null;
+    note: string | null;
+    business_mode: string;
+    tax_mode: string;
+    currency: string;
+    subtotal: number;
+    vat_rate: number | null;
+    vat_amount: number;
+    total: number;
+    status: string;
+    total_paid: number;
+    remaining_amount: number;
+    payment_status: string;
+    effective_status: string;
+    reverse_charge_reason: string | null;
+    reverse_charge_text: string | null;
+    payment_method: string;
+    bank_account_number: string;
+    bank_account_prefix: string | null;
+    bank_code: string;
+    bank_iban: string;
+    created_at: string;
+    items: Array<{
+      id: number;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+    }>;
+    payments: Array<{
+      id: number;
+      invoice_id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+      created_at: string;
+    }>;
+  }>("document-detail", `/${normalizedId}`, params.signal);
+
+  return mapDocumentDetail(data);
+}
+
+export async function getAccountingNewDocumentRelations(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentRelationsSummary> {
+  const normalizedId = normalizeDocumentId(id);
+  const data = await fetchAccountingNewJson<{
+    invoice_id: number;
+    outgoing_relations: Array<{
+      id: number;
+      relation_type: string;
+      source_invoice_id: number;
+      target_invoice_id: number;
+      source_payment_id: number | null;
+      created_at: string;
+      source_document: {
+        id: number;
+        document_kind: string;
+        invoice_number: string;
+        variable_symbol: string;
+        issue_date: string;
+        due_date: string;
+        customer_name: string;
+        currency: string;
+        total: number;
+        effective_status: string;
+        payment_status: string;
+      } | null;
+      target_document: {
+        id: number;
+        document_kind: string;
+        invoice_number: string;
+        variable_symbol: string;
+        issue_date: string;
+        due_date: string;
+        customer_name: string;
+        currency: string;
+        total: number;
+        effective_status: string;
+        payment_status: string;
+      } | null;
+      source_payment: {
+        id: number;
+        amount: number;
+        paid_at: string;
+        payment_method: string;
+        note: string | null;
+      } | null;
+    }>;
+    incoming_relations: Array<{
+      id: number;
+      relation_type: string;
+      source_invoice_id: number;
+      target_invoice_id: number;
+      source_payment_id: number | null;
+      created_at: string;
+      source_document: {
+        id: number;
+        document_kind: string;
+        invoice_number: string;
+        variable_symbol: string;
+        issue_date: string;
+        due_date: string;
+        customer_name: string;
+        currency: string;
+        total: number;
+        effective_status: string;
+        payment_status: string;
+      } | null;
+      target_document: {
+        id: number;
+        document_kind: string;
+        invoice_number: string;
+        variable_symbol: string;
+        issue_date: string;
+        due_date: string;
+        customer_name: string;
+        currency: string;
+        total: number;
+        effective_status: string;
+        payment_status: string;
+      } | null;
+      source_payment: {
+        id: number;
+        amount: number;
+        paid_at: string;
+        payment_method: string;
+        note: string | null;
+      } | null;
+    }>;
+    all_relations: Array<{
+      id: number;
+      relation_type: string;
+      source_invoice_id: number;
+      target_invoice_id: number;
+      source_payment_id: number | null;
+      created_at: string;
+      source_document: {
+        id: number;
+        document_kind: string;
+        invoice_number: string;
+        variable_symbol: string;
+        issue_date: string;
+        due_date: string;
+        customer_name: string;
+        currency: string;
+        total: number;
+        effective_status: string;
+        payment_status: string;
+      } | null;
+      target_document: {
+        id: number;
+        document_kind: string;
+        invoice_number: string;
+        variable_symbol: string;
+        issue_date: string;
+        due_date: string;
+        customer_name: string;
+        currency: string;
+        total: number;
+        effective_status: string;
+        payment_status: string;
+      } | null;
+      source_payment: {
+        id: number;
+        amount: number;
+        paid_at: string;
+        payment_method: string;
+        note: string | null;
+      } | null;
+    }>;
+  }>("document-relations", `/${normalizedId}/relations`, params.signal);
+
+  return mapDocumentRelationsSummary(data);
+}
+
+export async function getAccountingNewDocumentPayments(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewPaymentSummary[]> {
+  const normalizedId = normalizeDocumentId(id);
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      invoice_id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+      created_at: string;
+    }>
+  >("document-payments", `/${normalizedId}/payments`, params.signal);
+
+  return data.map(mapPaymentSummary);
+}
+
+export async function getAccountingNewDocumentAuditEvents(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAuditEventSummary[]> {
+  const normalizedId = normalizeDocumentId(id);
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      event_type: string;
+      entity_type: string;
+      entity_id: number;
+      invoice_id: number | null;
+      expense_id: number | null;
+      subject_id: number | null;
+      supplier_id: number | null;
+      bank_transaction_id: number | null;
+      payment_match_id: number | null;
+      todo_id: number | null;
+      attachment_id: number | null;
+      recurring_template_id: number | null;
+      reminder_email_id: number | null;
+      actor_type: string | null;
+      actor_id: number | null;
+      actor_email: string | null;
+      source: string;
+      message: string | null;
+      metadata: unknown;
+      created_at: string;
+    }>
+  >("document-audit-events", `/${normalizedId}/audit-events`, params.signal);
+
+  return data.map(mapAuditEventSummary);
 }
 
 export async function listAccountingNewExpenses(
@@ -782,11 +1470,7 @@ export async function getAccountingNewDashboardData(
   const partialErrors: AccountingNewApiError[] = [];
   let authRequired = false;
 
-  function applyResult<T>(
-    resource: string,
-    result: PromiseSettledResult<T>,
-    onSuccess: (value: T) => void,
-  ) {
+  function applyResult<T>(resource: string, result: PromiseSettledResult<T>, onSuccess: (value: T) => void) {
     if (result.status === "fulfilled") {
       onSuccess(result.value);
       return;

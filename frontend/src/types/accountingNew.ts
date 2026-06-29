@@ -27,11 +27,22 @@ export interface AccountingNewApiError {
   requiresLogin: boolean;
 }
 
-export interface AccountingNewDocumentSummary {
+export type AccountingNewDocumentKind =
+  | "invoice"
+  | "proforma"
+  | "tax_document"
+  | "correction"
+  | "final_invoice"
+  | "quote";
+
+export type AccountingNewPaymentStatus = string;
+export type AccountingNewEffectiveStatus = string;
+
+export interface AccountingNewDocumentListItem {
   id: number;
   invoiceNumber: string;
   variableSymbol: string;
-  documentKind: string;
+  documentKind: AccountingNewDocumentKind | string;
   issueDate: string;
   dueDate: string;
   customerName: string;
@@ -41,10 +52,121 @@ export interface AccountingNewDocumentSummary {
   totalPaid: number;
   remainingAmount: number;
   status: string;
-  paymentStatus: string;
-  effectiveStatus: string;
+  paymentStatus: AccountingNewPaymentStatus;
+  effectiveStatus: AccountingNewEffectiveStatus;
   createdAt: string;
 }
+
+export type AccountingNewDocumentSummary = AccountingNewDocumentListItem;
+
+export interface AccountingNewDocumentItem {
+  id: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface AccountingNewPaymentSummary {
+  id: number;
+  invoiceId: number;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface AccountingNewDocumentRelationDocumentSummary {
+  id: number;
+  documentKind: AccountingNewDocumentKind | string;
+  invoiceNumber: string;
+  variableSymbol: string;
+  issueDate: string;
+  dueDate: string;
+  customerName: string;
+  currency: string;
+  total: number;
+  effectiveStatus: AccountingNewEffectiveStatus;
+  paymentStatus: AccountingNewPaymentStatus;
+}
+
+export interface AccountingNewDocumentRelationPaymentSummary {
+  id: number;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string;
+  note: string | null;
+}
+
+export interface AccountingNewDocumentRelationSummary {
+  id: number;
+  relationType: string;
+  sourceInvoiceId: number;
+  targetInvoiceId: number;
+  sourcePaymentId: number | null;
+  createdAt: string;
+  sourceDocument: AccountingNewDocumentRelationDocumentSummary | null;
+  targetDocument: AccountingNewDocumentRelationDocumentSummary | null;
+  sourcePayment: AccountingNewDocumentRelationPaymentSummary | null;
+}
+
+export interface AccountingNewDocumentRelationsSummary {
+  invoiceId: number;
+  outgoingRelations: AccountingNewDocumentRelationSummary[];
+  incomingRelations: AccountingNewDocumentRelationSummary[];
+  allRelations: AccountingNewDocumentRelationSummary[];
+}
+
+export interface AccountingNewDocumentDetail extends AccountingNewDocumentListItem {
+  issuerName: string;
+  issuerAddress: string;
+  issuerCity: string;
+  issuerZip: string;
+  issuerIco: string;
+  issuerDic: string;
+  issuerDataBox: string | null;
+  customerPhone: string | null;
+  customerAddress: string | null;
+  customerIco: string | null;
+  customerDic: string | null;
+  subjectId: number | null;
+  note: string | null;
+  businessMode: string;
+  taxMode: string;
+  subtotal: number;
+  vatRate: number | null;
+  vatAmount: number;
+  reverseChargeReason: string | null;
+  reverseChargeText: string | null;
+  paymentMethod: string;
+  bankAccountNumber: string;
+  bankAccountPrefix: string | null;
+  bankCode: string;
+  bankIban: string;
+  items: AccountingNewDocumentItem[];
+  payments: AccountingNewPaymentSummary[];
+}
+
+export interface AccountingNewDocumentFilters {
+  query?: string;
+  documentKind?: AccountingNewDocumentKind | string | "all";
+  paymentStatus?: AccountingNewPaymentStatus | "all";
+  effectiveStatus?: AccountingNewEffectiveStatus | "all";
+}
+
+export type AccountingNewDocumentDetailState =
+  | { status: "loading" }
+  | {
+      status: "ready";
+      detail: AccountingNewDocumentDetail;
+      relations: AccountingNewDocumentRelationsSummary | null;
+      auditEvents: AccountingNewAuditEventSummary[];
+      partialErrors: AccountingNewApiError[];
+    }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
 
 export interface AccountingNewExpenseSummary {
   id: number;
@@ -201,7 +323,7 @@ export interface AccountingNewDashboardMetrics {
 }
 
 export interface AccountingNewDashboardData {
-  invoices: AccountingNewDocumentSummary[];
+  invoices: AccountingNewDocumentListItem[];
   expenses: AccountingNewExpenseSummary[];
   todos: AccountingNewTodoSummary[];
   bankTransactions: AccountingNewBankTransactionSummary[];

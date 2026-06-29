@@ -13,6 +13,7 @@ import {
   getAccountingNewDashboardData,
 } from "@/lib/accountingNew";
 import { AccountingNewModuleGrid, type AccountingNewModuleStat } from "@/components/admin/accounting-new/AccountingNewModuleGrid";
+import { AccountingNewDocumentsPanel } from "@/components/admin/accounting-new/AccountingNewDocumentsPanel";
 import type {
   AccountingNewApiError,
   AccountingNewAuditEventSummary,
@@ -99,6 +100,10 @@ function getPrimaryError(errors: AccountingNewApiError[]): AccountingNewApiError
   return errors[0] ?? null;
 }
 
+function getResourceError(errors: AccountingNewApiError[], resource: string): AccountingNewApiError | null {
+  return errors.find((error) => error.resource === resource) ?? null;
+}
+
 function getRecentAuditEvents(events: AccountingNewAuditEventSummary[]): AccountingNewAuditEventSummary[] {
   return [...events]
     .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
@@ -178,6 +183,7 @@ export function AccountingNewShell() {
   const dashboard = result?.dashboard ?? null;
   const partialErrors = result?.partialErrors ?? [];
   const primaryPartialError = getPrimaryError(partialErrors);
+  const documentsError = getResourceError(partialErrors, "documents");
   const moduleStats = getModuleStats(dashboard);
   const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
@@ -300,6 +306,13 @@ export function AccountingNewShell() {
           </div>
         ) : null}
       </section>
+
+      <AccountingNewDocumentsPanel
+        documents={dashboard?.invoices ?? []}
+        isLoading={state.status === "loading"}
+        authRequired={state.status === "auth"}
+        error={documentsError}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
         <Card className="border-border bg-card">

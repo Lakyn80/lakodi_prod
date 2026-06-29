@@ -2110,3 +2110,176 @@
   - the read-only dashboard currently loads whole GET collections and then derives conservative counts client-side; later tasks may want pagination/filtering if data volume grows
   - because the admin wrapper performs auth checking on the client, the initial HTML for `/admin/ucetnictvi-new` shows the safe auth-check shell first and the route-specific read-only copy is confirmed from the route bundle plus runtime client rendering
   - the settings area remains intentionally placeholder-only in this task to avoid adding any write UI
+
+## Úkol 22D Read-only accounting documents list/detail in ÚčetnictvíNew
+
+- Date: 2026-06-29
+- Goal: Extend the new parallel accounting UI with a read-only documents list on `/admin/ucetnictvi-new` and a separate read-only document detail route under `/admin/ucetnictvi-new/doklady/[id]`, without touching the legacy invoicing UI.
+- Scope: Frontend only, new accounting section only, read-only document list/detail views, safe GET-only accounting reads, Docker Desktop verification, and tracking update.
+- Files changed:
+  - `frontend/src/app/admin/ucetnictvi-new/doklady/[id]/page.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentStatusBadge.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentsPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentsTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewMoney.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `INVOICING_PROGRESS.md`
+- Old invoicing UI touched: `No`
+- Old route `/admin/invoices` changed: `No`
+- Old invoice components changed: `No`
+- Old invoice API helper changed: `No`
+- Backend changes: `None`
+- Database/schema changes: `None`
+- Document list UI added:
+  - Added a new read-only documents panel directly inside `/admin/ucetnictvi-new`.
+  - Added safe document columns:
+    - document number
+    - document kind
+    - customer name
+    - issue date
+    - due date
+    - total
+    - currency
+    - payment status / effective status
+  - Added client-side read-only filters for:
+    - search query
+    - document kind
+    - effective status
+  - Each row links only to the new parallel detail route:
+    - `/admin/ucetnictvi-new/doklady/{id}`
+  - No edit/delete/create/migration/import actions were added.
+- Document detail route added:
+  - Added new route:
+    - `frontend/src/app/admin/ucetnictvi-new/doklady/[id]/page.tsx`
+  - Added isolated detail component:
+    - `frontend/src/components/admin/accounting-new/AccountingNewDocumentDetail.tsx`
+  - The detail view is read-only and shows:
+    - document kind
+    - document number
+    - variable symbol
+    - issue date
+    - due date
+    - customer snapshot
+    - issuer/payment snapshot
+    - status / effective status / payment status
+    - document items
+    - subtotal / VAT / total
+    - paid / remaining
+    - note when present
+    - link back to `/admin/ucetnictvi-new`
+    - preservation notice for old `/admin/invoices`
+  - No edit/delete/payment-add/email/reminder/migration actions were added.
+- Read-only API client changes:
+  - Extended `frontend/src/lib/accountingNew.ts` with GET-only document functions:
+    - `listAccountingNewDocuments()`
+    - `getAccountingNewDocument()`
+    - `getAccountingNewDocumentRelations()`
+    - `getAccountingNewDocumentPayments()`
+    - `getAccountingNewDocumentAuditEvents()`
+  - Kept all document reads separate from legacy `frontend/src/lib/invoices.ts`.
+  - Reused only the generic shared admin fetch convention from `frontend/src/lib/api.ts`.
+- Read-only types added/extended:
+  - `AccountingNewDocumentKind`
+  - `AccountingNewPaymentStatus`
+  - `AccountingNewEffectiveStatus`
+  - `AccountingNewDocumentListItem`
+  - `AccountingNewDocumentDetail`
+  - `AccountingNewDocumentItem`
+  - `AccountingNewPaymentSummary`
+  - `AccountingNewDocumentRelationDocumentSummary`
+  - `AccountingNewDocumentRelationPaymentSummary`
+  - `AccountingNewDocumentRelationSummary`
+  - `AccountingNewDocumentRelationsSummary`
+  - `AccountingNewDocumentFilters`
+  - `AccountingNewDocumentDetailState`
+- Auth/401 behavior:
+  - If the document list API returns `401`, the list panel shows a safe login-required state.
+  - If the document detail API returns `401`, the detail route shows a safe login-required state.
+  - No automatic login, no redirect to old invoice routes, and no crash behavior was added.
+- Optional sections added or deferred:
+  - Added:
+    - payments section from the existing document detail response
+    - relations section using `GET /api/admin/invoices/{invoice_id}/relations`
+    - recent audit events section using `GET /api/admin/invoices/{invoice_id}/audit-events`
+  - Deferred:
+    - PDF actions
+    - reminder/email actions
+    - any write/mutation flow
+  - Reason for deferral: this task is read-only only and must not mix in actions from the legacy invoicing surface.
+- Frontend checks run:
+  - `cd frontend && npm run build`
+- Exact frontend check results:
+  - `npm run build` -> passed
+  - Build output included:
+    - `/admin/ucetnictvi-new`
+    - `/admin/ucetnictvi-new/doklady/[id]`
+  - Existing non-task warnings remained:
+    - `./src/app/galerie/page.tsx` missing `useEffect` dependency warning for `selectedCategory`
+    - Browserslist staleness warning
+    - existing Next.js ESLint plugin configuration warning
+- Docker Desktop commands run:
+  - `docker compose -p lakodi22dqa -f docker-compose.yml -f docker-compose.dev.yml build`
+  - `docker compose -p lakodi22dqa -f docker-compose.yml -f docker-compose.22dqa.yml down --remove-orphans`
+  - `docker compose -p lakodi22dqa -f docker-compose.yml -f docker-compose.22dqa.yml up -d`
+  - `docker compose -p lakodi22dqa -f docker-compose.yml -f docker-compose.22dqa.yml ps`
+  - `curl.exe -s -i http://localhost:18016/api/health`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:18090/admin/ucetnictvi-new`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:18090/admin/ucetnictvi-new/doklady/1`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:18090/admin/invoices`
+  - `curl.exe -s -i http://localhost:18090/api/admin/invoices`
+- Docker/compose verification notes:
+  - Default Lakodi ports `8016` and `8090` were already occupied by the existing local stack.
+  - This QA used a temporary untracked override file `docker-compose.22dqa.yml` with:
+    - backend `8016 -> 18016`
+    - frontend `8090 -> 18090`
+- Docker build result:
+  - `build` passed
+  - backend image built successfully
+  - frontend image built successfully
+- Docker up/start result:
+  - `up -d` passed
+  - `ps` showed all services `Up`:
+    - `lakodi-backend-dev`
+    - `lakodi-frontend-dev`
+    - `lakodi-redis`
+  - backend log reached normal Uvicorn startup
+  - frontend log reached normal Next.js dev startup
+  - frontend still emitted the existing non-fatal media-sync warning about missing `/img_dílna` or `/img_dilna`
+- Docker smoke check URLs and exact results:
+  - `GET http://localhost:18016/api/health` -> `200 OK`, body `{"status":"ok"}`
+  - `GET http://localhost:18090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:18090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:18090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:18090/api/admin/invoices` -> `401 Unauthorized`, body `{"detail":"Přihlaste se do adminu"}`
+  - Because the admin wrapper performs client-side auth checking, the initial HTML for both new routes rendered the safe auth shell text:
+    - `Kontroluji přístup`
+  - New list route bundle verification:
+    - `/_next/static/chunks/app/admin/ucetnictvi-new/page.js` contained:
+      - `ÚčetnictvíNew`
+      - `Read-only`
+      - `doklad`
+      - `/admin/invoices`
+  - New detail route bundle verification:
+    - route HTML referenced `/_next/static/chunks/app/admin/ucetnictvi-new/doklady/%5Bid%5D/page.js`
+    - that detail chunk contained:
+      - `Read-only detail`
+      - `ÚčetnictvíNew`
+      - `/admin/invoices`
+  - Legacy route verification:
+    - `/admin/invoices` HTML contained `app/admin/invoices/page.js`
+    - `/admin/invoices` HTML did not contain `app/admin/ucetnictvi-new/page.js`
+    - `/admin/invoices` HTML did not contain `ÚčetnictvíNew`
+- Whether `/admin/ucetnictvi-new` works through Docker: `Yes`
+- Whether `/admin/ucetnictvi-new/doklady/[id]` route was verified through Docker: `Yes`, the frontend route returned `200` and the detail route bundle was verified. Authenticated document payload rendering itself was still blocked by the expected unauthenticated admin API `401` in this environment.
+- Whether `/admin/invoices` remained available/unchanged through Docker: `Yes`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Add read-only accounting documents views`
+- Local commit hash: pending until local commit
+- Known risks / follow-ups:
+  - current document list filtering is client-side over the full read-only list payload; later tasks may want server-side filtering or pagination if the dataset grows
+  - the unauthenticated Docker smoke environment prevents verifying a real document payload render end-to-end, so the detail route verification here confirms the safe route shell and compiled bundle presence, not a logged-in accounting document session
+  - PDF and action-oriented sections remain intentionally excluded to keep the new UI read-only and separate from the legacy invoice workflow
