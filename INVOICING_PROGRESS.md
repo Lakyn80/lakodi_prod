@@ -2283,3 +2283,78 @@
   - current document list filtering is client-side over the full read-only list payload; later tasks may want server-side filtering or pagination if the dataset grows
   - the unauthenticated Docker smoke environment prevents verifying a real document payload render end-to-end, so the detail route verification here confirms the safe route shell and compiled bundle presence, not a logged-in accounting document session
   - PDF and action-oriented sections remain intentionally excluded to keep the new UI read-only and separate from the legacy invoice workflow
+
+## Docker Desktop rescue for ÚčetnictvíNew local stack
+
+- Date: `2026-06-29`
+- Goal: restore the existing local Docker Desktop dev stack and verify that `/admin/ucetnictvi-new` works again without changing the legacy invoicing UI.
+- Problem observed:
+  - running `docker compose down --remove-orphans`
+  - running `docker compose build --no-cache frontend`
+  - running `docker compose up -d`
+  - result: only Redis came back and the accounting route looked unavailable because the actual frontend/backend dev services were never started
+- Root cause:
+  - plain `docker compose` at the repo root reads only `docker-compose.yml`
+  - this project's base compose file defines only `lakodi-redis`
+  - the dev stack lives behind the combined compose invocation `-f docker-compose.yml -f docker-compose.dev.yml`
+  - `frontend` is not a valid service name in this project; the correct frontend service is `lakodi-frontend-dev`
+  - a full no-cache backend rebuild also hit a transient Debian mirror/network failure during `apt-get install`, but that was an environment fetch issue rather than a repository code problem
+- Service discovery:
+  - `docker compose config --services` -> `lakodi-redis`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml config --services` ->
+    - `lakodi-redis`
+    - `lakodi-backend-dev`
+    - `lakodi-frontend-dev`
+- Docker Desktop commands run:
+  - `docker compose config --services`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml config --services`
+  - `docker compose ps`
+  - `docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache lakodi-frontend-dev lakodi-backend-dev`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache lakodi-frontend-dev`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d lakodi-redis lakodi-backend-dev lakodi-frontend-dev`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml ps -a`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 50 lakodi-backend-dev`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --tail 50 lakodi-frontend-dev`
+  - `curl.exe -s -i http://localhost:8016/api/health`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:8090/admin/ucetnictvi-new`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:8090/admin/ucetnictvi-new/doklady/1`
+  - `curl.exe -s -o NUL -w "%{http_code}" http://localhost:8090/admin/invoices`
+  - `curl.exe -s -i http://localhost:8090/api/admin/invoices`
+- Build result:
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache lakodi-frontend-dev lakodi-backend-dev` -> failed on the backend image because Debian package fetches failed during `apt-get install`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache lakodi-frontend-dev` -> passed
+  - existing local backend image was already present, so the stack could be restored without a fresh backend image rebuild
+- Start result:
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d lakodi-redis lakodi-backend-dev lakodi-frontend-dev` -> passed
+  - `ps -a` showed all expected services up:
+    - `lakodi-redis`
+    - `lakodi-backend-dev`
+    - `lakodi-frontend-dev`
+  - backend exposed `0.0.0.0:8016->8016`
+  - frontend exposed `0.0.0.0:8090->8080`
+- Log summary:
+  - backend reached normal startup and served Uvicorn on `http://0.0.0.0:8016`
+  - frontend reached normal Next.js dev startup on port `8080`
+  - frontend still emitted the existing non-fatal media-sync warning about missing `/img_dílna` or `/img_dilna`
+- Smoke results:
+  - `GET http://localhost:8016/api/health` -> `200 OK`, body `{"status":"ok"}`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401 Unauthorized`, body `{"detail":"Přihlaste se do adminu"}`
+  - `/admin/ucetnictvi-new` HTML referenced `app/admin/ucetnictvi-new/page.js`
+  - `/admin/invoices` HTML referenced `app/admin/invoices/page.js`
+  - `/admin/invoices` HTML did not switch over to the `ucetnictvi-new` route bundle
+- Whether `/admin/ucetnictvi-new` works through the restored local Docker stack: `Yes`
+- Whether `/admin/ucetnictvi-new/doklady/[id]` route was verified through the restored local Docker stack: `Yes`
+- Whether the old `/admin/invoices` UI remained available and untouched: `Yes`
+- Frontend code changes made as part of this rescue: `None`
+- Backend source changes made as part of this rescue: `None`
+- Database or schema changes made as part of this rescue: `None`
+- Push: `No`
+- Deploy/CD: `No`
+- Follow-ups:
+  - use `docker compose -f docker-compose.yml -f docker-compose.dev.yml ...` for local Lakodi dev stack operations
+  - use the real dev service names `lakodi-frontend-dev` and `lakodi-backend-dev`
+  - if a future backend no-cache rebuild is required, retry after the transient Debian mirror/network issue clears
