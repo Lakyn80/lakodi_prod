@@ -2358,3 +2358,84 @@
   - use `docker compose -f docker-compose.yml -f docker-compose.dev.yml ...` for local Lakodi dev stack operations
   - use the real dev service names `lakodi-frontend-dev` and `lakodi-backend-dev`
   - if a future backend no-cache rebuild is required, retry after the transient Debian mirror/network issue clears
+
+## Úkol 22D-DockerHelper Safe local Docker Desktop helper
+
+- Date: `2026-06-29`
+- Problem being prevented:
+  - local Lakodi Docker Desktop usage accidentally ran plain `docker compose up -d`
+  - that only loaded `docker-compose.yml`, which starts Redis only
+  - the frontend and backend dev services were skipped even though the accounting UI itself was already valid
+- Root cause:
+  - the Lakodi local dev stack requires both compose files:
+    - `docker-compose.yml`
+    - `docker-compose.dev.yml`
+  - the correct local dev services are:
+    - `lakodi-redis`
+    - `lakodi-backend-dev`
+    - `lakodi-frontend-dev`
+  - generic service names like `frontend` and `backend` are not valid for this stack
+- Files changed:
+  - `scripts/lakodi-docker-dev.ps1`
+  - `docs/lakodi-docker-dev.md`
+  - `INVOICING_PROGRESS.md`
+- Helper commands added:
+  - `start`
+  - `stop`
+  - `restart`
+  - `rebuild`
+  - `status`
+  - `logs`
+  - `smoke`
+- Exact Docker compose files used by helper:
+  - `docker-compose.yml`
+  - `docker-compose.dev.yml`
+- Exact services used by helper:
+  - `lakodi-redis`
+  - `lakodi-backend-dev`
+  - `lakodi-frontend-dev`
+- Helper behavior:
+  - centralizes the compose file arguments and the exact service list
+  - fails early if Docker Desktop is not running
+  - fails early if the expected compose services are missing
+  - never uses plain `docker compose` without the dev compose file
+  - `stop` uses `docker compose ... stop` only and does not delete volumes
+  - `start` prints the expected local URLs after the stack comes up
+  - `smoke` retries briefly after restart so frontend warm-up does not cause a false failure
+- Verification commands run:
+  - `git status --short`
+  - `git branch --show-current`
+  - `git log --oneline --decorate --max-count=20`
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml config --services`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke`
+  - `git diff -- frontend/src/app/admin/invoices/page.tsx`
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceForm.tsx`
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceList.tsx`
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceDetail.tsx`
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceSettingsForm.tsx`
+  - `git diff -- frontend/src/lib/invoices.ts`
+- Smoke check results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- Whether `/admin/ucetnictvi-new` works on local port `8090`: `Yes`
+- Whether `/admin/ucetnictvi-new/doklady/[id]` works on local port `8090`: `Yes`
+- Whether `/admin/invoices` remains available unchanged: `Yes`
+- Old invoicing UI touched: `No`
+- `/admin/invoices` changed: `No`
+- Old invoice components changed: `No`
+- `frontend/src/lib/invoices.ts` changed: `No`
+- Backend source changes: `None`
+- Database/schema changes: `None`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Add safe Lakodi Docker dev helper`
+- Local commit hash: pending until local commit creation
+- Known risks / follow-ups:
+  - `rebuild` intentionally runs the full no-cache frontend/backend image rebuild and can still fail if transient Debian package mirrors fail during backend image creation
+  - the helper is scoped strictly to the local dev stack and intentionally does not cover production or remote deploy workflows
