@@ -14,6 +14,8 @@ import {
 } from "@/lib/accountingNew";
 import { AccountingNewModuleGrid, type AccountingNewModuleStat } from "@/components/admin/accounting-new/AccountingNewModuleGrid";
 import { AccountingNewDocumentsPanel } from "@/components/admin/accounting-new/AccountingNewDocumentsPanel";
+import { AccountingNewExpensesPanel } from "@/components/admin/accounting-new/AccountingNewExpensesPanel";
+import { AccountingNewSuppliersPanel } from "@/components/admin/accounting-new/AccountingNewSuppliersPanel";
 import type {
   AccountingNewApiError,
   AccountingNewAuditEventSummary,
@@ -184,6 +186,8 @@ export function AccountingNewShell() {
   const partialErrors = result?.partialErrors ?? [];
   const primaryPartialError = getPrimaryError(partialErrors);
   const documentsError = getResourceError(partialErrors, "documents");
+  const expensesError = getResourceError(partialErrors, "expenses");
+  const suppliersError = getResourceError(partialErrors, "suppliers");
   const moduleStats = getModuleStats(dashboard);
   const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
@@ -218,7 +222,7 @@ export function AccountingNewShell() {
             <p className="text-sm text-muted-foreground">
               Aktuální krok rozšiřuje bezpečný shell na adrese{" "}
               <span className="font-medium text-foreground">{ACCOUNTING_NEW_ROUTE}</span> o samostatný read-only API
-              client, oddělené typy a konzervativní dashboardové metriky.
+              client, oddělené typy, dashboardové metriky a detail/list přehledy pro výdaje i dodavatele.
             </p>
           </div>
         </CardContent>
@@ -313,6 +317,22 @@ export function AccountingNewShell() {
         authRequired={state.status === "auth"}
         error={documentsError}
       />
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AccountingNewExpensesPanel
+          expenses={dashboard?.expenses ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={expensesError}
+        />
+
+        <AccountingNewSuppliersPanel
+          suppliers={dashboard?.suppliers ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={suppliersError}
+        />
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
         <Card className="border-border bg-card">

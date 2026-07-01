@@ -14,12 +14,18 @@ import type {
   AccountingNewDocumentRelationPaymentSummary,
   AccountingNewDocumentRelationSummary,
   AccountingNewDocumentRelationsSummary,
-  AccountingNewExpenseSummary,
+  AccountingNewExpenseDetail,
+  AccountingNewExpenseFilters,
+  AccountingNewExpenseItem,
+  AccountingNewExpenseListItem,
+  AccountingNewExpensePaymentSummary,
   AccountingNewModuleDefinition,
   AccountingNewPaymentSummary,
   AccountingNewRecurringTemplateSummary,
   AccountingNewSubjectSummary,
-  AccountingNewSupplierSummary,
+  AccountingNewSupplierDetail,
+  AccountingNewSupplierFilters,
+  AccountingNewSupplierListItem,
   AccountingNewTodoSummary,
 } from "@/types/accountingNew";
 
@@ -145,17 +151,29 @@ function normalizeSearchText(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
-function normalizeDocumentId(id: number | string): string {
+function normalizeEntityId(id: number | string, resource: string, label: string): string {
   const normalized = typeof id === "number" ? String(id) : id.trim();
   if (!/^\d+$/.test(normalized) || Number(normalized) <= 0) {
     throw new AccountingNewRequestError({
-      resource: "documents",
-      message: "ID dokumentu musí být kladné číslo.",
+      resource,
+      message: `${label} musí být kladné číslo.`,
       status: 400,
       requiresLogin: false,
     });
   }
   return normalized;
+}
+
+function normalizeDocumentId(id: number | string): string {
+  return normalizeEntityId(id, "documents", "ID dokumentu");
+}
+
+function normalizeExpenseId(id: number | string): string {
+  return normalizeEntityId(id, "expense-detail", "ID výdaje");
+}
+
+function normalizeSupplierId(id: number | string): string {
+  return normalizeEntityId(id, "supplier-detail", "ID dodavatele");
 }
 
 function mapDocumentListItem(item: {
@@ -562,18 +580,34 @@ function mapExpenseSummary(item: {
   supplier_id: number | null;
   supplier_name: string;
   supplier_email: string;
+  supplier_phone: string | null;
+  supplier_address: string;
+  supplier_ico: string | null;
+  supplier_dic: string | null;
+  supplier_data_box: string | null;
+  supplier_country: string | null;
   currency: string;
   issue_date: string;
   received_date: string;
   due_date: string;
+  taxable_supply_date: string;
+  subtotal: number;
+  vat_rate: number | null;
+  vat_amount: number;
   total: number;
+  note: string | null;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string | null;
   total_paid: number;
   remaining_amount: number;
   status: string;
   payment_status: string;
   created_at: string;
   updated_at: string;
-}): AccountingNewExpenseSummary {
+}): AccountingNewExpenseListItem {
   return {
     id: item.id,
     expenseNumber: item.expense_number,
@@ -581,17 +615,127 @@ function mapExpenseSummary(item: {
     supplierId: item.supplier_id,
     supplierName: item.supplier_name,
     supplierEmail: item.supplier_email,
+    supplierPhone: item.supplier_phone,
+    supplierAddress: item.supplier_address,
+    supplierIco: item.supplier_ico,
+    supplierDic: item.supplier_dic,
+    supplierDataBox: item.supplier_data_box,
+    supplierCountry: item.supplier_country,
     currency: item.currency,
     issueDate: item.issue_date,
     receivedDate: item.received_date,
     dueDate: item.due_date,
+    taxableSupplyDate: item.taxable_supply_date,
+    subtotal: item.subtotal,
+    vatRate: item.vat_rate,
+    vatAmount: item.vat_amount,
     total: item.total,
+    note: item.note,
+    paymentMethod: item.payment_method,
+    bankAccountNumber: item.bank_account_number,
+    bankAccountPrefix: item.bank_account_prefix,
+    bankCode: item.bank_code,
+    bankIban: item.bank_iban,
     totalPaid: item.total_paid,
     remainingAmount: item.remaining_amount,
     status: item.status,
     paymentStatus: item.payment_status,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
+  };
+}
+
+function mapExpenseItem(item: {
+  id: number;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}): AccountingNewExpenseItem {
+  return {
+    id: item.id,
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unit_price,
+    lineTotal: item.line_total,
+  };
+}
+
+function mapExpensePaymentSummary(item: {
+  id: number;
+  expense_id: number;
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note: string | null;
+  created_at: string;
+}): AccountingNewExpensePaymentSummary {
+  return {
+    id: item.id,
+    expenseId: item.expense_id,
+    amount: item.amount,
+    paidAt: item.paid_at,
+    paymentMethod: item.payment_method,
+    note: item.note,
+    createdAt: item.created_at,
+  };
+}
+
+function mapExpenseDetail(item: {
+  id: number;
+  expense_number: string;
+  variable_symbol: string;
+  supplier_id: number | null;
+  supplier_name: string;
+  supplier_email: string;
+  supplier_phone: string | null;
+  supplier_address: string;
+  supplier_ico: string | null;
+  supplier_dic: string | null;
+  supplier_data_box: string | null;
+  supplier_country: string | null;
+  issue_date: string;
+  received_date: string;
+  due_date: string;
+  taxable_supply_date: string;
+  currency: string;
+  subtotal: number;
+  vat_rate: number | null;
+  vat_amount: number;
+  total: number;
+  status: string;
+  note: string | null;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string | null;
+  total_paid: number;
+  remaining_amount: number;
+  payment_status: string;
+  created_at: string;
+  updated_at: string;
+  items: Array<{
+    id: number;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+  payments: Array<{
+    id: number;
+    expense_id: number;
+    amount: number;
+    paid_at: string;
+    payment_method: string;
+    note: string | null;
+    created_at: string;
+  }>;
+}): AccountingNewExpenseDetail {
+  return {
+    ...mapExpenseSummary(item),
+    items: item.items.map(mapExpenseItem),
+    payments: item.payments.map(mapExpensePaymentSummary),
   };
 }
 
@@ -814,7 +958,7 @@ function mapSupplierSummary(item: {
   note: string | null;
   created_at: string;
   updated_at: string;
-}): AccountingNewSupplierSummary {
+}): AccountingNewSupplierListItem {
   return {
     id: item.id,
     name: item.name,
@@ -942,6 +1086,66 @@ function matchesDocumentFilters(document: AccountingNewDocumentListItem, filters
   }
 
   if (filters.effectiveStatus && filters.effectiveStatus !== "all" && document.effectiveStatus !== filters.effectiveStatus) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesExpenseFilters(expense: AccountingNewExpenseListItem, filters: AccountingNewExpenseFilters): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      expense.expenseNumber,
+      expense.variableSymbol,
+      expense.supplierName,
+      expense.supplierEmail,
+      expense.supplierIco,
+      expense.supplierDic,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.supplierId && filters.supplierId !== "all" && expense.supplierId !== filters.supplierId) {
+    return false;
+  }
+
+  if (filters.paymentStatus && filters.paymentStatus !== "all" && expense.paymentStatus !== filters.paymentStatus) {
+    return false;
+  }
+
+  if (filters.expenseStatus && filters.expenseStatus !== "all" && expense.status !== filters.expenseStatus) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesSupplierFilters(supplier: AccountingNewSupplierListItem, filters: AccountingNewSupplierFilters): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      supplier.name,
+      supplier.email,
+      supplier.phone,
+      supplier.ico,
+      supplier.dic,
+      supplier.country,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.country && filters.country !== "all" && supplier.country !== filters.country) {
     return false;
   }
 
@@ -1241,8 +1445,9 @@ export async function getAccountingNewDocumentAuditEvents(
 }
 
 export async function listAccountingNewExpenses(
+  filters: AccountingNewExpenseFilters = {},
   params: AccountingNewListParams = {},
-): Promise<AccountingNewExpenseSummary[]> {
+): Promise<AccountingNewExpenseListItem[]> {
   const data = await fetchAccountingNewJson<
     Array<{
       id: number;
@@ -1251,11 +1456,27 @@ export async function listAccountingNewExpenses(
       supplier_id: number | null;
       supplier_name: string;
       supplier_email: string;
+      supplier_phone: string | null;
+      supplier_address: string;
+      supplier_ico: string | null;
+      supplier_dic: string | null;
+      supplier_data_box: string | null;
+      supplier_country: string | null;
       currency: string;
       issue_date: string;
       received_date: string;
       due_date: string;
+      taxable_supply_date: string;
+      subtotal: number;
+      vat_rate: number | null;
+      vat_amount: number;
       total: number;
+      note: string | null;
+      payment_method: string;
+      bank_account_number: string;
+      bank_account_prefix: string | null;
+      bank_code: string;
+      bank_iban: string | null;
       total_paid: number;
       remaining_amount: number;
       status: string;
@@ -1265,7 +1486,121 @@ export async function listAccountingNewExpenses(
     }>
   >("expenses", "/expenses", params.signal);
 
-  return data.map(mapExpenseSummary);
+  return data.map(mapExpenseSummary).filter((expense) => matchesExpenseFilters(expense, filters));
+}
+
+export async function getAccountingNewExpense(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewExpenseDetail> {
+  const normalizedId = normalizeExpenseId(id);
+  const data = await fetchAccountingNewJson<{
+    id: number;
+    expense_number: string;
+    variable_symbol: string;
+    supplier_id: number | null;
+    supplier_name: string;
+    supplier_email: string;
+    supplier_phone: string | null;
+    supplier_address: string;
+    supplier_ico: string | null;
+    supplier_dic: string | null;
+    supplier_data_box: string | null;
+    supplier_country: string | null;
+    issue_date: string;
+    received_date: string;
+    due_date: string;
+    taxable_supply_date: string;
+    currency: string;
+    subtotal: number;
+    vat_rate: number | null;
+    vat_amount: number;
+    total: number;
+    status: string;
+    note: string | null;
+    payment_method: string;
+    bank_account_number: string;
+    bank_account_prefix: string | null;
+    bank_code: string;
+    bank_iban: string | null;
+    total_paid: number;
+    remaining_amount: number;
+    payment_status: string;
+    created_at: string;
+    updated_at: string;
+    items: Array<{
+      id: number;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+    }>;
+    payments: Array<{
+      id: number;
+      expense_id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+      created_at: string;
+    }>;
+  }>("expense-detail", `/expenses/${normalizedId}`, params.signal);
+
+  return mapExpenseDetail(data);
+}
+
+export async function getAccountingNewExpensePayments(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewExpensePaymentSummary[]> {
+  const normalizedId = normalizeExpenseId(id);
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      expense_id: number;
+      amount: number;
+      paid_at: string;
+      payment_method: string;
+      note: string | null;
+      created_at: string;
+    }>
+  >("expense-payments", `/expenses/${normalizedId}/payments`, params.signal);
+
+  return data.map(mapExpensePaymentSummary);
+}
+
+export async function getAccountingNewExpenseAuditEvents(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAuditEventSummary[]> {
+  const normalizedId = normalizeExpenseId(id);
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      event_type: string;
+      entity_type: string;
+      entity_id: number;
+      invoice_id: number | null;
+      expense_id: number | null;
+      subject_id: number | null;
+      supplier_id: number | null;
+      bank_transaction_id: number | null;
+      payment_match_id: number | null;
+      todo_id: number | null;
+      attachment_id: number | null;
+      recurring_template_id: number | null;
+      reminder_email_id: number | null;
+      actor_type: string | null;
+      actor_id: number | null;
+      actor_email: string | null;
+      source: string;
+      message: string | null;
+      metadata: unknown;
+      created_at: string;
+    }>
+  >("expense-audit-events", `/expenses/${normalizedId}/audit-events`, params.signal);
+
+  return data.map(mapAuditEventSummary);
 }
 
 export async function listAccountingNewTodos(
@@ -1420,8 +1755,9 @@ export async function listAccountingNewSubjects(
 }
 
 export async function listAccountingNewSuppliers(
+  filters: AccountingNewSupplierFilters = {},
   params: AccountingNewListParams = {},
-): Promise<AccountingNewSupplierSummary[]> {
+): Promise<AccountingNewSupplierListItem[]> {
   const data = await fetchAccountingNewJson<
     Array<{
       id: number;
@@ -1439,7 +1775,30 @@ export async function listAccountingNewSuppliers(
     }>
   >("suppliers", "/suppliers", params.signal);
 
-  return data.map(mapSupplierSummary);
+  return data.map(mapSupplierSummary).filter((supplier) => matchesSupplierFilters(supplier, filters));
+}
+
+export async function getAccountingNewSupplier(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSupplierDetail> {
+  const normalizedId = normalizeSupplierId(id);
+  const data = await fetchAccountingNewJson<{
+    id: number;
+    name: string;
+    email: string;
+    phone: string | null;
+    address: string;
+    ico: string | null;
+    dic: string | null;
+    data_box: string | null;
+    country: string | null;
+    note: string | null;
+    created_at: string;
+    updated_at: string;
+  }>("supplier-detail", `/suppliers/${normalizedId}`, params.signal);
+
+  return mapSupplierSummary(data);
 }
 
 export async function getAccountingNewDashboardData(
@@ -1458,14 +1817,14 @@ export async function getAccountingNewDashboardData(
     suppliersResult,
   ] = await Promise.allSettled([
     listAccountingNewInvoices(params),
-    listAccountingNewExpenses(params),
+    listAccountingNewExpenses({}, params),
     listAccountingNewTodos(params),
     listAccountingNewBankTransactions(params),
     listAccountingNewAuditEvents(params),
     listAccountingNewRecurringTemplates(params),
     listAccountingNewAttachments(params),
     listAccountingNewSubjects(params),
-    listAccountingNewSuppliers(params),
+    listAccountingNewSuppliers({}, params),
   ]);
   const partialErrors: AccountingNewApiError[] = [];
   let authRequired = false;

@@ -168,25 +168,89 @@ export type AccountingNewDocumentDetailState =
   | { status: "not_found"; error: AccountingNewApiError }
   | { status: "error"; error: AccountingNewApiError };
 
-export interface AccountingNewExpenseSummary {
+export type AccountingNewExpenseStatus = string;
+export type AccountingNewExpensePaymentStatus = string;
+
+export interface AccountingNewExpenseListItem {
   id: number;
   expenseNumber: string;
   variableSymbol: string;
   supplierId: number | null;
   supplierName: string;
   supplierEmail: string;
+  supplierPhone: string | null;
+  supplierAddress: string;
+  supplierIco: string | null;
+  supplierDic: string | null;
+  supplierDataBox: string | null;
+  supplierCountry: string | null;
   currency: string;
   issueDate: string;
   receivedDate: string;
   dueDate: string;
+  taxableSupplyDate: string;
+  subtotal: number;
+  vatRate: number | null;
+  vatAmount: number;
   total: number;
+  note: string | null;
+  paymentMethod: string;
+  bankAccountNumber: string;
+  bankAccountPrefix: string | null;
+  bankCode: string;
+  bankIban: string | null;
   totalPaid: number;
   remainingAmount: number;
-  status: string;
-  paymentStatus: string;
+  status: AccountingNewExpenseStatus;
+  paymentStatus: AccountingNewExpensePaymentStatus;
   createdAt: string;
   updatedAt: string;
 }
+
+export type AccountingNewExpenseSummary = AccountingNewExpenseListItem;
+
+export interface AccountingNewExpenseItem {
+  id: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface AccountingNewExpensePaymentSummary {
+  id: number;
+  expenseId: number;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface AccountingNewExpenseDetail extends AccountingNewExpenseListItem {
+  items: AccountingNewExpenseItem[];
+  payments: AccountingNewExpensePaymentSummary[];
+}
+
+export interface AccountingNewExpenseFilters {
+  query?: string;
+  supplierId?: number | "all";
+  paymentStatus?: AccountingNewExpensePaymentStatus | "all";
+  expenseStatus?: AccountingNewExpenseStatus | "all";
+}
+
+export type AccountingNewExpenseDetailState =
+  | { status: "loading" }
+  | {
+      status: "ready";
+      detail: AccountingNewExpenseDetail;
+      payments: AccountingNewExpensePaymentSummary[];
+      auditEvents: AccountingNewAuditEventSummary[];
+      partialErrors: AccountingNewApiError[];
+    }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
 
 export interface AccountingNewTodoSummary {
   id: number;
@@ -291,7 +355,7 @@ export interface AccountingNewSubjectSummary {
   updatedAt: string;
 }
 
-export interface AccountingNewSupplierSummary {
+export interface AccountingNewSupplierListItem {
   id: number;
   name: string;
   email: string;
@@ -305,6 +369,22 @@ export interface AccountingNewSupplierSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AccountingNewSupplierSummary = AccountingNewSupplierListItem;
+
+export type AccountingNewSupplierDetail = AccountingNewSupplierListItem;
+
+export interface AccountingNewSupplierFilters {
+  query?: string;
+  country?: string | "all";
+}
+
+export type AccountingNewSupplierDetailState =
+  | { status: "loading" }
+  | { status: "ready"; detail: AccountingNewSupplierDetail }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
 
 export interface AccountingNewDashboardMetrics {
   documentsLoaded: number;

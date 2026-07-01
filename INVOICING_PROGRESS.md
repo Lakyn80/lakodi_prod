@@ -2439,3 +2439,130 @@
 - Known risks / follow-ups:
   - `rebuild` intentionally runs the full no-cache frontend/backend image rebuild and can still fail if transient Debian package mirrors fail during backend image creation
   - the helper is scoped strictly to the local dev stack and intentionally does not cover production or remote deploy workflows
+
+## Úkol 22E Read-only expenses and suppliers UI in ÚčetnictvíNew
+
+- Date: `2026-07-01`
+- Goal:
+  - extend `/admin/ucetnictvi-new` with safe read-only UI for expenses / received invoices and suppliers
+- Scope:
+  - isolated frontend-only changes in the parallel accounting section
+  - GET-only API usage
+  - no backend business logic changes
+  - no database or schema changes
+- Files changed:
+  - `frontend/src/types/accountingNew.ts`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/accountingNewFormat.ts`
+  - `frontend/src/components/admin/accounting-new/AccountingNewExpensesPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewExpensesTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewExpenseDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewSuppliersPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewSuppliersTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewSupplierDetail.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/vydaje/[id]/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/dodavatele/[id]/page.tsx`
+  - `INVOICING_PROGRESS.md`
+- Endpoints inspected:
+  - `GET /api/admin/invoices/expenses`
+  - `GET /api/admin/invoices/expenses/{expense_id}`
+  - `GET /api/admin/invoices/expenses/{expense_id}/payments`
+  - `GET /api/admin/invoices/expenses/{expense_id}/audit-events`
+  - `GET /api/admin/invoices/suppliers`
+  - `GET /api/admin/invoices/suppliers/{supplier_id}`
+- Endpoints used:
+  - `GET /api/admin/invoices`
+  - `GET /api/admin/invoices/{invoice_id}`
+  - `GET /api/admin/invoices/{invoice_id}/relations`
+  - `GET /api/admin/invoices/{invoice_id}/audit-events`
+  - `GET /api/admin/invoices/expenses`
+  - `GET /api/admin/invoices/expenses/{expense_id}`
+  - `GET /api/admin/invoices/expenses/{expense_id}/payments`
+  - `GET /api/admin/invoices/expenses/{expense_id}/audit-events`
+  - `GET /api/admin/invoices/suppliers`
+  - `GET /api/admin/invoices/suppliers/{supplier_id}`
+- Read-only API client changes:
+  - added isolated expense list/detail/payment/audit GET helpers
+  - added isolated supplier list/detail GET helpers
+  - extended read-only mappers and filters for expense and supplier payloads
+  - preserved shared admin session cookie handling and safe error parsing
+- Read-only types added:
+  - `AccountingNewExpenseListItem`
+  - `AccountingNewExpenseDetail`
+  - `AccountingNewExpenseItem`
+  - `AccountingNewExpensePaymentSummary`
+  - `AccountingNewExpenseFilters`
+  - `AccountingNewExpenseStatus`
+  - `AccountingNewExpensePaymentStatus`
+  - `AccountingNewSupplierListItem`
+  - `AccountingNewSupplierDetail`
+  - `AccountingNewSupplierFilters`
+- Expense list UI added:
+  - new read-only expenses panel on `/admin/ucetnictvi-new`
+  - local query and status filters
+  - safe table columns for number, supplier, dates, total, currency, payment status and expense status
+  - rows link only to `/admin/ucetnictvi-new/vydaje/{id}`
+  - no create, edit, delete, apply payment, import or migration actions
+- Expense detail route added:
+  - `/admin/ucetnictvi-new/vydaje/[id]`
+  - read-only detail with metadata, supplier snapshot, date block, amount summary, items, payments and recent audit events
+  - explicit note that old issued invoices remain in `/admin/invoices`
+  - safe auth, `404`, and generic API error states
+- Supplier list UI added:
+  - new read-only suppliers panel on `/admin/ucetnictvi-new`
+  - local query and country filters
+  - safe table columns for name, IČO, DIČ, contact and country
+  - rows link only to `/admin/ucetnictvi-new/dodavatele/{id}`
+  - no create, edit or delete actions
+- Supplier detail route added:
+  - `/admin/ucetnictvi-new/dodavatele/[id]`
+  - read-only detail with supplier identity, tax ids, address, contact data, note and metadata
+  - safe auth, `404`, and generic API error states
+- Auth / `401` behavior:
+  - dashboard keeps partial rendering and marks auth-required state if backend returns `401`
+  - expenses panel, suppliers panel, expense detail and supplier detail each show a safe login-required UI instead of crashing or redirecting
+  - unauthenticated legacy API probe `GET /api/admin/invoices` still returns `401`
+- Optional sections added or deferred:
+  - added expense payments section
+  - added expense audit events section
+  - deferred supplier bank data because the safe supplier GET response does not expose it
+  - deferred supplier-related expenses to keep this phase conservative and avoid extra cross-module coupling
+- Frontend build command/result:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - existing warnings/notices left unchanged:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'. Either include it or remove the dependency array. react-hooks/exhaustive-deps`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old. Please run: npx update-browserslist-db@latest`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Docker helper commands run/result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke` -> `passed`
+- Route-specific smoke check results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+  - route HTML shell fetched by `curl` did not expose the client-rendered copy directly
+  - compiled `.next` bundle/server artifacts contained `ÚčetnictvíNew`, `Read-only`, `Výdaje`, and `Dodavatelé`
+- Whether `/admin/ucetnictvi-new` works on `8090`: `Yes`
+- Whether `/admin/ucetnictvi-new/vydaje/1` works on `8090`: `Yes`
+- Whether `/admin/ucetnictvi-new/dodavatele/1` works on `8090`: `Yes`
+- Whether `/admin/invoices` remains available/unchanged: `Yes`
+- Old invoicing UI touched: `No`
+- `/admin/invoices` changed: `No`
+- Old invoice components changed: `No`
+- `frontend/src/lib/invoices.ts` changed: `No`
+- Backend source changes: `None`
+- Database/schema changes: `None`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Add read-only accounting expenses suppliers views`
+- Local commit hash: `pending until local commit creation`
+- Known risks / follow-ups:
+  - supplier detail intentionally does not show bank data because the current safe GET response omits those fields
+  - supplier-related expense rollup was deferred to keep Úkol 22E strictly low-risk and read-only
