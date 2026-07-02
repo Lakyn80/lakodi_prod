@@ -7,8 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewBankTransactionListItem } from "@/types/accountingNew";
 import { AccountingNewBankTransactionsTable } from "@/components/admin/accounting-new/AccountingNewBankTransactionsTable";
+import {
+  formatAccountingNewTemplate,
+  getAccountingNewLocale,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
@@ -46,16 +52,19 @@ export function AccountingNewBankTransactionsPanel({
   authRequired: boolean;
   error: AccountingNewApiError | null;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
+  const locale = getAccountingNewLocale(language);
   const [query, setQuery] = useState("");
   const [direction, setDirection] = useState("all");
   const [status, setStatus] = useState("all");
   const deferredQuery = useDeferredValue(query);
 
   const directionOptions = Array.from(new Set(transactions.map((transaction) => transaction.direction))).sort((left, right) =>
-    left.localeCompare(right, "cs"),
+    left.localeCompare(right, locale),
   );
   const statusOptions = Array.from(new Set(transactions.map((transaction) => transaction.status))).sort((left, right) =>
-    left.localeCompare(right, "cs"),
+    left.localeCompare(right, locale),
   );
 
   const filteredTransactions = transactions.filter((transaction) => {
@@ -78,27 +87,25 @@ export function AccountingNewBankTransactionsPanel({
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">Read-only</Badge>
-          <Badge variant="outline">Bankovní transakce</Badge>
+          <Badge variant="secondary">{t.common.readOnly}</Badge>
+          <Badge variant="outline">{t.bankTransactions.badge}</Badge>
         </div>
         <div className="space-y-1">
-          <CardTitle>Read-only bankovní transakce</CardTitle>
-          <CardDescription>
-            Přehled používá pouze bezpečné GET endpointy. Neobsahuje import, upload, apply matching ani jiné write akce.
-          </CardDescription>
+          <CardTitle>{t.bankTransactions.title}</CardTitle>
+          <CardDescription>{t.bankTransactions.description}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {authRequired ? (
           <Alert>
-            <AlertTitle>Pro načtení bankovních transakcí je nutné přihlášení</AlertTitle>
-            <AlertDescription>Bez aktivní admin session se read-only bankovní transakce nenačtou.</AlertDescription>
+            <AlertTitle>{t.auth.bankTransactionsTitle}</AlertTitle>
+            <AlertDescription>{t.auth.bankTransactionsDescription}</AlertDescription>
           </Alert>
         ) : null}
 
         {error && !authRequired ? (
           <Alert variant="destructive">
-            <AlertTitle>Read-only seznam bankovních transakcí se nepodařilo načíst</AlertTitle>
+            <AlertTitle>{t.errors.bankTransactionsTitle}</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         ) : null}
@@ -109,17 +116,17 @@ export function AccountingNewBankTransactionsPanel({
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Hledat podle protistrany, účtu, VS, zprávy nebo stavu"
-                aria-label="Hledat bankovní transakce"
+                placeholder={t.bankTransactions.searchPlaceholder}
+                aria-label={t.bankTransactions.searchLabel}
               />
 
               <select
                 value={direction}
                 onChange={(event) => setDirection(event.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                aria-label="Filtrovat podle směru transakce"
+                aria-label={t.bankTransactions.directionLabel}
               >
-                <option value="all">Všechny směry</option>
+                <option value="all">{t.bankTransactions.directionAll}</option>
                 {directionOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -131,9 +138,9 @@ export function AccountingNewBankTransactionsPanel({
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                aria-label="Filtrovat podle stavu transakce"
+                aria-label={t.bankTransactions.statusLabel}
               >
-                <option value="all">Všechny stavy</option>
+                <option value="all">{t.bankTransactions.statusAll}</option>
                 {statusOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -143,9 +150,13 @@ export function AccountingNewBankTransactionsPanel({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>{filteredTransactions.length} zobrazených bankovních transakcí</span>
+              <span>{formatAccountingNewTemplate(t.bankTransactions.shownCount, { count: filteredTransactions.length })}</span>
               <span>·</span>
-              <span>detail vede pouze do nové paralelní route `/admin/ucetnictvi-new/bankovni-transakce/[id]`</span>
+              <span>
+                {formatAccountingNewTemplate(t.bankTransactions.detailRouteHint, {
+                  route: "/admin/ucetnictvi-new/bankovni-transakce/[id]",
+                })}
+              </span>
             </div>
           </>
         ) : null}
@@ -164,13 +175,13 @@ export function AccountingNewBankTransactionsPanel({
 
         {!isLoading && !authRequired && !error && transactions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Backend zatím nevrátil žádné read-only bankovní transakce. Nová paralelní sekce přesto zůstává bezpečná a bez importních akcí.
+            {t.empty.bankTransactions}
           </div>
         ) : null}
 
         {!isLoading && !authRequired && !error && transactions.length > 0 && filteredTransactions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Aktuální filtry nevrátily žádnou bankovní transakci. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.
+            {t.empty.bankTransactionsFiltered}
           </div>
         ) : null}
       </CardContent>

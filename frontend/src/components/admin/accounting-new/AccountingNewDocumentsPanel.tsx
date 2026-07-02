@@ -7,8 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewDocumentListItem } from "@/types/accountingNew";
 import { AccountingNewDocumentsTable } from "@/components/admin/accounting-new/AccountingNewDocumentsTable";
+import {
+  formatAccountingNewTemplate,
+  getAccountingNewLocale,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string): string {
   return value.trim().toLowerCase();
@@ -43,16 +49,19 @@ export function AccountingNewDocumentsPanel({
   authRequired: boolean;
   error: AccountingNewApiError | null;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
   const [query, setQuery] = useState("");
   const [documentKind, setDocumentKind] = useState("all");
   const [effectiveStatus, setEffectiveStatus] = useState("all");
   const deferredQuery = useDeferredValue(query);
+  const locale = getAccountingNewLocale(language);
 
   const kindOptions = Array.from(new Set(documents.map((document) => document.documentKind))).sort((left, right) =>
-    left.localeCompare(right, "cs"),
+    left.localeCompare(right, locale),
   );
   const effectiveStatusOptions = Array.from(new Set(documents.map((document) => document.effectiveStatus))).sort((left, right) =>
-    left.localeCompare(right, "cs"),
+    left.localeCompare(right, locale),
   );
 
   const filteredDocuments = documents.filter((document) => {
@@ -75,29 +84,25 @@ export function AccountingNewDocumentsPanel({
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">Read-only</Badge>
-          <Badge variant="outline">Doklady</Badge>
+          <Badge variant="secondary">{t.common.readOnly}</Badge>
+          <Badge variant="outline">{t.documents.badge}</Badge>
         </div>
         <div className="space-y-1">
-          <CardTitle>Read-only seznam účetních dokladů</CardTitle>
-          <CardDescription>
-            Tento přehled používá pouze nové paralelní GET endpointy. Neobsahuje žádné create, edit, delete ani migrační akce.
-          </CardDescription>
+          <CardTitle>{t.documents.title}</CardTitle>
+          <CardDescription>{t.documents.description}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {authRequired ? (
           <Alert>
-            <AlertTitle>Pro načtení dokladů je nutné přihlášení</AlertTitle>
-            <AlertDescription>
-              Accounting document list zůstává bezpečný. Bez admin session se pouze nezobrazí data, ale starý invoicing UI tím zůstává nedotčený.
-            </AlertDescription>
+            <AlertTitle>{t.auth.documentsTitle}</AlertTitle>
+            <AlertDescription>{t.auth.documentsDescription}</AlertDescription>
           </Alert>
         ) : null}
 
         {error && !authRequired ? (
           <Alert variant="destructive">
-            <AlertTitle>Read-only seznam dokladů se nepodařilo načíst</AlertTitle>
+            <AlertTitle>{t.errors.documentsTitle}</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         ) : null}
@@ -108,17 +113,17 @@ export function AccountingNewDocumentsPanel({
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Hledat podle čísla dokladu, VS, odběratele nebo druhu"
-                aria-label="Hledat dokumenty"
+                placeholder={t.documents.searchPlaceholder}
+                aria-label={t.documents.searchLabel}
               />
 
               <select
                 value={documentKind}
                 onChange={(event) => setDocumentKind(event.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                aria-label="Filtrovat podle druhu dokumentu"
+                aria-label={t.documents.kindFilterLabel}
               >
-                <option value="all">Všechny druhy</option>
+                <option value="all">{t.documents.kindAll}</option>
                 {kindOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -130,9 +135,9 @@ export function AccountingNewDocumentsPanel({
                 value={effectiveStatus}
                 onChange={(event) => setEffectiveStatus(event.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                aria-label="Filtrovat podle výsledného stavu"
+                aria-label={t.documents.statusFilterLabel}
               >
-                <option value="all">Všechny stavy</option>
+                <option value="all">{t.documents.statusAll}</option>
                 {effectiveStatusOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -142,9 +147,13 @@ export function AccountingNewDocumentsPanel({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>{filteredDocuments.length} zobrazených dokladů</span>
+              <span>{formatAccountingNewTemplate(t.documents.shownCount, { count: filteredDocuments.length })}</span>
               <span>·</span>
-              <span>detail vede pouze do nové paralelní route `/admin/ucetnictvi-new/doklady/[id]`</span>
+              <span>
+                {formatAccountingNewTemplate(t.documents.detailRouteHint, {
+                  route: "/admin/ucetnictvi-new/doklady/[id]",
+                })}
+              </span>
             </div>
           </>
         ) : null}
@@ -163,13 +172,13 @@ export function AccountingNewDocumentsPanel({
 
         {!isLoading && !authRequired && !error && documents.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Backend zatím nevrátil žádné read-only dokumenty. Nová paralelní sekce přesto zůstává připravená a staré vydané faktury v `/admin/invoices` zůstávají beze změny.
+            {t.empty.documents}
           </div>
         ) : null}
 
         {!isLoading && !authRequired && !error && documents.length > 0 && filteredDocuments.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Aktuální filtry nevrátily žádný dokument. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.
+            {t.empty.documentsFiltered}
           </div>
         ) : null}
       </CardContent>

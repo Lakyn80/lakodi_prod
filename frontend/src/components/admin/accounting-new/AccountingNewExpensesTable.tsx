@@ -1,28 +1,35 @@
+"use client";
+
 import Link from "next/link";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE } from "@/lib/accountingNew";
 import type { AccountingNewExpenseListItem } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
-import { formatAccountingNewDate } from "@/components/admin/accounting-new/accountingNewFormat";
+import { formatAccountingNewDate, formatAccountingNewTemplate } from "@/components/admin/accounting-new/accountingNewFormat";
 
 export function AccountingNewExpensesTable({
   expenses,
 }: {
   expenses: AccountingNewExpenseListItem[];
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Výdaj</TableHead>
-          <TableHead>Dodavatel</TableHead>
-          <TableHead>Vystavení</TableHead>
-          <TableHead>Přijetí / zdanění</TableHead>
-          <TableHead>Splatnost</TableHead>
-          <TableHead className="text-right">Celkem</TableHead>
-          <TableHead>Stavy</TableHead>
+          <TableHead>{t.expenses.table.expense}</TableHead>
+          <TableHead>{t.expenses.table.supplier}</TableHead>
+          <TableHead>{t.expenses.table.issueDate}</TableHead>
+          <TableHead>{t.expenses.table.receivedAndTaxable}</TableHead>
+          <TableHead>{t.expenses.table.dueDate}</TableHead>
+          <TableHead className="text-right">{t.expenses.table.total}</TableHead>
+          <TableHead>{t.expenses.table.statuses}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -36,7 +43,9 @@ export function AccountingNewExpensesTable({
                 >
                   {expense.expenseNumber}
                 </Link>
-                <p className="text-xs text-muted-foreground">VS {expense.variableSymbol}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatAccountingNewTemplate(t.expenses.table.variableSymbol, { value: expense.variableSymbol })}
+                </p>
               </div>
             </TableCell>
             <TableCell className="align-top">
@@ -45,14 +54,16 @@ export function AccountingNewExpensesTable({
                 <p className="text-xs text-muted-foreground">{expense.supplierEmail}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(expense.issueDate)}</TableCell>
+            <TableCell className="align-top">{formatAccountingNewDate(expense.issueDate, language, t.common.noValue)}</TableCell>
             <TableCell className="align-top">
               <div className="space-y-1">
-                <p>{formatAccountingNewDate(expense.receivedDate)}</p>
-                <p className="text-xs text-muted-foreground">{formatAccountingNewDate(expense.taxableSupplyDate)}</p>
+                <p>{formatAccountingNewDate(expense.receivedDate, language, t.common.noValue)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatAccountingNewDate(expense.taxableSupplyDate, language, t.common.noValue)}
+                </p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(expense.dueDate)}</TableCell>
+            <TableCell className="align-top">{formatAccountingNewDate(expense.dueDate, language, t.common.noValue)}</TableCell>
             <TableCell className="text-right align-top">
               <div className="space-y-1">
                 <AccountingNewMoney amount={expense.total} currency={expense.currency} className="font-medium text-foreground" />

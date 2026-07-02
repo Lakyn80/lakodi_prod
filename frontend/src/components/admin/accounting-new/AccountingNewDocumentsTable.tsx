@@ -1,37 +1,40 @@
+"use client";
+
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE } from "@/lib/accountingNew";
 import type { AccountingNewDocumentListItem } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("cs-CZ", { dateStyle: "medium" }).format(date);
-}
+import {
+  formatAccountingNewDate,
+  formatAccountingNewTemplate,
+  translateAccountingNewDocumentKind,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 export function AccountingNewDocumentsTable({
   documents,
 }: {
   documents: AccountingNewDocumentListItem[];
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Doklad</TableHead>
-          <TableHead>Druh</TableHead>
-          <TableHead>Odběratel</TableHead>
-          <TableHead>Vystavení</TableHead>
-          <TableHead>Splatnost</TableHead>
-          <TableHead className="text-right">Celkem</TableHead>
-          <TableHead>Stavy</TableHead>
+          <TableHead>{t.documents.table.document}</TableHead>
+          <TableHead>{t.documents.table.kind}</TableHead>
+          <TableHead>{t.documents.table.customer}</TableHead>
+          <TableHead>{t.documents.table.issueDate}</TableHead>
+          <TableHead>{t.documents.table.dueDate}</TableHead>
+          <TableHead className="text-right">{t.documents.table.total}</TableHead>
+          <TableHead>{t.documents.table.statuses}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -45,11 +48,13 @@ export function AccountingNewDocumentsTable({
                 >
                   {document.invoiceNumber}
                 </Link>
-                <p className="text-xs text-muted-foreground">VS {document.variableSymbol}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatAccountingNewTemplate(t.documents.table.variableSymbol, { value: document.variableSymbol })}
+                </p>
               </div>
             </TableCell>
             <TableCell className="align-top">
-              <Badge variant="outline">{document.documentKind}</Badge>
+              <Badge variant="outline">{translateAccountingNewDocumentKind(t, document.documentKind)}</Badge>
             </TableCell>
             <TableCell className="align-top">
               <div className="space-y-1">
@@ -57,8 +62,8 @@ export function AccountingNewDocumentsTable({
                 <p className="text-xs text-muted-foreground">{document.customerEmail}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{formatDate(document.issueDate)}</TableCell>
-            <TableCell className="align-top">{formatDate(document.dueDate)}</TableCell>
+            <TableCell className="align-top">{formatAccountingNewDate(document.issueDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="align-top">{formatAccountingNewDate(document.dueDate, language, t.common.noValue)}</TableCell>
             <TableCell className="text-right align-top">
               <div className="space-y-1">
                 <AccountingNewMoney amount={document.total} currency={document.currency} className="font-medium text-foreground" />

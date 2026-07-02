@@ -10,9 +10,15 @@ export interface AccountingNewModuleStat {
 export function AccountingNewModuleGrid({
   modules,
   stats = {},
+  labels,
 }: {
   modules: AccountingNewModuleDefinition[];
   stats?: Partial<Record<AccountingNewModuleId, AccountingNewModuleStat>>;
+  labels: {
+    readOnly: string;
+    ready: string;
+    noMetrics: string;
+  };
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -23,12 +29,12 @@ export function AccountingNewModuleGrid({
               <CardTitle className="text-lg">{module.title}</CardTitle>
             </div>
             <Badge variant={module.availability === "read-only" ? "secondary" : "outline"}>
-              {stats[module.id]?.badge ?? (module.availability === "read-only" ? "Read-only" : "Připraveno")}
+              {stats[module.id]?.badge ?? (module.availability === "read-only" ? labels.readOnly : labels.ready)}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">{module.description}</p>
-            <p className="text-sm text-foreground">{stats[module.id]?.detail ?? "Bez aktivních read-only metrik v této fázi."}</p>
+            <p className="text-sm text-foreground">{stats[module.id]?.detail ?? labels.noMetrics}</p>
           </CardContent>
         </Card>
       ))}

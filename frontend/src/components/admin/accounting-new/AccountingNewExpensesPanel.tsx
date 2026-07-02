@@ -7,8 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewExpenseListItem } from "@/types/accountingNew";
 import { AccountingNewExpensesTable } from "@/components/admin/accounting-new/AccountingNewExpensesTable";
+import {
+  formatAccountingNewTemplate,
+  getAccountingNewLocale,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
@@ -44,16 +50,19 @@ export function AccountingNewExpensesPanel({
   authRequired: boolean;
   error: AccountingNewApiError | null;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
+  const locale = getAccountingNewLocale(language);
   const [query, setQuery] = useState("");
   const [expenseStatus, setExpenseStatus] = useState("all");
   const [paymentStatus, setPaymentStatus] = useState("all");
   const deferredQuery = useDeferredValue(query);
 
   const expenseStatusOptions = Array.from(new Set(expenses.map((expense) => expense.status))).sort((left, right) =>
-    left.localeCompare(right, "cs"),
+    left.localeCompare(right, locale),
   );
   const paymentStatusOptions = Array.from(new Set(expenses.map((expense) => expense.paymentStatus))).sort((left, right) =>
-    left.localeCompare(right, "cs"),
+    left.localeCompare(right, locale),
   );
 
   const filteredExpenses = expenses.filter((expense) => {
@@ -76,29 +85,25 @@ export function AccountingNewExpensesPanel({
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">Read-only</Badge>
-          <Badge variant="outline">Výdaje</Badge>
+          <Badge variant="secondary">{t.common.readOnly}</Badge>
+          <Badge variant="outline">{t.expenses.badge}</Badge>
         </div>
         <div className="space-y-1">
-          <CardTitle>Read-only přijaté doklady a výdaje</CardTitle>
-          <CardDescription>
-            Přehled používá pouze bezpečné GET endpointy. Neobsahuje create, edit, delete, apply payment ani importní akce.
-          </CardDescription>
+          <CardTitle>{t.expenses.title}</CardTitle>
+          <CardDescription>{t.expenses.description}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {authRequired ? (
           <Alert>
-            <AlertTitle>Pro načtení výdajů je nutné přihlášení</AlertTitle>
-            <AlertDescription>
-              Bez aktivní admin session se read-only seznam výdajů nenačte. Původní issued invoices v `/admin/invoices` tím zůstávají nedotčené.
-            </AlertDescription>
+            <AlertTitle>{t.auth.expensesTitle}</AlertTitle>
+            <AlertDescription>{t.auth.expensesDescription}</AlertDescription>
           </Alert>
         ) : null}
 
         {error && !authRequired ? (
           <Alert variant="destructive">
-            <AlertTitle>Read-only seznam výdajů se nepodařilo načíst</AlertTitle>
+            <AlertTitle>{t.errors.expensesTitle}</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         ) : null}
@@ -109,17 +114,17 @@ export function AccountingNewExpensesPanel({
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Hledat podle čísla, VS, dodavatele, IČO nebo DIČ"
-                aria-label="Hledat výdaje"
+                placeholder={t.expenses.searchPlaceholder}
+                aria-label={t.expenses.searchLabel}
               />
 
               <select
                 value={expenseStatus}
                 onChange={(event) => setExpenseStatus(event.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                aria-label="Filtrovat podle stavu výdaje"
+                aria-label={t.expenses.expenseStatusLabel}
               >
-                <option value="all">Všechny stavy výdaje</option>
+                <option value="all">{t.expenses.expenseStatusAll}</option>
                 {expenseStatusOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -131,9 +136,9 @@ export function AccountingNewExpensesPanel({
                 value={paymentStatus}
                 onChange={(event) => setPaymentStatus(event.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                aria-label="Filtrovat podle stavu platby výdaje"
+                aria-label={t.expenses.paymentStatusLabel}
               >
-                <option value="all">Všechny stavy platby</option>
+                <option value="all">{t.expenses.paymentStatusAll}</option>
                 {paymentStatusOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -143,9 +148,13 @@ export function AccountingNewExpensesPanel({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>{filteredExpenses.length} zobrazených výdajů</span>
+              <span>{formatAccountingNewTemplate(t.expenses.shownCount, { count: filteredExpenses.length })}</span>
               <span>·</span>
-              <span>detail vede pouze do nové paralelní route `/admin/ucetnictvi-new/vydaje/[id]`</span>
+              <span>
+                {formatAccountingNewTemplate(t.expenses.detailRouteHint, {
+                  route: "/admin/ucetnictvi-new/vydaje/[id]",
+                })}
+              </span>
             </div>
           </>
         ) : null}
@@ -164,13 +173,13 @@ export function AccountingNewExpensesPanel({
 
         {!isLoading && !authRequired && !error && expenses.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Backend zatím nevrátil žádné read-only výdaje. Nová paralelní sekce přesto zůstává bezpečná a staré vydané faktury v `/admin/invoices` se nemění.
+            {t.empty.expenses}
           </div>
         ) : null}
 
         {!isLoading && !authRequired && !error && expenses.length > 0 && filteredExpenses.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            Aktuální filtry nevrátily žádný výdaj. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.
+            {t.empty.expensesFiltered}
           </div>
         ) : null}
       </CardContent>

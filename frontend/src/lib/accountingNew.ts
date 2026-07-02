@@ -21,7 +21,6 @@ import type {
   AccountingNewExpenseItem,
   AccountingNewExpenseListItem,
   AccountingNewExpensePaymentSummary,
-  AccountingNewModuleDefinition,
   AccountingNewPaymentSummary,
   AccountingNewPaymentMatchListItem,
   AccountingNewRecurringTemplateSummary,
@@ -34,77 +33,6 @@ import type {
 
 export const ACCOUNTING_NEW_ROUTE = "/admin/ucetnictvi-new";
 export const ACCOUNTING_NEW_LABEL = "ÚčetnictvíNew";
-export const ACCOUNTING_NEW_MATCH_CANDIDATES_DEFERRED_NOTE =
-  "Matching candidates are not available through a safe read-only endpoint yet.";
-
-export const accountingNewModules: AccountingNewModuleDefinition[] = [
-  {
-    id: "dashboard",
-    title: "Dashboard",
-    description: "Read-only přehled načtených dokladů, výdajů, úkolů a auditních událostí.",
-    availability: "read-only",
-  },
-  {
-    id: "documents",
-    title: "Doklady",
-    description: "Read-only načtení faktur, proforem, daňových dokladů, konečných faktur, oprav a nabídek.",
-    availability: "read-only",
-  },
-  {
-    id: "subjects",
-    title: "Zákazníci",
-    description: "Read-only seznam subjektů a snapshotově bezpečných údajů pro nové účetnictví.",
-    availability: "read-only",
-  },
-  {
-    id: "expenses",
-    title: "Výdaje",
-    description: "Read-only přehled přijatých dokladů a jejich aktuálních stavů úhrad.",
-    availability: "read-only",
-  },
-  {
-    id: "suppliers",
-    title: "Dodavatelé",
-    description: "Read-only registr dodavatelů připravený pro další paralelní accounting workflow.",
-    availability: "read-only",
-  },
-  {
-    id: "bank-matching",
-    title: "Banka / párování",
-    description: "Read-only načtení bankovních transakcí bez importu, párování nebo potvrzovacích kroků.",
-    availability: "read-only",
-  },
-  {
-    id: "todos-reminders",
-    title: "Úkoly / upomínky",
-    description: "Read-only přehled otevřených úkolů a připravených účetních připomínek.",
-    availability: "read-only",
-  },
-  {
-    id: "recurring",
-    title: "Opakované doklady",
-    description: "Read-only seznam šablon bez generování nebo změny pravidelných dokladů.",
-    availability: "read-only",
-  },
-  {
-    id: "attachments",
-    title: "Přílohy / inbox",
-    description: "Read-only inbox příloh a vazeb k dokladům bez archivace nebo linkování.",
-    availability: "read-only",
-  },
-  {
-    id: "audit",
-    title: "Audit log",
-    description: "Read-only append-only audit události napříč accounting moduly.",
-    availability: "read-only",
-  },
-  {
-    id: "settings",
-    title: "Nastavení",
-    description: "Konfigurační moduly zůstávají v této fázi pouze připravené, bez načtení write formulářů.",
-    availability: "placeholder",
-  },
-];
 
 const ACCOUNTING_NEW_INVOICES_BASE = "/invoices";
 

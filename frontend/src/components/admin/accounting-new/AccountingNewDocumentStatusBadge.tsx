@@ -1,4 +1,9 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateAccountingNewStatus } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function getVariant(value: string): "default" | "secondary" | "outline" {
   const normalized = value.trim().toLowerCase();
@@ -19,5 +24,8 @@ export function AccountingNewDocumentStatusBadge({
 }: {
   label: string;
 }) {
-  return <Badge variant={getVariant(label)}>{label}</Badge>;
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
+
+  return <Badge variant={getVariant(label)}>{translateAccountingNewStatus(t, label)}</Badge>;
 }

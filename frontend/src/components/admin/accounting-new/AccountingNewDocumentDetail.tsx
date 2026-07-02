@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ACCOUNTING_NEW_ROUTE,
   getAccountingNewDocument,
@@ -19,35 +21,14 @@ import {
 import type { AccountingNewApiError, AccountingNewDocumentDetailState } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
-
-function formatDate(value: string | null): string {
-  if (!value) {
-    return "Neuvedeno";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("cs-CZ", { dateStyle: "medium" }).format(date);
-}
-
-function formatDateTime(value: string | null): string {
-  if (!value) {
-    return "Neuvedeno";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("cs-CZ", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
+import {
+  formatAccountingNewDate,
+  formatAccountingNewDateTime,
+  formatAccountingNewTemplate,
+  translateAccountingNewDocumentKind,
+  translateAccountingNewEntityType,
+  translateAccountingNewStatus,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 function getFirstError(errors: AccountingNewApiError[]): AccountingNewApiError | null {
   return errors[0] ?? null;
@@ -84,6 +65,8 @@ export function AccountingNewDocumentDetail({
 }: {
   documentId: string;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewDocumentDetailState>({ status: "loading" });
 
   useEffect(() => {
@@ -131,7 +114,7 @@ export function AccountingNewDocumentDetail({
             ? ((error as { apiError: AccountingNewApiError }).apiError as AccountingNewApiError)
             : {
                 resource: "document-detail",
-                message: error instanceof Error ? error.message : "Read-only detail dokumentu se nepodařilo načíst.",
+                message: error instanceof Error ? error.message : t.errors.documentDetailTitle,
                 status: null,
                 requiresLogin: false,
               };
@@ -153,7 +136,7 @@ export function AccountingNewDocumentDetail({
     void loadDetail();
 
     return () => controller.abort();
-  }, [documentId]);
+  }, [documentId, t.errors.documentDetailTitle]);
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
@@ -165,14 +148,11 @@ export function AccountingNewDocumentDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>Pro read-only detail dokumentu je nutné přihlášení</AlertTitle>
-          <AlertDescription>
-            Bez aktivní admin session se detail nového paralelního accounting dokumentu nenačte. Starý route `/admin/invoices`
-            tím zůstává beze změny.
-          </AlertDescription>
+          <AlertTitle>{t.auth.documentDetailTitle}</AlertTitle>
+          <AlertDescription>{t.auth.documentDetailDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -182,14 +162,11 @@ export function AccountingNewDocumentDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>Doklad nebyl nalezen</AlertTitle>
-          <AlertDescription>
-            Požadovaný accounting dokument nebyl na read-only endpointu nalezen. Stávající vydané faktury v `/admin/invoices`
-            zůstávají nedotčené.
-          </AlertDescription>
+          <AlertTitle>{t.documentDetail.notFoundTitle}</AlertTitle>
+          <AlertDescription>{t.documentDetail.notFoundDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -199,10 +176,10 @@ export function AccountingNewDocumentDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
-          <AlertTitle>Read-only detail dokumentu se nepodařilo načíst</AlertTitle>
+          <AlertTitle>{t.errors.documentDetailTitle}</AlertTitle>
           <AlertDescription>{state.error.message}</AlertDescription>
         </Alert>
       </div>
@@ -215,10 +192,10 @@ export function AccountingNewDocumentDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">Read-only detail</Badge>
-        <Badge variant="outline">{detail.documentKind}</Badge>
+        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
+        <Badge variant="outline">{translateAccountingNewDocumentKind(t, detail.documentKind)}</Badge>
       </div>
 
       <Card className="border-border bg-card">
@@ -226,25 +203,32 @@ export function AccountingNewDocumentDetail({
           <div className="flex flex-wrap items-center gap-2">
             <AccountingNewDocumentStatusBadge label={detail.paymentStatus} />
             <AccountingNewDocumentStatusBadge label={detail.effectiveStatus} />
-            <Badge variant="secondary">Bez write akcí</Badge>
+            <Badge variant="secondary">{t.common.withoutWriteActions}</Badge>
           </div>
           <div className="space-y-1">
             <CardTitle>{detail.invoiceNumber}</CardTitle>
-            <CardDescription>
-              Read-only accounting detail v nové paralelní sekci. Původní issued invoices v `/admin/invoices` zůstávají zachované beze změny.
-            </CardDescription>
+            <CardDescription>{t.documentDetail.description}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetaRow label="Druh dokumentu" value={detail.documentKind} />
-            <MetaRow label="Variabilní symbol" value={detail.variableSymbol} />
-            <MetaRow label="Datum vystavení" value={formatDate(detail.issueDate)} />
-            <MetaRow label="Datum splatnosti" value={formatDate(detail.dueDate)} />
-            <MetaRow label="Business mode" value={detail.businessMode} />
-            <MetaRow label="Tax mode" value={detail.taxMode} />
-            <MetaRow label="Stav" value={detail.status} />
-            <MetaRow label="Vytvořeno" value={formatDateTime(detail.createdAt)} />
+            <MetaRow label={t.documentDetail.fields.documentKind} value={translateAccountingNewDocumentKind(t, detail.documentKind)} />
+            <MetaRow label={t.documentDetail.fields.variableSymbol} value={detail.variableSymbol} />
+            <MetaRow
+              label={t.documentDetail.fields.issueDate}
+              value={formatAccountingNewDate(detail.issueDate, language, t.common.noValue)}
+            />
+            <MetaRow
+              label={t.documentDetail.fields.dueDate}
+              value={formatAccountingNewDate(detail.dueDate, language, t.common.noValue)}
+            />
+            <MetaRow label={t.documentDetail.fields.businessMode} value={detail.businessMode} />
+            <MetaRow label={t.documentDetail.fields.taxMode} value={detail.taxMode} />
+            <MetaRow label={t.documentDetail.fields.status} value={translateAccountingNewStatus(t, detail.status)} />
+            <MetaRow
+              label={t.documentDetail.fields.createdAt}
+              value={formatAccountingNewDateTime(detail.createdAt, language, t.common.noValue)}
+            />
           </div>
 
           <Separator />
@@ -252,35 +236,35 @@ export function AccountingNewDocumentDetail({
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Snapshot odběratele</h2>
-                <p className="text-sm text-muted-foreground">Pouze read-only zobrazení uložených údajů dokumentu.</p>
+                <h2 className="text-lg font-semibold text-foreground">{t.documentDetail.customerTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.documentDetail.customerDescription}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label="Jméno / firma" value={detail.customerName} />
-                <MetaRow label="E-mail" value={detail.customerEmail} />
-                <MetaRow label="Telefon" value={detail.customerPhone ?? "Neuvedeno"} />
-                <MetaRow label="Adresa" value={detail.customerAddress ?? "Neuvedeno"} />
-                <MetaRow label="IČO" value={detail.customerIco ?? "Neuvedeno"} />
-                <MetaRow label="DIČ" value={detail.customerDic ?? "Neuvedeno"} />
+                <MetaRow label={t.documentDetail.fields.customerName} value={detail.customerName} />
+                <MetaRow label={t.documentDetail.fields.email} value={detail.customerEmail} />
+                <MetaRow label={t.documentDetail.fields.phone} value={detail.customerPhone ?? t.common.noValue} />
+                <MetaRow label={t.documentDetail.fields.address} value={detail.customerAddress ?? t.common.noValue} />
+                <MetaRow label={t.documentDetail.fields.ico} value={detail.customerIco ?? t.common.noValue} />
+                <MetaRow label={t.documentDetail.fields.dic} value={detail.customerDic ?? t.common.noValue} />
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Snapshot vystavitele a platby</h2>
-                <p className="text-sm text-muted-foreground">Zobrazené údaje jsou převzaté z dokumentu, bez editace.</p>
+                <h2 className="text-lg font-semibold text-foreground">{t.documentDetail.issuerTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.documentDetail.issuerDescription}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label="Vystavitel" value={detail.issuerName} />
+                <MetaRow label={t.documentDetail.fields.issuerName} value={detail.issuerName} />
                 <MetaRow
-                  label="Adresa"
+                  label={t.documentDetail.fields.address}
                   value={`${detail.issuerAddress}, ${detail.issuerZip} ${detail.issuerCity}`}
                 />
-                <MetaRow label="IČO" value={detail.issuerIco} />
-                <MetaRow label="DIČ" value={detail.issuerDic} />
-                <MetaRow label="Způsob platby" value={detail.paymentMethod} />
+                <MetaRow label={t.documentDetail.fields.ico} value={detail.issuerIco} />
+                <MetaRow label={t.documentDetail.fields.dic} value={detail.issuerDic} />
+                <MetaRow label={t.documentDetail.fields.paymentMethod} value={detail.paymentMethod} />
                 <MetaRow
-                  label="Účet"
+                  label={t.documentDetail.fields.account}
                   value={`${detail.bankAccountPrefix ? `${detail.bankAccountPrefix}-` : ""}${detail.bankAccountNumber}/${detail.bankCode}`}
                 />
               </div>
@@ -291,7 +275,7 @@ export function AccountingNewDocumentDetail({
             <>
               <Separator />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">Poznámka</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t.documentDetail.noteTitle}</h2>
                 <p className="text-sm text-muted-foreground">{detail.note}</p>
               </div>
             </>
@@ -301,7 +285,7 @@ export function AccountingNewDocumentDetail({
 
       {partialError ? (
         <Alert>
-          <AlertTitle>Část doplňkových read-only sekcí se nepodařilo načíst</AlertTitle>
+          <AlertTitle>{t.errors.supplementalTitle}</AlertTitle>
           <AlertDescription>{partialError.message}</AlertDescription>
         </Alert>
       ) : null}
@@ -309,18 +293,18 @@ export function AccountingNewDocumentDetail({
       <div className="grid gap-4 xl:grid-cols-[1.25fr,0.95fr]">
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Položky dokumentu</CardTitle>
-            <CardDescription>Read-only přehled položek vrácených detail endpointem.</CardDescription>
+            <CardTitle>{t.documentDetail.itemsTitle}</CardTitle>
+            <CardDescription>{t.documentDetail.itemsDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {detail.items.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Popis</TableHead>
-                    <TableHead className="text-right">Množství</TableHead>
-                    <TableHead className="text-right">Cena za jednotku</TableHead>
-                    <TableHead className="text-right">Celkem</TableHead>
+                    <TableHead>{t.documentDetail.fields.description}</TableHead>
+                    <TableHead className="text-right">{t.documentDetail.fields.quantity}</TableHead>
+                    <TableHead className="text-right">{t.documentDetail.fields.unitPrice}</TableHead>
+                    <TableHead className="text-right">{t.documentDetail.fields.total}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -339,26 +323,29 @@ export function AccountingNewDocumentDetail({
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-sm text-muted-foreground">Tento dokument zatím neobsahuje žádné položky v read-only detailu.</p>
+              <p className="text-sm text-muted-foreground">{t.empty.documentItems}</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Souhrn částek</CardTitle>
-            <CardDescription>Žádné write akce, pouze stav uložený na backendu.</CardDescription>
+            <CardTitle>{t.documentDetail.amountsTitle}</CardTitle>
+            <CardDescription>{t.documentDetail.amountsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <MetaRow label="Mezisoučet" value={<AccountingNewMoney amount={detail.subtotal} currency={detail.currency} />} />
-            <MetaRow label="DPH" value={<AccountingNewMoney amount={detail.vatAmount} currency={detail.currency} />} />
-            <MetaRow label="Celkem" value={<AccountingNewMoney amount={detail.total} currency={detail.currency} className="font-semibold" />} />
-            <MetaRow label="Uhrazeno" value={<AccountingNewMoney amount={detail.totalPaid} currency={detail.currency} />} />
+            <MetaRow label={t.documentDetail.fields.subtotal} value={<AccountingNewMoney amount={detail.subtotal} currency={detail.currency} />} />
+            <MetaRow label={t.documentDetail.fields.vat} value={<AccountingNewMoney amount={detail.vatAmount} currency={detail.currency} />} />
             <MetaRow
-              label="Zbývá uhradit"
+              label={t.documentDetail.fields.total}
+              value={<AccountingNewMoney amount={detail.total} currency={detail.currency} className="font-semibold" />}
+            />
+            <MetaRow label={t.documentDetail.fields.totalPaid} value={<AccountingNewMoney amount={detail.totalPaid} currency={detail.currency} />} />
+            <MetaRow
+              label={t.documentDetail.fields.remainingAmount}
               value={<AccountingNewMoney amount={detail.remainingAmount} currency={detail.currency} className="font-semibold" />}
             />
-            <MetaRow label="Sazba DPH" value={detail.vatRate !== null ? `${detail.vatRate} %` : "Neuvedeno"} />
+            <MetaRow label={t.documentDetail.fields.vatRate} value={detail.vatRate !== null ? `${detail.vatRate} %` : t.common.noValue} />
           </CardContent>
         </Card>
       </div>
@@ -366,8 +353,8 @@ export function AccountingNewDocumentDetail({
       <div className="grid gap-4 xl:grid-cols-[1fr,1fr]">
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Platby</CardTitle>
-            <CardDescription>Read-only seznam plateb vrácených detail endpointem.</CardDescription>
+            <CardTitle>{t.documentDetail.paymentsTitle}</CardTitle>
+            <CardDescription>{t.documentDetail.paymentsDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {detail.payments.length > 0 ? (
@@ -378,21 +365,25 @@ export function AccountingNewDocumentDetail({
                       <AccountingNewMoney amount={payment.amount} currency={detail.currency} className="font-medium text-foreground" />
                       <Badge variant="outline">{payment.paymentMethod}</Badge>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">Uhrazeno {formatDate(payment.paidAt)}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {formatAccountingNewTemplate(t.common.paidAt, {
+                        value: formatAccountingNewDate(payment.paidAt, language, t.common.noValue),
+                      })}
+                    </p>
                     {payment.note ? <p className="mt-2 text-sm text-foreground">{payment.note}</p> : null}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">K tomuto dokumentu zatím backend nevrátil žádné platby.</p>
+              <p className="text-sm text-muted-foreground">{t.empty.documentPayments}</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Relace dokumentu</CardTitle>
-            <CardDescription>Volitelná read-only sekce nad `GET /api/admin/invoices/{'{id}'}/relations`.</CardDescription>
+            <CardTitle>{t.documentDetail.relationsTitle}</CardTitle>
+            <CardDescription>{t.documentDetail.relationsDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {relations && relations.allRelations.length > 0 ? (
@@ -401,23 +392,39 @@ export function AccountingNewDocumentDetail({
                   <div key={relation.id} className="rounded-lg border border-border bg-background p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{relation.relationType}</Badge>
-                      <p className="text-sm text-muted-foreground">{formatDateTime(relation.createdAt)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatAccountingNewDateTime(relation.createdAt, language, t.common.noValue)}
+                      </p>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <MetaRow
-                        label="Zdroj"
-                        value={relation.sourceDocument ? `${relation.sourceDocument.invoiceNumber} · ${relation.sourceDocument.documentKind}` : "Neuvedeno"}
+                        label={t.documentDetail.sourceLabel}
+                        value={
+                          relation.sourceDocument
+                            ? formatAccountingNewTemplate(t.documentDetail.relationDocument, {
+                                number: relation.sourceDocument.invoiceNumber,
+                                kind: translateAccountingNewDocumentKind(t, relation.sourceDocument.documentKind),
+                              })
+                            : t.common.noValue
+                        }
                       />
                       <MetaRow
-                        label="Cíl"
-                        value={relation.targetDocument ? `${relation.targetDocument.invoiceNumber} · ${relation.targetDocument.documentKind}` : "Neuvedeno"}
+                        label={t.documentDetail.targetLabel}
+                        value={
+                          relation.targetDocument
+                            ? formatAccountingNewTemplate(t.documentDetail.relationDocument, {
+                                number: relation.targetDocument.invoiceNumber,
+                                kind: translateAccountingNewDocumentKind(t, relation.targetDocument.documentKind),
+                              })
+                            : t.common.noValue
+                        }
                       />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">K tomuto dokumentu zatím nebyly načteny žádné read-only relace.</p>
+              <p className="text-sm text-muted-foreground">{t.empty.documentRelations}</p>
             )}
           </CardContent>
         </Card>
@@ -425,8 +432,8 @@ export function AccountingNewDocumentDetail({
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>Nedávné auditní události</CardTitle>
-          <CardDescription>Volitelná read-only sekce nad `GET /api/admin/invoices/{'{id}'}/audit-events`.</CardDescription>
+          <CardTitle>{t.documentDetail.auditTitle}</CardTitle>
+          <CardDescription>{t.documentDetail.auditDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {auditEvents.length > 0 ? (
@@ -434,20 +441,19 @@ export function AccountingNewDocumentDetail({
               {auditEvents.slice(0, 5).map((event) => (
                 <div key={event.id} className="rounded-lg border border-border bg-background p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{event.entityType}</Badge>
+                    <Badge variant="outline">{translateAccountingNewEntityType(t, event.entityType)}</Badge>
                     <Badge variant="secondary">{event.eventType}</Badge>
                   </div>
-                  <p className="mt-3 text-sm text-foreground">
-                    {event.message ?? "Backend neposlal textovou zprávu, proto detail zobrazuje pouze typ události."}
-                  </p>
+                  <p className="mt-3 text-sm text-foreground">{event.message ?? t.common.noAuditMessage}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {formatDateTime(event.createdAt)} · zdroj {event.source}
+                    {formatAccountingNewDateTime(event.createdAt, language, t.common.noValue)} ·{" "}
+                    {formatAccountingNewTemplate(t.common.sourcePrefix, { value: event.source })}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Žádné auditní události se pro tento dokument zatím nepodařilo načíst.</p>
+            <p className="text-sm text-muted-foreground">{t.empty.documentAudit}</p>
           )}
         </CardContent>
       </Card>

@@ -2651,3 +2651,100 @@
 - Deploy/CD: `No`
 - Commit message: `Add read-only accounting bank matching views`
 - Local commit hash: `pending until local commit creation`
+
+## Úkol 22F-ARCH Existing i18n integration, module registry, and RAG-ready metadata
+
+- Date: `2026-07-02`
+- Existing i18n system found and reused:
+  - `frontend/src/data/translations.ts`
+  - `frontend/src/contexts/LanguageContext.tsx`
+  - no duplicate accounting-only i18n runtime, provider, hook, locale resolver, or language switcher was added
+- Exact existing translation files extended:
+  - `frontend/src/data/translations.ts`
+- Locale codes used:
+  - `cs`
+  - `ua`
+  - `ru`
+  - `en`
+  - note: the existing project already uses `ua` for Ukrainian, so that existing convention was preserved
+- Accounting translation key groups added:
+  - `navigation`
+  - `common`
+  - `auth`
+  - `errors`
+  - `empty`
+  - `dashboard`
+  - `documents`
+  - `documentDetail`
+  - `expenses`
+  - `expenseDetail`
+  - `suppliers`
+  - `supplierDetail`
+  - `bankTransactions`
+  - `bankTransactionDetail`
+  - `paymentMatching`
+  - `moduleRegistry`
+  - `rag`
+  - `voice`
+  - `statusLabels`
+  - `documentKinds`
+  - `transactionDirections`
+- Module registry added:
+  - `frontend/src/lib/accountingNewModules.ts`
+  - includes stable module ids, routes, translation keys, capability flags, feature status, related module ids, voice alias keys, and RAG/search metadata
+- RAG-ready metadata added:
+  - `frontend/src/types/accountingNewMetadata.ts`
+  - includes module ids, entity types, searchable field metadata, RAG metadata, voice metadata, and registry entry types
+- Voice-ready aliases added:
+  - added as translation keys and registry metadata only
+  - no voice runtime or voice execution flow was implemented
+- Components refactored to use existing i18n:
+  - accounting-new components under `frontend/src/components/admin/accounting-new/`
+  - formatting helpers in `frontend/src/components/admin/accounting-new/accountingNewFormat.ts`
+  - shared accounting types in `frontend/src/types/accountingNew.ts`
+  - shared accounting client in `frontend/src/lib/accountingNew.ts` kept API behavior unchanged while consuming the new registry/types
+- Hardcoded accounting strings remaining:
+  - limited shared client-side fallback error strings remain in `frontend/src/lib/accountingNew.ts`
+  - these are invalid-id / auth-required / not-found / network / abort fallback messages returned through the existing API error plumbing
+  - no remaining hardcoded visible accounting UI copy was intentionally left in `frontend/src/components/admin/accounting-new/` or `frontend/src/app/admin/ucetnictvi-new/`
+- i18n completeness check command/result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1`
+  - `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Frontend build result:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - existing unrelated warnings/notices left unchanged:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'. Either include it or remove the dependency array. react-hooks/exhaustive-deps`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old. Please run: npx update-browserslist-db@latest`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Docker helper result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke` -> `passed`
+  - helper printed one extra warning line about the expected unauthenticated `401`, but the smoke run itself passed
+- Route smoke results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- Protected old invoicing safety check:
+  - `git diff -- frontend/src/app/admin/invoices/page.tsx` -> no diff
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceForm.tsx` -> no diff
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceList.tsx` -> no diff
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceDetail.tsx` -> no diff
+  - `git diff -- frontend/src/components/admin/invoices/InvoiceSettingsForm.tsx` -> no diff
+  - `git diff -- frontend/src/lib/invoices.ts` -> no diff
+- `/admin/invoices` unchanged: `Yes`
+- Old invoicing UI touched: `No`
+- Backend source changes: `None`
+- Database/schema changes: `None`
+- AI/RAG backend implemented: `No`
+- Voice implemented: `No`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Integrate accounting UI with existing i18n registry`
+- Local commit hash: `pending until local commit creation`

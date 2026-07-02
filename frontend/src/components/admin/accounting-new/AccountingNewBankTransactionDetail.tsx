@@ -9,18 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ACCOUNTING_NEW_MATCH_CANDIDATES_DEFERRED_NOTE,
-  ACCOUNTING_NEW_ROUTE,
-  getAccountingNewBankTransaction,
-  listAccountingNewBankTransactionMatches,
-} from "@/lib/accountingNew";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { ACCOUNTING_NEW_ROUTE, getAccountingNewBankTransaction, listAccountingNewBankTransactionMatches } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewBankTransactionDetailState } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMatchCandidatesList } from "@/components/admin/accounting-new/AccountingNewMatchCandidatesList";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
 import { AccountingNewPaymentMatchesTable } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesTable";
-import { formatAccountingNewDate, formatAccountingNewDateTime } from "@/components/admin/accounting-new/accountingNewFormat";
+import {
+  formatAccountingNewDate,
+  formatAccountingNewDateTime,
+  formatAccountingNewTemplate,
+  translateAccountingNewStatus,
+  translateAccountingNewTransactionDirection,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 function getFirstError(errors: AccountingNewApiError[]): AccountingNewApiError | null {
   return errors[0] ?? null;
@@ -57,6 +60,8 @@ export function AccountingNewBankTransactionDetail({
 }: {
   transactionId: string;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewBankTransactionDetailState>({ status: "loading" });
 
   useEffect(() => {
@@ -83,7 +88,6 @@ export function AccountingNewBankTransactionDetail({
           detail,
           matches,
           partialErrors,
-          candidatesDeferredNote: ACCOUNTING_NEW_MATCH_CANDIDATES_DEFERRED_NOTE,
         });
       } catch (error) {
         if (controller.signal.aborted) {
@@ -98,7 +102,7 @@ export function AccountingNewBankTransactionDetail({
             ? ((error as { apiError: AccountingNewApiError }).apiError as AccountingNewApiError)
             : {
                 resource: "bank-transaction-detail",
-                message: error instanceof Error ? error.message : "Read-only detail bankovní transakce se nepodařilo načíst.",
+                message: error instanceof Error ? error.message : t.errors.bankTransactionDetailTitle,
                 status: null,
                 requiresLogin: false,
               };
@@ -120,7 +124,7 @@ export function AccountingNewBankTransactionDetail({
     void loadDetail();
 
     return () => controller.abort();
-  }, [transactionId]);
+  }, [transactionId, t.errors.bankTransactionDetailTitle]);
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
@@ -132,11 +136,11 @@ export function AccountingNewBankTransactionDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>Pro read-only detail bankovní transakce je nutné přihlášení</AlertTitle>
-          <AlertDescription>Bez aktivní admin session se detail bankovní transakce nenačte.</AlertDescription>
+          <AlertTitle>{t.auth.bankTransactionDetailTitle}</AlertTitle>
+          <AlertDescription>{t.auth.bankTransactionDetailDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -146,11 +150,11 @@ export function AccountingNewBankTransactionDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>Bankovní transakce nebyla nalezena</AlertTitle>
-          <AlertDescription>Požadovaná read-only bankovní transakce nebyla na backendu nalezena.</AlertDescription>
+          <AlertTitle>{t.bankTransactionDetail.notFoundTitle}</AlertTitle>
+          <AlertDescription>{t.bankTransactionDetail.notFoundDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -160,58 +164,52 @@ export function AccountingNewBankTransactionDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
-          <AlertTitle>Read-only detail bankovní transakce se nepodařilo načíst</AlertTitle>
+          <AlertTitle>{t.errors.bankTransactionDetailTitle}</AlertTitle>
           <AlertDescription>{state.error.message}</AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  const { detail, matches, candidatesDeferredNote } = state;
+  const { detail, matches } = state;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">Read-only detail</Badge>
-        <Badge variant="outline">Bankovní transakce</Badge>
+        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
+        <Badge variant="outline">{t.bankTransactions.badge}</Badge>
       </div>
 
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <AccountingNewDocumentStatusBadge label={detail.status} />
-            <Badge variant="secondary">Bez importu a bez apply matching</Badge>
+            <Badge variant="secondary">{t.bankTransactionDetail.importBadge}</Badge>
           </div>
           <div className="space-y-1">
-            <CardTitle>Transakce #{detail.id}</CardTitle>
-            <CardDescription>
-              Read-only detail bankovní transakce v nové paralelní sekci. Staré issued invoices zůstávají v{" "}
-              <Link href="/admin/invoices" className="underline underline-offset-4">
-                /admin/invoices
-              </Link>
-              .
-            </CardDescription>
+            <CardTitle>{formatAccountingNewTemplate(t.bankTransactionDetail.title, { id: detail.id })}</CardTitle>
+            <CardDescription>{t.bankTransactionDetail.description}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetaRow label="Datum transakce" value={formatAccountingNewDate(detail.transactionDate)} />
-            <MetaRow label="Datum zaúčtování" value={formatAccountingNewDate(detail.bookedDate)} />
-            <MetaRow label="Směr" value={detail.direction} />
-            <MetaRow label="Stav párování" value={detail.status} />
+            <MetaRow label={t.bankTransactionDetail.fields.transactionDate} value={formatAccountingNewDate(detail.transactionDate, language, t.common.noValue)} />
+            <MetaRow label={t.bankTransactionDetail.fields.bookedDate} value={formatAccountingNewDate(detail.bookedDate, language, t.common.noValue)} />
+            <MetaRow label={t.bankTransactionDetail.fields.direction} value={translateAccountingNewTransactionDirection(t, detail.direction)} />
+            <MetaRow label={t.bankTransactionDetail.fields.matchingStatus} value={translateAccountingNewStatus(t, detail.status)} />
             <MetaRow
-              label="Částka"
+              label={t.bankTransactionDetail.fields.amount}
               value={<AccountingNewMoney amount={detail.amount} currency={detail.currency} className="font-semibold" />}
             />
-            <MetaRow label="Měna" value={detail.currency} />
-            <MetaRow label="Externí ID" value={detail.externalId ?? "Neuvedeno"} />
-            <MetaRow label="Vytvořeno" value={formatAccountingNewDateTime(detail.createdAt)} />
+            <MetaRow label={t.bankTransactionDetail.fields.currency} value={detail.currency} />
+            <MetaRow label={t.bankTransactionDetail.fields.externalId} value={detail.externalId ?? t.common.noValue} />
+            <MetaRow label={t.bankTransactionDetail.fields.createdAt} value={formatAccountingNewDateTime(detail.createdAt, language, t.common.noValue)} />
           </div>
 
           <Separator />
@@ -219,32 +217,32 @@ export function AccountingNewBankTransactionDetail({
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Snapshot protistrany</h2>
-                <p className="text-sm text-muted-foreground">Pouze read-only údaje vrácené detail endpointem.</p>
+                <h2 className="text-lg font-semibold text-foreground">{t.bankTransactionDetail.counterpartyTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.bankTransactionDetail.counterpartyDescription}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label="Protistrana" value={detail.counterpartyName ?? "Neuvedeno"} />
-                <MetaRow label="Účet protistrany" value={detail.counterpartyAccount ?? "Neuvedeno"} />
-                <MetaRow label="IBAN protistrany" value={detail.counterpartyIban ?? "Neuvedeno"} />
-                <MetaRow label="Zpráva / remittance info" value={detail.message ?? "Bez zprávy"} />
+                <MetaRow label={t.bankTransactionDetail.fields.counterparty} value={detail.counterpartyName ?? t.common.noValue} />
+                <MetaRow label={t.bankTransactionDetail.fields.counterpartyAccount} value={detail.counterpartyAccount ?? t.common.noValue} />
+                <MetaRow label={t.bankTransactionDetail.fields.counterpartyIban} value={detail.counterpartyIban ?? t.common.noValue} />
+                <MetaRow label={t.bankTransactionDetail.fields.remittanceInfo} value={detail.message ?? t.common.noMessage} />
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Účet a symboly</h2>
-                <p className="text-sm text-muted-foreground">Žádné úpravy, žádné importy, žádné párovací akce.</p>
+                <h2 className="text-lg font-semibold text-foreground">{t.bankTransactionDetail.accountTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.bankTransactionDetail.accountDescription}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label="IBAN účtu" value={detail.accountIban ?? "Neuvedeno"} />
+                <MetaRow label={t.bankTransactionDetail.fields.accountIban} value={detail.accountIban ?? t.common.noValue} />
                 <MetaRow
-                  label="Číslo účtu"
-                  value={detail.accountNumber ? `${detail.accountNumber}/${detail.bankCode ?? ""}`.replace(/\/$/, "") : "Neuvedeno"}
+                  label={t.bankTransactionDetail.fields.accountNumber}
+                  value={detail.accountNumber ? `${detail.accountNumber}/${detail.bankCode ?? ""}`.replace(/\/$/, "") : t.common.noValue}
                 />
-                <MetaRow label="Variabilní symbol" value={detail.variableSymbol ?? "Neuvedeno"} />
-                <MetaRow label="Konstantní symbol" value={detail.constantSymbol ?? "Neuvedeno"} />
-                <MetaRow label="Specifický symbol" value={detail.specificSymbol ?? "Neuvedeno"} />
-                <MetaRow label="Aktualizováno" value={formatAccountingNewDateTime(detail.updatedAt)} />
+                <MetaRow label={t.bankTransactionDetail.fields.variableSymbol} value={detail.variableSymbol ?? t.common.noValue} />
+                <MetaRow label={t.bankTransactionDetail.fields.constantSymbol} value={detail.constantSymbol ?? t.common.noValue} />
+                <MetaRow label={t.bankTransactionDetail.fields.specificSymbol} value={detail.specificSymbol ?? t.common.noValue} />
+                <MetaRow label={t.bankTransactionDetail.fields.updatedAt} value={formatAccountingNewDateTime(detail.updatedAt, language, t.common.noValue)} />
               </div>
             </div>
           </div>
@@ -253,7 +251,7 @@ export function AccountingNewBankTransactionDetail({
             <>
               <Separator />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">Raw payload</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t.bankTransactionDetail.rawPayloadTitle}</h2>
                 <pre className="overflow-x-auto rounded-lg border border-border bg-background p-4 text-xs text-muted-foreground">
                   {detail.rawPayload}
                 </pre>
@@ -265,34 +263,32 @@ export function AccountingNewBankTransactionDetail({
 
       {partialError ? (
         <Alert>
-          <AlertTitle>Část doplňkových read-only sekcí se nepodařilo načíst</AlertTitle>
+          <AlertTitle>{t.errors.supplementalTitle}</AlertTitle>
           <AlertDescription>{partialError.message}</AlertDescription>
         </Alert>
       ) : null}
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>Existující payment matches</CardTitle>
-          <CardDescription>Read-only seznam vrácený z `GET /api/admin/invoices/bank-transactions/{'{id}'}/matches`.</CardDescription>
+          <CardTitle>{t.bankTransactionDetail.matchesTitle}</CardTitle>
+          <CardDescription>{t.bankTransactionDetail.matchesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {matches.length > 0 ? (
             <AccountingNewPaymentMatchesTable matches={matches} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              K této bankovní transakci zatím backend nevrátil žádné read-only match záznamy.
-            </p>
+            <p className="text-sm text-muted-foreground">{t.empty.bankTransactionMatches}</p>
           )}
         </CardContent>
       </Card>
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>Matching candidates</CardTitle>
-          <CardDescription>Kandidáti se zobrazují pouze pokud existuje bezpečný GET endpoint.</CardDescription>
+          <CardTitle>{t.bankTransactionDetail.candidatesTitle}</CardTitle>
+          <CardDescription>{t.bankTransactionDetail.candidatesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <AccountingNewMatchCandidatesList deferredNote={candidatesDeferredNote ?? ACCOUNTING_NEW_MATCH_CANDIDATES_DEFERRED_NOTE} />
+          <AccountingNewMatchCandidatesList deferredNote={t.paymentMatching.deferredDescription} />
         </CardContent>
       </Card>
     </div>

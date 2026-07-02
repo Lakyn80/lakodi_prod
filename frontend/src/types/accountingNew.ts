@@ -1,15 +1,15 @@
 export type AccountingNewModuleId =
   | "dashboard"
   | "documents"
-  | "subjects"
   | "expenses"
   | "suppliers"
-  | "bank-matching"
-  | "todos-reminders"
+  | "bank-transactions"
+  | "payment-matching"
+  | "reminders"
   | "recurring"
   | "attachments"
-  | "audit"
-  | "settings";
+  | "exports"
+  | "audit";
 
 export type AccountingNewModuleAvailability = "placeholder" | "read-only";
 
@@ -336,7 +336,6 @@ export type AccountingNewBankTransactionDetailState =
       detail: AccountingNewBankTransactionDetail;
       matches: AccountingNewPaymentMatchListItem[];
       partialErrors: AccountingNewApiError[];
-      candidatesDeferredNote: string | null;
     }
   | { status: "auth"; error: AccountingNewApiError }
   | { status: "not_found"; error: AccountingNewApiError }

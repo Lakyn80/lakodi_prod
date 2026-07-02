@@ -1,3 +1,8 @@
+"use client";
+
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getAccountingNewLocale } from "@/components/admin/accounting-new/accountingNewFormat";
+
 export function AccountingNewMoney({
   amount,
   currency,
@@ -7,15 +12,16 @@ export function AccountingNewMoney({
   currency: string;
   className?: string;
 }) {
+  const { language } = useLanguage();
   const normalizedCurrency = currency.trim().toUpperCase();
   const formatter =
     normalizedCurrency.length >= 3
-      ? new Intl.NumberFormat("cs-CZ", {
+      ? new Intl.NumberFormat(getAccountingNewLocale(language), {
           style: "currency",
           currency: normalizedCurrency,
           maximumFractionDigits: 2,
         })
-      : new Intl.NumberFormat("cs-CZ", {
+      : new Intl.NumberFormat(getAccountingNewLocale(language), {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });

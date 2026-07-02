@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { translations } from "@/data/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ACCOUNTING_NEW_ROUTE,
   getAccountingNewExpense,
@@ -19,7 +21,13 @@ import {
 import type { AccountingNewApiError, AccountingNewExpenseDetailState } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
-import { formatAccountingNewDate, formatAccountingNewDateTime } from "@/components/admin/accounting-new/accountingNewFormat";
+import {
+  formatAccountingNewDate,
+  formatAccountingNewDateTime,
+  formatAccountingNewTemplate,
+  translateAccountingNewEntityType,
+  translateAccountingNewStatus,
+} from "@/components/admin/accounting-new/accountingNewFormat";
 
 function getFirstError(errors: AccountingNewApiError[]): AccountingNewApiError | null {
   return errors[0] ?? null;
@@ -56,6 +64,8 @@ export function AccountingNewExpenseDetail({
 }: {
   expenseId: string;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewExpenseDetailState>({ status: "loading" });
 
   useEffect(() => {
@@ -103,7 +113,7 @@ export function AccountingNewExpenseDetail({
             ? ((error as { apiError: AccountingNewApiError }).apiError as AccountingNewApiError)
             : {
                 resource: "expense-detail",
-                message: error instanceof Error ? error.message : "Read-only detail výdaje se nepodařilo načíst.",
+                message: error instanceof Error ? error.message : t.errors.expenseDetailTitle,
                 status: null,
                 requiresLogin: false,
               };
@@ -125,7 +135,7 @@ export function AccountingNewExpenseDetail({
     void loadDetail();
 
     return () => controller.abort();
-  }, [expenseId]);
+  }, [expenseId, t.errors.expenseDetailTitle]);
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
@@ -137,13 +147,11 @@ export function AccountingNewExpenseDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>Pro read-only detail výdaje je nutné přihlášení</AlertTitle>
-          <AlertDescription>
-            Bez aktivní admin session se detail přijatého dokladu nenačte. Původní issued invoices v `/admin/invoices` zůstávají beze změny.
-          </AlertDescription>
+          <AlertTitle>{t.auth.expenseDetailTitle}</AlertTitle>
+          <AlertDescription>{t.auth.expenseDetailDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -153,13 +161,11 @@ export function AccountingNewExpenseDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>Výdaj nebyl nalezen</AlertTitle>
-          <AlertDescription>
-            Požadovaný read-only výdaj nebyl na backendu nalezen. Původní sekce `/admin/invoices` zůstává nedotčená.
-          </AlertDescription>
+          <AlertTitle>{t.expenseDetail.notFoundTitle}</AlertTitle>
+          <AlertDescription>{t.expenseDetail.notFoundDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -169,10 +175,10 @@ export function AccountingNewExpenseDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
-          <AlertTitle>Read-only detail výdaje se nepodařilo načíst</AlertTitle>
+          <AlertTitle>{t.errors.expenseDetailTitle}</AlertTitle>
           <AlertDescription>{state.error.message}</AlertDescription>
         </Alert>
       </div>
@@ -185,10 +191,10 @@ export function AccountingNewExpenseDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>Zpět do ÚčetnictvíNew</Link>
+          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">Read-only detail</Badge>
-        <Badge variant="outline">Výdaj</Badge>
+        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
+        <Badge variant="outline">{t.expenses.badge}</Badge>
       </div>
 
       <Card className="border-border bg-card">
@@ -196,29 +202,29 @@ export function AccountingNewExpenseDetail({
           <div className="flex flex-wrap items-center gap-2">
             <AccountingNewDocumentStatusBadge label={detail.paymentStatus} />
             <AccountingNewDocumentStatusBadge label={detail.status} />
-            <Badge variant="secondary">Bez write akcí</Badge>
+            <Badge variant="secondary">{t.common.withoutWriteActions}</Badge>
           </div>
           <div className="space-y-1">
             <CardTitle>{detail.expenseNumber}</CardTitle>
-            <CardDescription>
-              Read-only detail přijatého dokladu v nové paralelní sekci. Staré vydané faktury zůstávají v{" "}
-              <Link href="/admin/invoices" className="underline underline-offset-4">
-                /admin/invoices
-              </Link>
-              .
-            </CardDescription>
+            <CardDescription>{t.expenseDetail.description}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetaRow label="Variabilní symbol" value={detail.variableSymbol} />
-            <MetaRow label="Datum vystavení" value={formatAccountingNewDate(detail.issueDate)} />
-            <MetaRow label="Datum přijetí" value={formatAccountingNewDate(detail.receivedDate)} />
-            <MetaRow label="Datum zdanění" value={formatAccountingNewDate(detail.taxableSupplyDate)} />
-            <MetaRow label="Datum splatnosti" value={formatAccountingNewDate(detail.dueDate)} />
-            <MetaRow label="Způsob platby" value={detail.paymentMethod} />
-            <MetaRow label="Stav výdaje" value={detail.status} />
-            <MetaRow label="Vytvořeno" value={formatAccountingNewDateTime(detail.createdAt)} />
+            <MetaRow label={t.expenseDetail.fields.variableSymbol} value={detail.variableSymbol} />
+            <MetaRow label={t.expenseDetail.fields.issueDate} value={formatAccountingNewDate(detail.issueDate, language, t.common.noValue)} />
+            <MetaRow label={t.expenseDetail.fields.receivedDate} value={formatAccountingNewDate(detail.receivedDate, language, t.common.noValue)} />
+            <MetaRow
+              label={t.expenseDetail.fields.taxableSupplyDate}
+              value={formatAccountingNewDate(detail.taxableSupplyDate, language, t.common.noValue)}
+            />
+            <MetaRow label={t.expenseDetail.fields.dueDate} value={formatAccountingNewDate(detail.dueDate, language, t.common.noValue)} />
+            <MetaRow label={t.expenseDetail.fields.paymentMethod} value={detail.paymentMethod} />
+            <MetaRow label={t.expenseDetail.fields.expenseStatus} value={translateAccountingNewStatus(t, detail.status)} />
+            <MetaRow
+              label={t.expenseDetail.fields.createdAt}
+              value={formatAccountingNewDateTime(detail.createdAt, language, t.common.noValue)}
+            />
           </div>
 
           <Separator />
@@ -226,35 +232,35 @@ export function AccountingNewExpenseDetail({
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Snapshot dodavatele</h2>
-                <p className="text-sm text-muted-foreground">Pouze read-only zobrazení uložených údajů přijatého dokladu.</p>
+                <h2 className="text-lg font-semibold text-foreground">{t.expenseDetail.supplierTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.expenseDetail.supplierDescription}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label="Jméno / firma" value={detail.supplierName} />
-                <MetaRow label="E-mail" value={detail.supplierEmail} />
-                <MetaRow label="Telefon" value={detail.supplierPhone ?? "Neuvedeno"} />
-                <MetaRow label="Adresa" value={detail.supplierAddress} />
-                <MetaRow label="IČO" value={detail.supplierIco ?? "Neuvedeno"} />
-                <MetaRow label="DIČ" value={detail.supplierDic ?? "Neuvedeno"} />
+                <MetaRow label={t.expenseDetail.fields.supplierName} value={detail.supplierName} />
+                <MetaRow label={t.expenseDetail.fields.email} value={detail.supplierEmail} />
+                <MetaRow label={t.expenseDetail.fields.phone} value={detail.supplierPhone ?? t.common.noValue} />
+                <MetaRow label={t.expenseDetail.fields.address} value={detail.supplierAddress} />
+                <MetaRow label={t.expenseDetail.fields.ico} value={detail.supplierIco ?? t.common.noValue} />
+                <MetaRow label={t.expenseDetail.fields.dic} value={detail.supplierDic ?? t.common.noValue} />
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Platba a částky</h2>
-                <p className="text-sm text-muted-foreground">Žádné editace, žádné apply payment, pouze uložený stav backendu.</p>
+                <h2 className="text-lg font-semibold text-foreground">{t.expenseDetail.paymentTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.expenseDetail.paymentDescription}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label="Měna" value={detail.currency} />
-                <MetaRow label="Platební stav" value={detail.paymentStatus} />
+                <MetaRow label={t.expenseDetail.fields.currency} value={detail.currency} />
+                <MetaRow label={t.expenseDetail.fields.paymentStatus} value={translateAccountingNewStatus(t, detail.paymentStatus)} />
                 <MetaRow
-                  label="Účet"
+                  label={t.expenseDetail.fields.account}
                   value={`${detail.bankAccountPrefix ? `${detail.bankAccountPrefix}-` : ""}${detail.bankAccountNumber}/${detail.bankCode}`}
                 />
-                <MetaRow label="IBAN" value={detail.bankIban ?? "Neuvedeno"} />
-                <MetaRow label="Uhrazeno" value={<AccountingNewMoney amount={detail.totalPaid} currency={detail.currency} />} />
+                <MetaRow label={t.expenseDetail.fields.iban} value={detail.bankIban ?? t.common.noValue} />
+                <MetaRow label={t.expenseDetail.fields.totalPaid} value={<AccountingNewMoney amount={detail.totalPaid} currency={detail.currency} />} />
                 <MetaRow
-                  label="Zbývá uhradit"
+                  label={t.expenseDetail.fields.remainingAmount}
                   value={<AccountingNewMoney amount={detail.remainingAmount} currency={detail.currency} className="font-semibold" />}
                 />
               </div>
@@ -265,7 +271,7 @@ export function AccountingNewExpenseDetail({
             <>
               <Separator />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">Poznámka</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t.expenseDetail.noteTitle}</h2>
                 <p className="text-sm text-muted-foreground">{detail.note}</p>
               </div>
             </>
@@ -275,7 +281,7 @@ export function AccountingNewExpenseDetail({
 
       {partialError ? (
         <Alert>
-          <AlertTitle>Část doplňkových read-only sekcí se nepodařilo načíst</AlertTitle>
+          <AlertTitle>{t.errors.supplementalTitle}</AlertTitle>
           <AlertDescription>{partialError.message}</AlertDescription>
         </Alert>
       ) : null}
@@ -283,18 +289,18 @@ export function AccountingNewExpenseDetail({
       <div className="grid gap-4 xl:grid-cols-[1.25fr,0.95fr]">
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Položky výdaje</CardTitle>
-            <CardDescription>Read-only přehled položek vrácených detail endpointem.</CardDescription>
+            <CardTitle>{t.expenseDetail.itemsTitle}</CardTitle>
+            <CardDescription>{t.expenseDetail.itemsDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {detail.items.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Popis</TableHead>
-                    <TableHead className="text-right">Množství</TableHead>
-                    <TableHead className="text-right">Cena za jednotku</TableHead>
-                    <TableHead className="text-right">Celkem</TableHead>
+                    <TableHead>{t.expenseDetail.fields.description}</TableHead>
+                    <TableHead className="text-right">{t.expenseDetail.fields.quantity}</TableHead>
+                    <TableHead className="text-right">{t.expenseDetail.fields.unitPrice}</TableHead>
+                    <TableHead className="text-right">{t.expenseDetail.fields.total}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -313,21 +319,24 @@ export function AccountingNewExpenseDetail({
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-sm text-muted-foreground">Tento výdaj zatím neobsahuje žádné položky v read-only detailu.</p>
+              <p className="text-sm text-muted-foreground">{t.empty.expenseItems}</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Souhrn částek</CardTitle>
-            <CardDescription>Bez editace, bez mazání, bez párování plateb.</CardDescription>
+            <CardTitle>{t.expenseDetail.amountsTitle}</CardTitle>
+            <CardDescription>{t.expenseDetail.amountsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <MetaRow label="Mezisoučet" value={<AccountingNewMoney amount={detail.subtotal} currency={detail.currency} />} />
-            <MetaRow label="DPH" value={<AccountingNewMoney amount={detail.vatAmount} currency={detail.currency} />} />
-            <MetaRow label="Celkem" value={<AccountingNewMoney amount={detail.total} currency={detail.currency} className="font-semibold" />} />
-            <MetaRow label="Sazba DPH" value={detail.vatRate !== null ? `${detail.vatRate} %` : "Neuvedeno"} />
+            <MetaRow label={t.expenseDetail.fields.subtotal} value={<AccountingNewMoney amount={detail.subtotal} currency={detail.currency} />} />
+            <MetaRow label={t.expenseDetail.fields.vat} value={<AccountingNewMoney amount={detail.vatAmount} currency={detail.currency} />} />
+            <MetaRow
+              label={t.expenseDetail.fields.total}
+              value={<AccountingNewMoney amount={detail.total} currency={detail.currency} className="font-semibold" />}
+            />
+            <MetaRow label={t.expenseDetail.fields.vatRate} value={detail.vatRate !== null ? `${detail.vatRate} %` : t.common.noValue} />
           </CardContent>
         </Card>
       </div>
@@ -335,8 +344,8 @@ export function AccountingNewExpenseDetail({
       <div className="grid gap-4 xl:grid-cols-[1fr,1fr]">
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Platby výdaje</CardTitle>
-            <CardDescription>Read-only seznam plateb vrácený detail nebo payment endpointem.</CardDescription>
+            <CardTitle>{t.expenseDetail.paymentsTitle}</CardTitle>
+            <CardDescription>{t.expenseDetail.paymentsDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {payments.length > 0 ? (
@@ -347,34 +356,38 @@ export function AccountingNewExpenseDetail({
                       <AccountingNewMoney amount={payment.amount} currency={detail.currency} className="font-medium text-foreground" />
                       <Badge variant="outline">{payment.paymentMethod}</Badge>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">Uhrazeno {formatAccountingNewDate(payment.paidAt)}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {formatAccountingNewTemplate(t.common.paidAt, {
+                        value: formatAccountingNewDate(payment.paidAt, language, t.common.noValue),
+                      })}
+                    </p>
                     {payment.note ? <p className="mt-2 text-sm text-foreground">{payment.note}</p> : null}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">K tomuto výdaji zatím backend nevrátil žádné platby.</p>
+              <p className="text-sm text-muted-foreground">{t.empty.expensePayments}</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Read-only provozní poznámka</CardTitle>
-            <CardDescription>Tato detailní route je záměrně pouze pro bezpečné čtení.</CardDescription>
+            <CardTitle>{t.expenseDetail.operationsTitle}</CardTitle>
+            <CardDescription>{t.expenseDetail.operationsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>Nejsou zde žádná tlačítka pro editaci, smazání, apply payment, upload ani archivaci.</p>
-            <p>Staré vydané faktury zůstávají dostupné pouze v legacy sekci `/admin/invoices`.</p>
-            <p>Pokud backend vrátí `401` nebo `404`, route zobrazí bezpečný stav místo pádu nebo přesměrování.</p>
+            <p>{t.expenseDetail.operationsItemOne}</p>
+            <p>{t.expenseDetail.operationsItemTwo}</p>
+            <p>{t.expenseDetail.operationsItemThree}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>Nedávné auditní události</CardTitle>
-          <CardDescription>Volitelná read-only sekce nad `GET /api/admin/invoices/expenses/{'{id}'}/audit-events`.</CardDescription>
+          <CardTitle>{t.expenseDetail.auditTitle}</CardTitle>
+          <CardDescription>{t.expenseDetail.auditDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {auditEvents.length > 0 ? (
@@ -382,20 +395,19 @@ export function AccountingNewExpenseDetail({
               {auditEvents.slice(0, 5).map((event) => (
                 <div key={event.id} className="rounded-lg border border-border bg-background p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{event.entityType}</Badge>
+                    <Badge variant="outline">{translateAccountingNewEntityType(t, event.entityType)}</Badge>
                     <Badge variant="secondary">{event.eventType}</Badge>
                   </div>
-                  <p className="mt-3 text-sm text-foreground">
-                    {event.message ?? "Backend neposlal textovou zprávu, proto detail zobrazuje pouze typ události."}
-                  </p>
+                  <p className="mt-3 text-sm text-foreground">{event.message ?? t.common.noAuditMessage}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {formatAccountingNewDateTime(event.createdAt)} · zdroj {event.source}
+                    {formatAccountingNewDateTime(event.createdAt, language, t.common.noValue)} ·{" "}
+                    {formatAccountingNewTemplate(t.common.sourcePrefix, { value: event.source })}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Žádné auditní události se pro tento výdaj zatím nepodařilo načíst.</p>
+            <p className="text-sm text-muted-foreground">{t.empty.expenseAudit}</p>
           )}
         </CardContent>
       </Card>
