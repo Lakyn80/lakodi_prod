@@ -266,21 +266,81 @@ export interface AccountingNewTodoSummary {
   completedAt: string | null;
 }
 
-export interface AccountingNewBankTransactionSummary {
+export interface AccountingNewBankTransactionListItem {
   id: number;
   externalId: string | null;
+  accountIban: string | null;
+  accountNumber: string | null;
+  bankCode: string | null;
   transactionDate: string;
   bookedDate: string | null;
   amount: number;
   currency: string;
   variableSymbol: string | null;
+  constantSymbol: string | null;
+  specificSymbol: string | null;
   counterpartyName: string | null;
+  counterpartyAccount: string | null;
+  counterpartyIban: string | null;
   message: string | null;
+  rawPayload: string | null;
   direction: string;
   status: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export type AccountingNewBankTransactionSummary = AccountingNewBankTransactionListItem;
+
+export type AccountingNewBankTransactionDetail = AccountingNewBankTransactionListItem;
+
+export interface AccountingNewBankTransactionFilters {
+  query?: string;
+  direction?: string | "all";
+  status?: string | "all";
+}
+
+export interface AccountingNewPaymentMatchListItem {
+  id: number;
+  bankTransactionId: number;
+  invoiceId: number | null;
+  expenseId: number | null;
+  invoicePaymentId: number | null;
+  expensePaymentId: number | null;
+  matchType: string;
+  confidence: number;
+  status: string;
+  reason: string | null;
+  createdAt: string;
+  appliedAt: string | null;
+}
+
+export type AccountingNewPaymentMatchDetail = AccountingNewPaymentMatchListItem;
+
+export interface AccountingNewPaymentMatchCandidate {
+  id: string;
+  label: string;
+  reason: string | null;
+  confidence: number | null;
+}
+
+export interface AccountingNewPaymentMatchFilters {
+  status?: string | "all";
+  matchType?: string | "all";
+}
+
+export type AccountingNewBankTransactionDetailState =
+  | { status: "loading" }
+  | {
+      status: "ready";
+      detail: AccountingNewBankTransactionDetail;
+      matches: AccountingNewPaymentMatchListItem[];
+      partialErrors: AccountingNewApiError[];
+      candidatesDeferredNote: string | null;
+    }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
 
 export interface AccountingNewAuditEventSummary {
   id: number;

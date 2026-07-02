@@ -3,7 +3,9 @@ import type {
   AccountingNewApiError,
   AccountingNewAttachmentSummary,
   AccountingNewAuditEventSummary,
-  AccountingNewBankTransactionSummary,
+  AccountingNewBankTransactionDetail,
+  AccountingNewBankTransactionFilters,
+  AccountingNewBankTransactionListItem,
   AccountingNewDashboardData,
   AccountingNewDashboardLoadResult,
   AccountingNewDocumentDetail,
@@ -21,6 +23,7 @@ import type {
   AccountingNewExpensePaymentSummary,
   AccountingNewModuleDefinition,
   AccountingNewPaymentSummary,
+  AccountingNewPaymentMatchListItem,
   AccountingNewRecurringTemplateSummary,
   AccountingNewSubjectSummary,
   AccountingNewSupplierDetail,
@@ -31,6 +34,8 @@ import type {
 
 export const ACCOUNTING_NEW_ROUTE = "/admin/ucetnictvi-new";
 export const ACCOUNTING_NEW_LABEL = "ÚčetnictvíNew";
+export const ACCOUNTING_NEW_MATCH_CANDIDATES_DEFERRED_NOTE =
+  "Matching candidates are not available through a safe read-only endpoint yet.";
 
 export const accountingNewModules: AccountingNewModuleDefinition[] = [
   {
@@ -174,6 +179,10 @@ function normalizeExpenseId(id: number | string): string {
 
 function normalizeSupplierId(id: number | string): string {
   return normalizeEntityId(id, "supplier-detail", "ID dodavatele");
+}
+
+function normalizeBankTransactionId(id: number | string): string {
+  return normalizeEntityId(id, "bank-transaction-detail", "ID bankovní transakce");
 }
 
 function mapDocumentListItem(item: {
@@ -770,32 +779,78 @@ function mapTodoSummary(item: {
 function mapBankTransactionSummary(item: {
   id: number;
   external_id: string | null;
+  account_iban: string | null;
+  account_number: string | null;
+  bank_code: string | null;
   transaction_date: string;
   booked_date: string | null;
   amount: number;
   currency: string;
   variable_symbol: string | null;
+  constant_symbol: string | null;
+  specific_symbol: string | null;
   counterparty_name: string | null;
+  counterparty_account: string | null;
+  counterparty_iban: string | null;
   message: string | null;
+  raw_payload: string | null;
   direction: string;
   status: string;
   created_at: string;
   updated_at: string;
-}): AccountingNewBankTransactionSummary {
+}): AccountingNewBankTransactionListItem {
   return {
     id: item.id,
     externalId: item.external_id,
+    accountIban: item.account_iban,
+    accountNumber: item.account_number,
+    bankCode: item.bank_code,
     transactionDate: item.transaction_date,
     bookedDate: item.booked_date,
     amount: item.amount,
     currency: item.currency,
     variableSymbol: item.variable_symbol,
+    constantSymbol: item.constant_symbol,
+    specificSymbol: item.specific_symbol,
     counterpartyName: item.counterparty_name,
+    counterpartyAccount: item.counterparty_account,
+    counterpartyIban: item.counterparty_iban,
     message: item.message,
+    rawPayload: item.raw_payload,
     direction: item.direction,
     status: item.status,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
+  };
+}
+
+function mapPaymentMatchSummary(item: {
+  id: number;
+  bank_transaction_id: number;
+  invoice_id: number | null;
+  expense_id: number | null;
+  invoice_payment_id: number | null;
+  expense_payment_id: number | null;
+  match_type: string;
+  confidence: number;
+  status: string;
+  reason: string | null;
+  created_at: string;
+  applied_at: string | null;
+}): AccountingNewPaymentMatchListItem {
+  return {
+    id: item.id,
+    bankTransactionId: item.bank_transaction_id,
+    invoiceId: item.invoice_id,
+    expenseId: item.expense_id,
+    invoicePaymentId: item.invoice_payment_id,
+    expensePaymentId: item.expense_payment_id,
+    matchType: item.match_type,
+    confidence: item.confidence,
+    status: item.status,
+    reason: item.reason,
+    createdAt: item.created_at,
+    appliedAt: item.applied_at,
   };
 }
 
@@ -1146,6 +1201,43 @@ function matchesSupplierFilters(supplier: AccountingNewSupplierListItem, filters
   }
 
   if (filters.country && filters.country !== "all" && supplier.country !== filters.country) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesBankTransactionFilters(
+  transaction: AccountingNewBankTransactionListItem,
+  filters: AccountingNewBankTransactionFilters,
+): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      transaction.externalId,
+      transaction.counterpartyName,
+      transaction.counterpartyAccount,
+      transaction.counterpartyIban,
+      transaction.variableSymbol,
+      transaction.constantSymbol,
+      transaction.specificSymbol,
+      transaction.message,
+      transaction.direction,
+      transaction.status,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.direction && filters.direction !== "all" && transaction.direction !== filters.direction) {
+    return false;
+  }
+
+  if (filters.status && filters.status !== "all" && transaction.status !== filters.status) {
     return false;
   }
 
@@ -1626,27 +1718,105 @@ export async function listAccountingNewTodos(
 }
 
 export async function listAccountingNewBankTransactions(
+  filters: AccountingNewBankTransactionFilters = {},
   params: AccountingNewListParams = {},
-): Promise<AccountingNewBankTransactionSummary[]> {
+): Promise<AccountingNewBankTransactionListItem[]> {
+  const searchParams = new URLSearchParams();
+  if (filters.status && filters.status !== "all") {
+    searchParams.set("status", filters.status);
+  }
+  if (filters.direction && filters.direction !== "all") {
+    searchParams.set("direction", filters.direction);
+  }
+
   const data = await fetchAccountingNewJson<
     Array<{
       id: number;
       external_id: string | null;
+      account_iban: string | null;
+      account_number: string | null;
+      bank_code: string | null;
       transaction_date: string;
       booked_date: string | null;
       amount: number;
       currency: string;
       variable_symbol: string | null;
+      constant_symbol: string | null;
+      specific_symbol: string | null;
       counterparty_name: string | null;
+      counterparty_account: string | null;
+      counterparty_iban: string | null;
       message: string | null;
+      raw_payload: string | null;
       direction: string;
       status: string;
       created_at: string;
       updated_at: string;
     }>
-  >("bank-transactions", "/bank-transactions", params.signal);
+  >(
+    "bank-transactions",
+    `/bank-transactions${searchParams.size > 0 ? `?${searchParams.toString()}` : ""}`,
+    params.signal,
+  );
 
-  return data.map(mapBankTransactionSummary);
+  return data.map(mapBankTransactionSummary).filter((transaction) => matchesBankTransactionFilters(transaction, filters));
+}
+
+export async function getAccountingNewBankTransaction(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewBankTransactionDetail> {
+  const normalizedId = normalizeBankTransactionId(id);
+  const data = await fetchAccountingNewJson<{
+    id: number;
+    external_id: string | null;
+    account_iban: string | null;
+    account_number: string | null;
+    bank_code: string | null;
+    transaction_date: string;
+    booked_date: string | null;
+    amount: number;
+    currency: string;
+    variable_symbol: string | null;
+    constant_symbol: string | null;
+    specific_symbol: string | null;
+    counterparty_name: string | null;
+    counterparty_account: string | null;
+    counterparty_iban: string | null;
+    message: string | null;
+    raw_payload: string | null;
+    direction: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+  }>("bank-transaction-detail", `/bank-transactions/${normalizedId}`, params.signal);
+
+  return mapBankTransactionSummary(data);
+}
+
+export async function listAccountingNewBankTransactionMatches(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewPaymentMatchListItem[]> {
+  const normalizedId = normalizeBankTransactionId(id);
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      bank_transaction_id: number;
+      invoice_id: number | null;
+      expense_id: number | null;
+      invoice_payment_id: number | null;
+      expense_payment_id: number | null;
+      match_type: string;
+      confidence: number;
+      status: string;
+      reason: string | null;
+      created_at: string;
+      applied_at: string | null;
+    }>
+  >("bank-transaction-matches", `/bank-transactions/${normalizedId}/matches`, params.signal);
+
+  return data.map(mapPaymentMatchSummary);
 }
 
 export async function listAccountingNewAuditEvents(
@@ -1819,7 +1989,7 @@ export async function getAccountingNewDashboardData(
     listAccountingNewInvoices(params),
     listAccountingNewExpenses({}, params),
     listAccountingNewTodos(params),
-    listAccountingNewBankTransactions(params),
+    listAccountingNewBankTransactions({}, params),
     listAccountingNewAuditEvents(params),
     listAccountingNewRecurringTemplates(params),
     listAccountingNewAttachments(params),

@@ -2566,3 +2566,88 @@
 - Known risks / follow-ups:
   - supplier detail intentionally does not show bank data because the current safe GET response omits those fields
   - supplier-related expense rollup was deferred to keep Úkol 22E strictly low-risk and read-only
+
+## Úkol 22F Read-only bank transactions and matching UI in ÚčetnictvíNew
+
+- Date: `2026-07-02`
+- Goal:
+  - extend `/admin/ucetnictvi-new` with safe read-only bank transactions and payment matching UI
+- Files changed:
+  - `frontend/src/types/accountingNew.ts`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewBankTransactionsPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewBankTransactionsTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewBankTransactionDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewPaymentMatchesPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewPaymentMatchesTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewMatchCandidatesList.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/bankovni-transakce/[id]/page.tsx`
+  - `INVOICING_PROGRESS.md`
+- Endpoints inspected:
+  - `GET /api/admin/invoices/bank-transactions`
+  - `GET /api/admin/invoices/bank-transactions/{transaction_id}`
+  - `GET /api/admin/invoices/bank-transactions/{transaction_id}/matches`
+  - confirmed not used:
+    - `POST /api/admin/invoices/bank-transactions/import`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/matches/generate`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/matches/{match_id}/apply`
+    - `POST /api/admin/invoices/bank-transactions/{transaction_id}/matches/{match_id}/reject`
+- Endpoints used:
+  - `GET /api/admin/invoices/bank-transactions`
+  - `GET /api/admin/invoices/bank-transactions/{transaction_id}`
+  - `GET /api/admin/invoices/bank-transactions/{transaction_id}/matches`
+- Bank transaction list UI added:
+  - new read-only bank transactions panel on `/admin/ucetnictvi-new`
+  - local search, direction filter, and status filter
+  - rows link only to `/admin/ucetnictvi-new/bankovni-transakce/{id}`
+  - safe columns for transaction date, booking date, amount, currency, direction, counterparty, account, symbols, message and status
+  - no import, upload, apply matching, create payment, edit or delete actions
+- Bank transaction detail route added:
+  - `/admin/ucetnictvi-new/bankovni-transakce/[id]`
+  - read-only detail with metadata, amount/currency, date fields, counterparty snapshot, account identifiers, symbols, raw payload, and matching status
+  - existing matches shown from the safe GET matches endpoint
+- Payment matches UI added or deferred:
+  - added read-only matching overview panel on `/admin/ucetnictvi-new`
+  - added read-only existing matches table in bank transaction detail
+  - global match list endpoint was not available as a safe GET endpoint, so the shell matching panel stays conservative and points users to per-transaction detail
+- Matching candidates added or deferred:
+  - deferred
+  - safe GET candidate endpoint does not exist
+  - UI shows the conservative note:
+    - `Matching candidates are not available through a safe read-only endpoint yet.`
+- Auth / `401` behavior:
+  - bank transactions panel, matching panel, and bank transaction detail all show safe login-required UI on `401`
+  - no redirects, no crash, no automatic session mutation
+- Frontend build result:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - existing unrelated warnings/notices left unchanged:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'. Either include it or remove the dependency array. react-hooks/exhaustive-deps`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old. Please run: npx update-browserslist-db@latest`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Docker helper verification result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke` -> `passed`
+- Route-specific smoke results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+  - compiled `.next` artifacts contained `ÚčetnictvíNew`, `Read-only`, bank transaction wording, matching wording, and the conservative candidates note
+- Whether `/admin/ucetnictvi-new/bankovni-transakce/1` works on `8090`: `Yes`
+- Old invoicing UI touched: `No`
+- `/admin/invoices` changed: `No`
+- Old invoice components changed: `No`
+- `frontend/src/lib/invoices.ts` changed: `No`
+- Backend source changes: `None`
+- Database/schema changes: `None`
+- Push: `No`
+- Deploy/CD: `No`
+- Commit message: `Add read-only accounting bank matching views`
+- Local commit hash: `pending until local commit creation`

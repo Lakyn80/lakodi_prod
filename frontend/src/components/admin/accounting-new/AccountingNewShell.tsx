@@ -16,6 +16,8 @@ import { AccountingNewModuleGrid, type AccountingNewModuleStat } from "@/compone
 import { AccountingNewDocumentsPanel } from "@/components/admin/accounting-new/AccountingNewDocumentsPanel";
 import { AccountingNewExpensesPanel } from "@/components/admin/accounting-new/AccountingNewExpensesPanel";
 import { AccountingNewSuppliersPanel } from "@/components/admin/accounting-new/AccountingNewSuppliersPanel";
+import { AccountingNewBankTransactionsPanel } from "@/components/admin/accounting-new/AccountingNewBankTransactionsPanel";
+import { AccountingNewPaymentMatchesPanel } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesPanel";
 import type {
   AccountingNewApiError,
   AccountingNewAuditEventSummary,
@@ -188,6 +190,7 @@ export function AccountingNewShell() {
   const documentsError = getResourceError(partialErrors, "documents");
   const expensesError = getResourceError(partialErrors, "expenses");
   const suppliersError = getResourceError(partialErrors, "suppliers");
+  const bankTransactionsError = getResourceError(partialErrors, "bank-transactions");
   const moduleStats = getModuleStats(dashboard);
   const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
@@ -222,7 +225,7 @@ export function AccountingNewShell() {
             <p className="text-sm text-muted-foreground">
               Aktuální krok rozšiřuje bezpečný shell na adrese{" "}
               <span className="font-medium text-foreground">{ACCOUNTING_NEW_ROUTE}</span> o samostatný read-only API
-              client, oddělené typy, dashboardové metriky a detail/list přehledy pro výdaje i dodavatele.
+              client, oddělené typy, dashboardové metriky a detail/list přehledy pro výdaje, dodavatele i bankovní transakce.
             </p>
           </div>
         </CardContent>
@@ -331,6 +334,22 @@ export function AccountingNewShell() {
           isLoading={state.status === "loading"}
           authRequired={state.status === "auth"}
           error={suppliersError}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AccountingNewBankTransactionsPanel
+          transactions={dashboard?.bankTransactions ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={bankTransactionsError}
+        />
+
+        <AccountingNewPaymentMatchesPanel
+          transactions={dashboard?.bankTransactions ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={bankTransactionsError}
         />
       </div>
 
