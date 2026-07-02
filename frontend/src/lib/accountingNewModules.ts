@@ -3,8 +3,20 @@ import type { AccountingNewModuleRegistryEntry } from "@/types/accountingNewMeta
 
 const ACCOUNTING_NEW_BASE_ROUTE = "/admin/ucetnictvi-new";
 
+type AccountingNewModuleRegistrySeed = Omit<AccountingNewModuleRegistryEntry, "capabilities">;
+
+function createRegistryEntry(entry: AccountingNewModuleRegistrySeed): AccountingNewModuleRegistryEntry {
+  return {
+    ...entry,
+    capabilities: {
+      read: entry.readAvailability,
+      write: entry.writeEnabled,
+    },
+  };
+}
+
 export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
-  {
+  createRegistryEntry({
     id: "dashboard",
     route: ACCOUNTING_NEW_BASE_ROUTE,
     labelKey: "moduleRegistry.dashboard.label",
@@ -28,8 +40,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["documents", "expenses", "suppliers", "bank-transactions", "payment-matching"],
     gridModuleId: "dashboard",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "documents",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#documents`,
     labelKey: "moduleRegistry.documents.label",
@@ -53,8 +65,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["document-detail", "payment-matching"],
     gridModuleId: "documents",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "document-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/doklady/[id]`,
     labelKey: "moduleRegistry.documentDetail.label",
@@ -77,8 +89,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.documentDetail"],
     },
     relatedModuleIds: ["documents", "payment-matching"],
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "expenses",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#expenses`,
     labelKey: "moduleRegistry.expenses.label",
@@ -102,8 +114,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["expense-detail", "suppliers"],
     gridModuleId: "expenses",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "expense-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/vydaje/[id]`,
     labelKey: "moduleRegistry.expenseDetail.label",
@@ -126,8 +138,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.expenseDetail"],
     },
     relatedModuleIds: ["expenses", "suppliers"],
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "suppliers",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#suppliers`,
     labelKey: "moduleRegistry.suppliers.label",
@@ -151,8 +163,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["supplier-detail", "expenses"],
     gridModuleId: "suppliers",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "supplier-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/dodavatele/[id]`,
     labelKey: "moduleRegistry.supplierDetail.label",
@@ -175,8 +187,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.supplierDetail"],
     },
     relatedModuleIds: ["suppliers", "expenses"],
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "bank-transactions",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#bank-transactions`,
     labelKey: "moduleRegistry.bankTransactions.label",
@@ -200,8 +212,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["bank-transaction-detail", "payment-matching"],
     gridModuleId: "bank-transactions",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "bank-transaction-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/bankovni-transakce/[id]`,
     labelKey: "moduleRegistry.bankTransactionDetail.label",
@@ -224,8 +236,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.bankTransactionDetail"],
     },
     relatedModuleIds: ["bank-transactions", "payment-matching"],
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "payment-matching",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#payment-matching`,
     labelKey: "moduleRegistry.paymentMatching.label",
@@ -249,19 +261,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["bank-transactions", "bank-transaction-detail", "documents", "expenses"],
     gridModuleId: "payment-matching",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "reminders",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#reminders`,
     labelKey: "moduleRegistry.reminders.label",
     descriptionKey: "moduleRegistry.reminders.description",
-    entityType: "todo",
+    entityType: "reminder",
     readAvailability: "placeholder",
     writeEnabled: false,
     featureStatus: "deferred",
     rag: {
-      entityType: "todo",
-      labelKey: "rag.entityTypes.todo",
+      entityType: "reminder",
+      labelKey: "rag.entityTypes.reminder",
       searchableFields: [
         { field: "title", labelKey: "rag.searchableFields.title", weight: 4 },
         { field: "message", labelKey: "rag.searchableFields.message", weight: 3 },
@@ -273,8 +285,32 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["dashboard"],
     gridModuleId: "reminders",
-  },
-  {
+  }),
+  createRegistryEntry({
+    id: "reminder-emails",
+    route: `${ACCOUNTING_NEW_BASE_ROUTE}#reminder-emails`,
+    labelKey: "moduleRegistry.reminderEmails.label",
+    descriptionKey: "moduleRegistry.reminderEmails.description",
+    entityType: "reminder_email",
+    readAvailability: "placeholder",
+    writeEnabled: false,
+    featureStatus: "deferred",
+    rag: {
+      entityType: "reminder_email",
+      labelKey: "rag.entityTypes.reminder_email",
+      searchableFields: [
+        { field: "title", labelKey: "rag.searchableFields.title", weight: 3 },
+        { field: "message", labelKey: "rag.searchableFields.message", weight: 4 },
+        { field: "status", labelKey: "rag.searchableFields.status", weight: 2 },
+      ],
+    },
+    voice: {
+      labelKey: "voice.labels.reminderEmails",
+      aliasKeys: ["voice.aliases.reminderEmails"],
+    },
+    relatedModuleIds: ["reminders", "documents", "expenses"],
+  }),
+  createRegistryEntry({
     id: "attachments",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#attachments`,
     labelKey: "moduleRegistry.attachments.label",
@@ -297,8 +333,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["documents", "expenses"],
     gridModuleId: "attachments",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "recurring",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#recurring`,
     labelKey: "moduleRegistry.recurring.label",
@@ -321,19 +357,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["dashboard"],
     gridModuleId: "recurring",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "exports",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#exports`,
     labelKey: "moduleRegistry.exports.label",
     descriptionKey: "moduleRegistry.exports.description",
-    entityType: "audit_event",
+    entityType: "export",
     readAvailability: "placeholder",
     writeEnabled: false,
     featureStatus: "future",
     rag: {
-      entityType: "audit_event",
-      labelKey: "rag.entityTypes.audit_event",
+      entityType: "export",
+      labelKey: "rag.entityTypes.export",
       searchableFields: [
         { field: "entityType", labelKey: "rag.searchableFields.entityType", weight: 2 },
         { field: "message", labelKey: "rag.searchableFields.message", weight: 2 },
@@ -345,8 +381,8 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["dashboard", "audit"],
     gridModuleId: "exports",
-  },
-  {
+  }),
+  createRegistryEntry({
     id: "audit",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#audit`,
     labelKey: "moduleRegistry.audit.label",
@@ -370,7 +406,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["dashboard"],
     gridModuleId: "audit",
-  },
+  }),
 ];
 
 export const accountingNewGridModuleIds: AccountingNewModuleId[] = [
@@ -392,6 +428,6 @@ export function mapRegistryEntryToModuleDefinition(entry: AccountingNewModuleReg
     id: entry.gridModuleId ?? "dashboard",
     title,
     description,
-    availability: entry.readAvailability,
+    availability: entry.capabilities.read,
   };
 }

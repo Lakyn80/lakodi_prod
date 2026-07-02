@@ -1,6 +1,6 @@
-import type { AccountingNewModuleAvailability, AccountingNewModuleId } from "@/types/accountingNew";
+import type { AccountingNewModuleAvailability, AccountingNewModuleId as AccountingNewGridModuleId } from "@/types/accountingNew";
 
-export type AccountingNewMetadataModuleId =
+export type AccountingNewModuleId =
   | "dashboard"
   | "documents"
   | "document-detail"
@@ -12,6 +12,7 @@ export type AccountingNewMetadataModuleId =
   | "bank-transaction-detail"
   | "payment-matching"
   | "reminders"
+  | "reminder-emails"
   | "attachments"
   | "recurring"
   | "exports"
@@ -22,17 +23,58 @@ export type AccountingNewEntityType =
   | "document"
   | "expense"
   | "supplier"
+  | "bankTransaction"
   | "bank_transaction"
+  | "paymentMatch"
   | "payment_match"
-  | "todo"
+  | "auditEvent"
+  | "audit_event"
   | "attachment"
+  | "reminder"
+  | "todo"
+  | "reminderEmail"
+  | "reminder_email"
+  | "recurringTemplate"
   | "recurring_template"
-  | "audit_event";
+  | "export";
 
 export type AccountingNewFeatureStatus = "implemented-read-only" | "deferred" | "future";
 
+export type AccountingNewSearchableField =
+  | "number"
+  | "invoiceNumber"
+  | "expenseNumber"
+  | "variableSymbol"
+  | "customerName"
+  | "supplierName"
+  | "counterpartyName"
+  | "amount"
+  | "currency"
+  | "issueDate"
+  | "dueDate"
+  | "paymentStatus"
+  | "effectiveStatus"
+  | "status"
+  | "reason"
+  | "confidence"
+  | "message"
+  | "note"
+  | "rawPayload"
+  | "country"
+  | "ico"
+  | "dic"
+  | "documentsLoaded"
+  | "expensesLoaded"
+  | "bankTransactionsLoaded"
+  | "title"
+  | "originalFilename"
+  | "attachmentType"
+  | "name"
+  | "entityType"
+  | "eventType";
+
 export interface AccountingNewSearchableFieldMetadata {
-  field: string;
+  field: AccountingNewSearchableField;
   labelKey: string;
   weight: number;
 }
@@ -48,17 +90,23 @@ export interface AccountingNewVoiceMetadata {
   aliasKeys: string[];
 }
 
+export interface AccountingNewCapabilityFlags {
+  read: AccountingNewModuleAvailability;
+  write: boolean;
+}
+
 export interface AccountingNewModuleRegistryEntry {
-  id: AccountingNewMetadataModuleId;
+  id: AccountingNewModuleId;
   route: string;
   labelKey: string;
   descriptionKey: string;
   entityType: AccountingNewEntityType;
+  capabilities: AccountingNewCapabilityFlags;
   readAvailability: AccountingNewModuleAvailability;
   writeEnabled: boolean;
   featureStatus: AccountingNewFeatureStatus;
   rag: AccountingNewRagMetadata;
   voice: AccountingNewVoiceMetadata;
-  relatedModuleIds: AccountingNewMetadataModuleId[];
-  gridModuleId?: AccountingNewModuleId;
+  relatedModuleIds: AccountingNewModuleId[];
+  gridModuleId?: AccountingNewGridModuleId;
 }

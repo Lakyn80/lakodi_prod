@@ -14,6 +14,7 @@ import { AccountingNewDocumentsTable } from "@/components/admin/accounting-new/A
 import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
+  translateAccountingNewApiError,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string): string {
@@ -103,7 +104,7 @@ export function AccountingNewDocumentsPanel({
         {error && !authRequired ? (
           <Alert variant="destructive">
             <AlertTitle>{t.errors.documentsTitle}</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
+            <AlertDescription>{translateAccountingNewApiError(t, error)}</AlertDescription>
           </Alert>
         ) : null}
 

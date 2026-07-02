@@ -14,6 +14,7 @@ import { AccountingNewExpensesTable } from "@/components/admin/accounting-new/Ac
 import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
+  translateAccountingNewApiError,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string | null | undefined): string {
@@ -104,7 +105,7 @@ export function AccountingNewExpensesPanel({
         {error && !authRequired ? (
           <Alert variant="destructive">
             <AlertTitle>{t.errors.expensesTitle}</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
+            <AlertDescription>{translateAccountingNewApiError(t, error)}</AlertDescription>
           </Alert>
         ) : null}
 

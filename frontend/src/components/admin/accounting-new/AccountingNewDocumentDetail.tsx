@@ -25,6 +25,7 @@ import {
   formatAccountingNewDate,
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
+  translateAccountingNewApiError,
   translateAccountingNewDocumentKind,
   translateAccountingNewEntityType,
   translateAccountingNewStatus,
@@ -180,7 +181,7 @@ export function AccountingNewDocumentDetail({
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.documentDetailTitle}</AlertTitle>
-          <AlertDescription>{state.error.message}</AlertDescription>
+          <AlertDescription>{translateAccountingNewApiError(t, state.error)}</AlertDescription>
         </Alert>
       </div>
     );
@@ -286,7 +287,7 @@ export function AccountingNewDocumentDetail({
       {partialError ? (
         <Alert>
           <AlertTitle>{t.errors.supplementalTitle}</AlertTitle>
-          <AlertDescription>{partialError.message}</AlertDescription>
+          <AlertDescription>{translateAccountingNewApiError(t, partialError)}</AlertDescription>
         </Alert>
       ) : null}
 

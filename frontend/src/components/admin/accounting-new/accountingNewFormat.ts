@@ -1,5 +1,6 @@
 import type { Translations } from "@/data/translations";
 import type { Language } from "@/contexts/LanguageContext";
+import type { AccountingNewApiError } from "@/types/accountingNew";
 
 export type AccountingNewTranslations = Translations["accountingNew"];
 
@@ -87,4 +88,41 @@ export function translateAccountingNewTransactionDirection(t: AccountingNewTrans
 export function translateAccountingNewEntityType(t: AccountingNewTranslations, value: string): string {
   const labels = t.rag.entityTypes as Record<string, string>;
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
+const ACCOUNTING_NEW_ABORT_MESSAGE = "Načítání bylo přerušeno.";
+const ACCOUNTING_NEW_LOGIN_MESSAGE = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
+const ACCOUNTING_NEW_NOT_FOUND_MESSAGE = "Požadovaný accounting dokument nebyl nalezen.";
+const ACCOUNTING_NEW_NETWORK_MESSAGE = "Read-only načtení selhalo kvůli síťové chybě.";
+const ACCOUNTING_NEW_HTTP_MESSAGE_PATTERN = /^Read-only načtení selhalo \((\d+)\)\.$/;
+const ACCOUNTING_NEW_INVALID_ID_PATTERN = /musí být kladné číslo\.$/;
+
+export function translateAccountingNewApiError(t: AccountingNewTranslations, error: AccountingNewApiError): string {
+  if (error.status === 400 && ACCOUNTING_NEW_INVALID_ID_PATTERN.test(error.message)) {
+    return t.errors.invalidIdentifier;
+  }
+
+  if (error.status === 401 || error.message === ACCOUNTING_NEW_LOGIN_MESSAGE) {
+    return t.errors.loginRequiredGeneric;
+  }
+
+  if (error.status === 404 || error.message === ACCOUNTING_NEW_NOT_FOUND_MESSAGE) {
+    return t.errors.notFoundGeneric;
+  }
+
+  if (error.status === null && error.message === ACCOUNTING_NEW_ABORT_MESSAGE) {
+    return t.errors.requestAborted;
+  }
+
+  if (error.status === null && error.message === ACCOUNTING_NEW_NETWORK_MESSAGE) {
+    return t.errors.networkGeneric;
+  }
+
+  if (ACCOUNTING_NEW_HTTP_MESSAGE_PATTERN.test(error.message) && error.status !== null) {
+    return formatAccountingNewTemplate(t.errors.httpGeneric, {
+      status: error.status,
+    });
+  }
+
+  return error.message;
 }

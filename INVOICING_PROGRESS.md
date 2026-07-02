@@ -2748,3 +2748,146 @@
 - Deploy/CD: `No`
 - Commit message: `Integrate accounting UI with existing i18n registry`
 - Local commit hash: `pending until local commit creation`
+
+## Úkol 22F-ARCH-AUDIT Existing i18n, module registry, and RAG/voice metadata audit
+
+- Date: `2026-07-03`
+- Audit target:
+  - local commit `f3eee68`
+  - task scope: verify 22F-ARCH point by point and fix only small safe gaps
+- Compliance verdict after audit:
+  - `Yes`
+  - after the audit fixes below, the 22F-ARCH frontend architecture is now `100% compliant` with the stated local requirements
+- Existing i18n reused, not duplicated:
+  - verified reuse of:
+    - `frontend/src/data/translations.ts`
+    - `frontend/src/contexts/LanguageContext.tsx`
+  - accounting-new components continue to consume `useLanguage()` and `translations[language].accountingNew`
+  - duplicate accounting-only i18n runtime/provider/hook search result:
+    - `No duplicate accounting i18n hooks/providers found`
+- Exact translation files extended:
+  - `frontend/src/data/translations.ts`
+- Locale codes verified:
+  - `cs`
+  - `ua`
+  - `ru`
+  - `en`
+  - Ukrainian remains on the existing project convention `ua`
+- Accounting translation coverage:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1` -> `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+  - additional audit key check for the new registry / RAG / voice / fallback-error keys -> `passed`
+- Accounting components/routes use the existing project i18n:
+  - verified in `frontend/src/components/admin/accounting-new/`
+  - verified in `frontend/src/app/admin/ucetnictvi-new/`
+  - all accounting-new UI components keep reading `language` from `useLanguage()` and use the shared translations object
+- Gaps found in the audited implementation before fixes:
+  - metadata/registry layer did not include an explicit deferred `reminder-emails` module even though the architecture task allowed and expected that future metadata bucket
+  - metadata types did not expose an explicit capability-flags concept
+  - visible fallback API error copy still surfaced through shared client error messages instead of going back through the project i18n layer
+- Small fixes made during audit:
+  - extended `frontend/src/types/accountingNewMetadata.ts` with:
+    - explicit module id coverage including `reminder-emails`
+    - capability flags
+    - broader future-ready entity/searchable-field concepts
+  - extended `frontend/src/lib/accountingNewModules.ts` with:
+    - generated `capabilities`
+    - deferred `reminder-emails` registry entry
+    - explicit `reminder`, `reminder_email`, and `export` metadata usage
+  - extended `frontend/src/data/translations.ts` in all four locales with:
+    - `moduleRegistry.reminderEmails`
+    - `rag.entityTypes.reminder`
+    - `rag.entityTypes.reminder_email`
+    - `rag.entityTypes.export`
+    - `voice.labels.reminderEmails`
+    - `voice.aliases.reminderEmails`
+    - translated generic fallback API error keys
+  - updated accounting-new UI components to translate shared fallback API errors through the existing i18n system instead of showing raw internal fallback copy directly
+- Remaining hardcoded visible accounting strings:
+  - `None intentionally visible in accounting-new UI after audit fixes`
+  - internal fallback strings still exist in `frontend/src/lib/accountingNew.ts` as non-UI client plumbing, but visible rendering now passes through translated helpers in `frontend/src/components/admin/accounting-new/accountingNewFormat.ts`
+- Module registry completeness:
+  - implemented read-only modules verified:
+    - `dashboard`
+    - `documents`
+    - `document-detail`
+    - `expenses`
+    - `expense-detail`
+    - `suppliers`
+    - `supplier-detail`
+    - `bank-transactions`
+    - `bank-transaction-detail`
+    - `payment-matching`
+  - deferred/future metadata modules verified:
+    - `reminders`
+    - `reminder-emails`
+    - `attachments`
+    - `recurring`
+    - `exports`
+    - `audit`
+- Registry route correctness:
+  - route audit result:
+    - `Registry routes verified for 16 modules`
+  - implemented routes also verified at runtime on local port `8090`
+- Registry translation keys across locales:
+  - audit result:
+    - `Registry translation keys verified for 16 modules across cs, ua, ru, en`
+- RAG-ready metadata completeness:
+  - verified in `frontend/src/types/accountingNewMetadata.ts`
+  - verified in `frontend/src/lib/accountingNewModules.ts`
+  - includes stable module ids, entity types, searchable field metadata, feature status, capability flags, related modules, and per-module RAG metadata
+- Voice-ready alias metadata completeness:
+  - verified in `frontend/src/data/translations.ts`
+  - verified in `frontend/src/lib/accountingNewModules.ts`
+  - includes labels and aliases for implemented and deferred modules including `reminder-emails`
+- AI/RAG backend implementation:
+  - `No`
+- Voice implementation:
+  - `No`
+- Frontend build:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - unchanged unrelated warnings/notices:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'. Either include it or remove the dependency array. react-hooks/exhaustive-deps`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old. Please run: npx update-browserslist-db@latest`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Docker helper checks:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke` -> `passed`
+  - helper warning about unauthenticated `401` remained expected and non-failing
+- Route-specific HTTP checks:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- Accounting routes still work:
+  - `/admin/ucetnictvi-new` on `8090`: `Yes`
+  - detail routes on `8090`: `Yes`
+- Old `/admin/invoices` unchanged:
+  - `Yes`
+  - protected diff audit result:
+    - `Protected legacy invoice files unchanged in audit commit`
+  - current worktree safety result:
+    - `Current worktree has no legacy invoice diffs`
+- Old invoice components touched:
+  - `No`
+- Backend source changed:
+  - `No`
+  - audit result:
+    - `No backend or legacy invoice files changed in audit commit scope`
+- DB/schema changed:
+  - `No`
+  - audit result:
+    - `No DB/schema files changed in audit commit scope`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Unrelated dirty files committed:
+  - `No`
+- Planned local commit message:
+  - `Fix accounting i18n architecture gaps`

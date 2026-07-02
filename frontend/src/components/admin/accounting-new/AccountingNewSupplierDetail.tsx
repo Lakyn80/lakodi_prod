@@ -13,7 +13,7 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, getAccountingNewSupplier } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewSupplierDetailState } from "@/types/accountingNew";
-import { formatAccountingNewDateTime } from "@/components/admin/accounting-new/accountingNewFormat";
+import { formatAccountingNewDateTime, translateAccountingNewApiError } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function DetailLoading() {
   return (
@@ -135,7 +135,7 @@ export function AccountingNewSupplierDetail({
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.supplierDetailTitle}</AlertTitle>
-          <AlertDescription>{state.error.message}</AlertDescription>
+          <AlertDescription>{translateAccountingNewApiError(t, state.error)}</AlertDescription>
         </Alert>
       </div>
     );

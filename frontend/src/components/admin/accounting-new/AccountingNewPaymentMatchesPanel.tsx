@@ -7,6 +7,7 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewBankTransactionListItem } from "@/types/accountingNew";
 import { AccountingNewMatchCandidatesList } from "@/components/admin/accounting-new/AccountingNewMatchCandidatesList";
+import { translateAccountingNewApiError } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function countTransactionsByStatus(transactions: AccountingNewBankTransactionListItem[], status: string): number {
   return transactions.filter((transaction) => transaction.status === status).length;
@@ -52,7 +53,7 @@ export function AccountingNewPaymentMatchesPanel({
         {error && !authRequired ? (
           <Alert variant="destructive">
             <AlertTitle>{t.errors.paymentMatchingTitle}</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
+            <AlertDescription>{translateAccountingNewApiError(t, error)}</AlertDescription>
           </Alert>
         ) : null}
 

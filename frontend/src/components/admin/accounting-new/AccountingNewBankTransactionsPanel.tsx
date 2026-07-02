@@ -14,6 +14,7 @@ import { AccountingNewBankTransactionsTable } from "@/components/admin/accountin
 import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
+  translateAccountingNewApiError,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string | null | undefined): string {
@@ -106,7 +107,7 @@ export function AccountingNewBankTransactionsPanel({
         {error && !authRequired ? (
           <Alert variant="destructive">
             <AlertTitle>{t.errors.bankTransactionsTitle}</AlertTitle>
-            <AlertDescription>{error.message}</AlertDescription>
+            <AlertDescription>{translateAccountingNewApiError(t, error)}</AlertDescription>
           </Alert>
         ) : null}
 

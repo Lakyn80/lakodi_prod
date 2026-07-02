@@ -21,6 +21,7 @@ import {
   formatAccountingNewDate,
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
+  translateAccountingNewApiError,
   translateAccountingNewStatus,
   translateAccountingNewTransactionDirection,
 } from "@/components/admin/accounting-new/accountingNewFormat";
@@ -168,7 +169,7 @@ export function AccountingNewBankTransactionDetail({
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.bankTransactionDetailTitle}</AlertTitle>
-          <AlertDescription>{state.error.message}</AlertDescription>
+          <AlertDescription>{translateAccountingNewApiError(t, state.error)}</AlertDescription>
         </Alert>
       </div>
     );
@@ -264,7 +265,7 @@ export function AccountingNewBankTransactionDetail({
       {partialError ? (
         <Alert>
           <AlertTitle>{t.errors.supplementalTitle}</AlertTitle>
-          <AlertDescription>{partialError.message}</AlertDescription>
+          <AlertDescription>{translateAccountingNewApiError(t, partialError)}</AlertDescription>
         </Alert>
       ) : null}
 

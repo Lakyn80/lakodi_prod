@@ -25,6 +25,7 @@ import {
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
   getAccountingNewTranslationValue,
+  translateAccountingNewApiError,
   translateAccountingNewEntityType,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 import type {
@@ -265,7 +266,7 @@ export function AccountingNewShell() {
       {state.status === "error" ? (
         <Alert variant="destructive">
           <AlertTitle>{t.errors.dashboardTitle}</AlertTitle>
-          <AlertDescription>{state.error.message}</AlertDescription>
+          <AlertDescription>{translateAccountingNewApiError(t, state.error)}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -273,7 +274,7 @@ export function AccountingNewShell() {
         <Alert>
           <AlertTitle>{t.errors.partialDataTitle}</AlertTitle>
           <AlertDescription>
-            {primaryPartialError.message} {t.errors.partialDataDescription}
+            {translateAccountingNewApiError(t, primaryPartialError)} {t.errors.partialDataDescription}
           </AlertDescription>
         </Alert>
       ) : null}
