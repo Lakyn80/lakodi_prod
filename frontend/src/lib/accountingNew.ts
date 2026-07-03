@@ -23,6 +23,10 @@ import type {
   AccountingNewExpensePaymentSummary,
   AccountingNewPaymentSummary,
   AccountingNewPaymentMatchListItem,
+  AccountingNewRecurringGenerationListItem,
+  AccountingNewRecurringTemplateDetail,
+  AccountingNewRecurringTemplateFilters,
+  AccountingNewRecurringTemplateItem,
   AccountingNewRecurringTemplateSummary,
   AccountingNewReminderEmailDetail,
   AccountingNewReminderEmailFilters,
@@ -124,6 +128,10 @@ function normalizeTodoId(id: number | string): string {
 
 function normalizeReminderEmailId(id: number | string): string {
   return normalizeEntityId(id, "reminder-email-detail", "ID upomínkového e-mailu");
+}
+
+function normalizeRecurringTemplateId(id: number | string): string {
+  return normalizeEntityId(id, "recurring-detail", "ID opakované šablony");
 }
 
 function mapDocumentListItem(item: {
@@ -843,6 +851,22 @@ function mapAuditEventSummary(item: {
   };
 }
 
+function mapRecurringTemplateItem(item: {
+  id: number;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}): AccountingNewRecurringTemplateItem {
+  return {
+    id: item.id,
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: item.unit_price,
+    lineTotal: item.line_total,
+  };
+}
+
 function mapRecurringTemplateSummary(item: {
   id: number;
   template_type: string;
@@ -855,10 +879,25 @@ function mapRecurringTemplateSummary(item: {
   recurrence_count: number;
   next_run_date: string;
   last_run_date: string | null;
+  business_mode: string | null;
+  tax_mode: string | null;
   currency: string;
   vat_rate: number | null;
+  note: string | null;
+  payment_method: string | null;
+  bank_account_number: string | null;
+  bank_account_prefix: string | null;
+  bank_code: string | null;
+  bank_iban: string | null;
   created_at: string;
   updated_at: string;
+  items: Array<{
+    id: number;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
 }): AccountingNewRecurringTemplateSummary {
   return {
     id: item.id,
@@ -872,10 +911,41 @@ function mapRecurringTemplateSummary(item: {
     recurrenceCount: item.recurrence_count,
     nextRunDate: item.next_run_date,
     lastRunDate: item.last_run_date,
+    businessMode: item.business_mode,
+    taxMode: item.tax_mode,
     currency: item.currency,
     vatRate: item.vat_rate,
+    note: item.note,
+    paymentMethod: item.payment_method,
+    bankAccountNumber: item.bank_account_number,
+    bankAccountPrefix: item.bank_account_prefix,
+    bankCode: item.bank_code,
+    bankIban: item.bank_iban,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
+    items: item.items.map(mapRecurringTemplateItem),
+  };
+}
+
+function mapRecurringGenerationSummary(item: {
+  id: number;
+  template_id: number;
+  generated_invoice_id: number | null;
+  generated_expense_id: number | null;
+  generated_at: string;
+  run_date: string;
+  status: string;
+  message: string | null;
+}): AccountingNewRecurringGenerationListItem {
+  return {
+    id: item.id,
+    templateId: item.template_id,
+    generatedInvoiceId: item.generated_invoice_id,
+    generatedExpenseId: item.generated_expense_id,
+    generatedAt: item.generated_at,
+    runDate: item.run_date,
+    status: item.status,
+    message: item.message,
   };
 }
 
@@ -1265,6 +1335,43 @@ function matchesBankTransactionFilters(
   }
 
   if (filters.status && filters.status !== "all" && transaction.status !== filters.status) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesRecurringTemplateFilters(
+  template: AccountingNewRecurringTemplateSummary,
+  filters: AccountingNewRecurringTemplateFilters,
+): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      template.name,
+      template.templateType,
+      template.documentKind,
+      template.status,
+      template.note,
+      template.currency,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.templateType && filters.templateType !== "all" && template.templateType !== filters.templateType) {
+    return false;
+  }
+
+  if (filters.status && filters.status !== "all" && template.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.documentKind && filters.documentKind !== "all" && template.documentKind !== filters.documentKind) {
     return false;
   }
 
@@ -1998,8 +2105,17 @@ export async function listAccountingNewAuditEvents(
 }
 
 export async function listAccountingNewRecurringTemplates(
+  filters: AccountingNewRecurringTemplateFilters = {},
   params: AccountingNewListParams = {},
 ): Promise<AccountingNewRecurringTemplateSummary[]> {
+  const searchParams = new URLSearchParams();
+  if (filters.templateType && filters.templateType !== "all") {
+    searchParams.set("template_type", filters.templateType);
+  }
+  if (filters.status && filters.status !== "all") {
+    searchParams.set("status", filters.status);
+  }
+
   const data = await fetchAccountingNewJson<
     Array<{
       id: number;
@@ -2013,14 +2129,95 @@ export async function listAccountingNewRecurringTemplates(
       recurrence_count: number;
       next_run_date: string;
       last_run_date: string | null;
+      business_mode: string | null;
+      tax_mode: string | null;
       currency: string;
       vat_rate: number | null;
+      note: string | null;
+      payment_method: string | null;
+      bank_account_number: string | null;
+      bank_account_prefix: string | null;
+      bank_code: string | null;
+      bank_iban: string | null;
       created_at: string;
       updated_at: string;
+      items: Array<{
+        id: number;
+        description: string;
+        quantity: number;
+        unit_price: number;
+        line_total: number;
+      }>;
     }>
-  >("recurring-templates", "/recurring-templates", params.signal);
+  >(
+    "recurring-templates",
+    `/recurring-templates${searchParams.size > 0 ? `?${searchParams.toString()}` : ""}`,
+    params.signal,
+  );
 
-  return data.map(mapRecurringTemplateSummary);
+  return data.map(mapRecurringTemplateSummary).filter((template) => matchesRecurringTemplateFilters(template, filters));
+}
+
+export async function getAccountingNewRecurringTemplate(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringTemplateDetail> {
+  const normalizedId = normalizeRecurringTemplateId(id);
+  const data = await fetchAccountingNewJson<{
+    id: number;
+    template_type: string;
+    document_kind: string | null;
+    subject_id: number | null;
+    supplier_id: number | null;
+    name: string;
+    status: string;
+    recurrence_interval: string;
+    recurrence_count: number;
+    next_run_date: string;
+    last_run_date: string | null;
+    business_mode: string | null;
+    tax_mode: string | null;
+    currency: string;
+    vat_rate: number | null;
+    note: string | null;
+    payment_method: string | null;
+    bank_account_number: string | null;
+    bank_account_prefix: string | null;
+    bank_code: string | null;
+    bank_iban: string | null;
+    created_at: string;
+    updated_at: string;
+    items: Array<{
+      id: number;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+    }>;
+  }>("recurring-detail", `/recurring-templates/${normalizedId}`, params.signal);
+
+  return mapRecurringTemplateSummary(data);
+}
+
+export async function listAccountingNewRecurringTemplateGenerations(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringGenerationListItem[]> {
+  const normalizedId = normalizeRecurringTemplateId(id);
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      template_id: number;
+      generated_invoice_id: number | null;
+      generated_expense_id: number | null;
+      generated_at: string;
+      run_date: string;
+      status: string;
+      message: string | null;
+    }>
+  >("recurring-generations", `/recurring-templates/${normalizedId}/generations`, params.signal);
+
+  return data.map(mapRecurringGenerationSummary);
 }
 
 export async function listAccountingNewAttachments(
@@ -2137,7 +2334,7 @@ export async function getAccountingNewDashboardData(
     listAccountingNewTodos({}, params),
     listAccountingNewBankTransactions({}, params),
     listAccountingNewAuditEvents(params),
-    listAccountingNewRecurringTemplates(params),
+    listAccountingNewRecurringTemplates({}, params),
     listAccountingNewAttachments(params),
     listAccountingNewSubjects(params),
     listAccountingNewSuppliers({}, params),

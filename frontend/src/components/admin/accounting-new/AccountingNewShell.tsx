@@ -22,6 +22,7 @@ import { AccountingNewSuppliersPanel } from "@/components/admin/accounting-new/A
 import { AccountingNewBankTransactionsPanel } from "@/components/admin/accounting-new/AccountingNewBankTransactionsPanel";
 import { AccountingNewPaymentMatchesPanel } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesPanel";
 import { AccountingNewTodosPanel } from "@/components/admin/accounting-new/AccountingNewTodosPanel";
+import { AccountingNewRecurringTemplatesPanel } from "@/components/admin/accounting-new/AccountingNewRecurringTemplatesPanel";
 import { AccountingNewReminderEmailsPanel } from "@/components/admin/accounting-new/AccountingNewReminderEmailsPanel";
 import {
   formatAccountingNewDateTime,
@@ -105,7 +106,7 @@ function getModuleStats(
       }),
     },
     recurring: {
-      badge: t.common.readyBadge,
+      badge: t.common.readOnlyBadge,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.recurring, {
         count: data.metrics.recurringTemplatesLoaded,
       }),
@@ -217,6 +218,7 @@ export function AccountingNewShell() {
   const suppliersError = getResourceError(partialErrors, "suppliers");
   const bankTransactionsError = getResourceError(partialErrors, "bank-transactions");
   const todosError = getResourceError(partialErrors, "todos");
+  const recurringError = getResourceError(partialErrors, "recurring-templates");
   const moduleStats = getModuleStats(t, dashboard);
   const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
@@ -392,8 +394,17 @@ export function AccountingNewShell() {
           error={todosError}
         />
 
-        <AccountingNewReminderEmailsPanel />
+        <AccountingNewRecurringTemplatesPanel
+          templates={dashboard?.recurringTemplates ?? []}
+          subjects={dashboard?.subjects ?? []}
+          suppliers={dashboard?.suppliers ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={recurringError}
+        />
       </div>
+
+      <AccountingNewReminderEmailsPanel />
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
         <Card className="border-border bg-card">

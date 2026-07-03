@@ -90,6 +90,16 @@ export function translateAccountingNewEntityType(t: AccountingNewTranslations, v
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;
 }
 
+export function translateAccountingNewRecurringKind(t: AccountingNewTranslations, value: string): string {
+  const labels = t.recurring.templateKinds as Record<string, string>;
+  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
+export function translateAccountingNewRecurringFrequency(t: AccountingNewTranslations, value: string): string {
+  const labels = t.recurring.frequencies as Record<string, string>;
+  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
 const ACCOUNTING_NEW_ABORT_MESSAGE = "Načítání bylo přerušeno.";
 const ACCOUNTING_NEW_LOGIN_MESSAGE = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
 const ACCOUNTING_NEW_NOT_FOUND_MESSAGE = "Požadovaný accounting dokument nebyl nalezen.";

@@ -3073,3 +3073,150 @@
   - `Record reminder routes Docker verification`
 - Known risks/follow-ups:
   - immediate post-restart curl checks against the Next dev container can still observe temporary warm-up behavior before on-demand route compilation stabilizes
+
+## Úkol 22H Read-only recurring templates UI in ÚčetnictvíNew
+
+- Date: `2026-07-03`
+- Goal:
+  - extend `/admin/ucetnictvi-new` with read-only recurring templates UI for recurring invoices/documents and recurring expenses exposed by existing safe GET endpoints
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `frontend/src/app/admin/ucetnictvi-new/opakovane/[id]/page.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewRecurringGenerationsTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewRecurringStatusBadge.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewRecurringTemplateDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewRecurringTemplatesPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewRecurringTemplatesTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/accountingNewFormat.ts`
+  - `frontend/src/data/translations.ts`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/lib/accountingNewModules.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `frontend/src/types/accountingNewMetadata.ts`
+- Endpoints inspected/used (GET only):
+  - `GET /api/admin/invoices/recurring-templates`
+  - `GET /api/admin/invoices/recurring-templates/{template_id}`
+  - `GET /api/admin/invoices/recurring-templates/{template_id}/generations`
+  - `GET /api/admin/invoices/subjects`
+  - `GET /api/admin/invoices/suppliers`
+  - not used because unsafe / mutation:
+    - recurring create/update/delete endpoints
+    - enable/disable endpoints
+    - generate/run recurring endpoints
+- Recurring templates UI:
+  - `Added`
+  - new read-only panel on `/admin/ucetnictvi-new`
+  - filters for query, template type, and status
+  - no create/edit/delete/enable/disable/generate/send controls
+- Recurring template detail route:
+  - `Added`
+  - `/admin/ucetnictvi-new/opakovane/[id]`
+  - shows template metadata, recurrence settings, related subject/supplier, item snapshot, payment snapshot, legacy preservation note, and generation history
+- Recurring generation history:
+  - `Added`
+  - uses safe GET generation history per template
+  - no mutation, no retry/run/generate actions
+- Existing i18n keys added:
+  - `accountingNew.auth.recurring*`
+  - `accountingNew.errors.recurring*`
+  - `accountingNew.empty.recurring*`
+  - `accountingNew.recurring`
+  - `accountingNew.recurringDetail`
+  - `accountingNew.moduleRegistry.recurringDetail`
+  - `accountingNew.rag.entityTypes.recurring_generation`
+  - `accountingNew.rag.searchableFields.templateNumber|frequency|interval|nextRunAt|lastRunAt|startDate|endDate|documentType|runDate`
+  - `accountingNew.voice.labels.recurringDetail`
+  - `accountingNew.voice.aliases.recurringDetail|recurringTemplate|recurringInvoice|recurringExpense|repeatInvoice|scheduledInvoice|scheduledExpense`
+- Locale coverage:
+  - `cs`
+  - `ua`
+  - `ru`
+  - `en`
+  - verified complete by `scripts/check-accounting-i18n.ps1`
+- Module registry updates:
+  - `recurring` changed to `implemented-read-only`
+  - added `recurring-detail`
+  - capability flags kept read-only:
+    - `canRead: true`
+    - `canCreate/canUpdate/canDelete/canSend/canExport/canImport/canApply/canGenerate: false`
+- RAG/voice metadata updates:
+  - recurring template searchable metadata added for name, templateNumber, customerName, supplierName, amount, currency, frequency, interval, nextRunAt, lastRunAt, startDate, endDate, status, documentType, note, createdAt
+  - recurring detail / generation metadata added for runDate, message, templateNumber, nextRunAt, lastRunAt
+  - voice aliases added for recurring template / recurring invoice / recurring expense / repeat invoice / scheduled invoice / scheduled expense
+  - AI/RAG backend implementation: `No`
+  - voice implementation: `No`
+- Auth/401 behavior:
+  - recurring panel and detail route show translated login-required alerts on `401`
+  - dashboard remains usable when recurring supplementary requests fail
+- No-write/generate/enable/disable safety confirmation:
+  - `Confirmed`
+  - no create/update/delete/generate/run/enable/disable/send controls or API calls were added
+- Hardcoded visible accounting strings audit:
+  - read-only recurring components were inspected
+  - one gap found:
+    - recurring filter dropdowns initially rendered raw backend values for template type/status
+  - fix made:
+    - dropdown option labels now use existing translation helpers for recurring kind and status
+  - remaining visible recurring UI strings: `No unresolved hardcoded accounting labels found`
+- i18n check:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1`
+  - result: `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Frontend build:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - build listed:
+    - `/admin/ucetnictvi-new`
+    - `/admin/ucetnictvi-new/opakovane/[id]`
+  - unchanged unrelated warnings:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'.`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old.`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Docker helper commands/result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke` -> `passed`
+- Route-specific smoke results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/ukoly/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/upominky-emaily/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/opakovane/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- `.next` artifact spot-check:
+  - host build artifacts contained `ucetnictvi-new/opakovane` route wrapper
+  - compiled client/server chunks also contained recurring route/module strings and `/admin/invoices` preservation references
+- Whether `/admin/ucetnictvi-new` works on `8090`:
+  - `Yes`
+- Whether `/admin/ucetnictvi-new/opakovane/1` works on `8090`:
+  - `Yes`
+- Whether `/admin/invoices` remains available/unchanged:
+  - `Yes`
+- Old invoicing UI touched:
+  - `No`
+- `/admin/invoices` changed:
+  - `No`
+- Old invoice components changed:
+  - `No`
+- `frontend/src/lib/invoices.ts` changed:
+  - `No`
+- Backend source changes:
+  - `None`
+- Database/schema changes:
+  - `None`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Commit message:
+  - `Add read-only accounting recurring views`
+- Local commit hash:
+  - `Recorded in final response after local commit`
+- Known risks/follow-ups:
+  - safe GET recurring endpoints do not expose separate template number or recurrence start/end dates, so UI intentionally shows conservative translated notes instead of inventing data
+  - generation history is available per template; no safe global recurring generations list was introduced

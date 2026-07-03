@@ -6,11 +6,22 @@ const ACCOUNTING_NEW_BASE_ROUTE = "/admin/ucetnictvi-new";
 type AccountingNewModuleRegistrySeed = Omit<AccountingNewModuleRegistryEntry, "capabilities">;
 
 function createRegistryEntry(entry: AccountingNewModuleRegistrySeed): AccountingNewModuleRegistryEntry {
+  const canRead = entry.readAvailability === "read-only";
+
   return {
     ...entry,
     capabilities: {
       read: entry.readAvailability,
       write: entry.writeEnabled,
+      canRead,
+      canCreate: false,
+      canUpdate: false,
+      canDelete: false,
+      canSend: false,
+      canExport: false,
+      canImport: false,
+      canApply: false,
+      canGenerate: false,
     },
   };
 }
@@ -398,23 +409,78 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     labelKey: "moduleRegistry.recurring.label",
     descriptionKey: "moduleRegistry.recurring.description",
     entityType: "recurring_template",
-    readAvailability: "placeholder",
+    readAvailability: "read-only",
     writeEnabled: false,
-    featureStatus: "deferred",
+    featureStatus: "implemented-read-only",
     rag: {
       entityType: "recurring_template",
       labelKey: "rag.entityTypes.recurring_template",
       searchableFields: [
-        { field: "name", labelKey: "rag.searchableFields.name", weight: 4 },
-        { field: "status", labelKey: "rag.searchableFields.status", weight: 3 },
+        { field: "name", labelKey: "rag.searchableFields.name", weight: 5 },
+        { field: "templateNumber", labelKey: "rag.searchableFields.templateNumber", weight: 4 },
+        { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 4 },
+        { field: "supplierName", labelKey: "rag.searchableFields.supplierName", weight: 4 },
+        { field: "amount", labelKey: "rag.searchableFields.amount", weight: 4 },
+        { field: "currency", labelKey: "rag.searchableFields.currency", weight: 3 },
+        { field: "frequency", labelKey: "rag.searchableFields.frequency", weight: 4 },
+        { field: "interval", labelKey: "rag.searchableFields.interval", weight: 4 },
+        { field: "nextRunAt", labelKey: "rag.searchableFields.nextRunAt", weight: 4 },
+        { field: "lastRunAt", labelKey: "rag.searchableFields.lastRunAt", weight: 3 },
+        { field: "startDate", labelKey: "rag.searchableFields.startDate", weight: 2 },
+        { field: "endDate", labelKey: "rag.searchableFields.endDate", weight: 2 },
+        { field: "status", labelKey: "rag.searchableFields.status", weight: 4 },
+        { field: "documentType", labelKey: "rag.searchableFields.documentType", weight: 3 },
+        { field: "note", labelKey: "rag.searchableFields.note", weight: 2 },
+        { field: "createdAt", labelKey: "rag.searchableFields.createdAt", weight: 2 },
       ],
     },
     voice: {
       labelKey: "voice.labels.recurring",
-      aliasKeys: ["voice.aliases.recurring"],
+      aliasKeys: [
+        "voice.aliases.recurring",
+        "voice.aliases.recurringTemplate",
+        "voice.aliases.recurringInvoice",
+        "voice.aliases.recurringExpense",
+        "voice.aliases.repeatInvoice",
+        "voice.aliases.scheduledInvoice",
+        "voice.aliases.scheduledExpense",
+      ],
     },
-    relatedModuleIds: ["dashboard"],
+    relatedModuleIds: ["recurring-detail", "dashboard", "documents", "expenses", "suppliers"],
     gridModuleId: "recurring",
+  }),
+  createRegistryEntry({
+    id: "recurring-detail",
+    route: `${ACCOUNTING_NEW_BASE_ROUTE}/opakovane/[id]`,
+    labelKey: "moduleRegistry.recurringDetail.label",
+    descriptionKey: "moduleRegistry.recurringDetail.description",
+    entityType: "recurring_template",
+    readAvailability: "read-only",
+    writeEnabled: false,
+    featureStatus: "implemented-read-only",
+    rag: {
+      entityType: "recurring_generation",
+      labelKey: "rag.entityTypes.recurring_generation",
+      searchableFields: [
+        { field: "name", labelKey: "rag.searchableFields.name", weight: 5 },
+        { field: "templateNumber", labelKey: "rag.searchableFields.templateNumber", weight: 4 },
+        { field: "status", labelKey: "rag.searchableFields.status", weight: 4 },
+        { field: "runDate", labelKey: "rag.searchableFields.runDate", weight: 4 },
+        { field: "nextRunAt", labelKey: "rag.searchableFields.nextRunAt", weight: 3 },
+        { field: "lastRunAt", labelKey: "rag.searchableFields.lastRunAt", weight: 3 },
+        { field: "message", labelKey: "rag.searchableFields.message", weight: 2 },
+      ],
+    },
+    voice: {
+      labelKey: "voice.labels.recurringDetail",
+      aliasKeys: [
+        "voice.aliases.recurringDetail",
+        "voice.aliases.recurringTemplate",
+        "voice.aliases.recurringInvoice",
+        "voice.aliases.recurringExpense",
+      ],
+    },
+    relatedModuleIds: ["recurring", "documents", "expenses", "suppliers"],
   }),
   createRegistryEntry({
     id: "exports",

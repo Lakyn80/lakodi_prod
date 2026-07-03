@@ -440,11 +440,67 @@ export interface AccountingNewRecurringTemplateSummary {
   recurrenceCount: number;
   nextRunDate: string;
   lastRunDate: string | null;
+  businessMode: string | null;
+  taxMode: string | null;
   currency: string;
   vatRate: number | null;
+  note: string | null;
+  paymentMethod: string | null;
+  bankAccountNumber: string | null;
+  bankAccountPrefix: string | null;
+  bankCode: string | null;
+  bankIban: string | null;
   createdAt: string;
   updatedAt: string;
+  items: AccountingNewRecurringTemplateItem[];
 }
+
+export type AccountingNewRecurringTemplateKind = string;
+export type AccountingNewRecurringTemplateStatus = string;
+export type AccountingNewRecurringTemplateFrequency = string;
+
+export interface AccountingNewRecurringTemplateItem {
+  id: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export type AccountingNewRecurringTemplateListItem = AccountingNewRecurringTemplateSummary;
+export type AccountingNewRecurringTemplateDetail = AccountingNewRecurringTemplateSummary;
+
+export interface AccountingNewRecurringTemplateFilters {
+  query?: string;
+  templateType?: AccountingNewRecurringTemplateKind | "all";
+  status?: AccountingNewRecurringTemplateStatus | "all";
+  documentKind?: string | "all";
+}
+
+export interface AccountingNewRecurringGenerationListItem {
+  id: number;
+  templateId: number;
+  generatedInvoiceId: number | null;
+  generatedExpenseId: number | null;
+  generatedAt: string;
+  runDate: string;
+  status: string;
+  message: string | null;
+}
+
+export type AccountingNewRecurringGenerationDetail = AccountingNewRecurringGenerationListItem;
+
+export type AccountingNewRecurringTemplateDetailState =
+  | { status: "loading" }
+  | {
+      status: "ready";
+      detail: AccountingNewRecurringTemplateDetail;
+      generations: AccountingNewRecurringGenerationListItem[];
+      partialErrors: AccountingNewApiError[];
+    }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
 
 export interface AccountingNewAttachmentSummary {
   id: number;

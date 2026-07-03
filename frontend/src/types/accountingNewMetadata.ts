@@ -17,6 +17,7 @@ export type AccountingNewModuleId =
   | "reminder-email-detail"
   | "attachments"
   | "recurring"
+  | "recurring-detail"
   | "exports"
   | "audit";
 
@@ -38,6 +39,8 @@ export type AccountingNewEntityType =
   | "reminder_email"
   | "recurringTemplate"
   | "recurring_template"
+  | "recurringGeneration"
+  | "recurring_generation"
   | "export";
 
 export type AccountingNewFeatureStatus = "implemented-read-only" | "deferred" | "future";
@@ -77,6 +80,15 @@ export type AccountingNewSearchableField =
   | "bodyPreview"
   | "sentAt"
   | "createdAt"
+  | "templateNumber"
+  | "frequency"
+  | "interval"
+  | "nextRunAt"
+  | "lastRunAt"
+  | "startDate"
+  | "endDate"
+  | "documentType"
+  | "runDate"
   | "originalFilename"
   | "attachmentType"
   | "name"
@@ -103,6 +115,15 @@ export interface AccountingNewVoiceMetadata {
 export interface AccountingNewCapabilityFlags {
   read: AccountingNewModuleAvailability;
   write: boolean;
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canSend: boolean;
+  canExport: boolean;
+  canImport: boolean;
+  canApply: boolean;
+  canGenerate: boolean;
 }
 
 export interface AccountingNewModuleRegistryEntry {
