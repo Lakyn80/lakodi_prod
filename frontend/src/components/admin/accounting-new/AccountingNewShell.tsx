@@ -21,6 +21,8 @@ import { AccountingNewExpensesPanel } from "@/components/admin/accounting-new/Ac
 import { AccountingNewSuppliersPanel } from "@/components/admin/accounting-new/AccountingNewSuppliersPanel";
 import { AccountingNewBankTransactionsPanel } from "@/components/admin/accounting-new/AccountingNewBankTransactionsPanel";
 import { AccountingNewPaymentMatchesPanel } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesPanel";
+import { AccountingNewTodosPanel } from "@/components/admin/accounting-new/AccountingNewTodosPanel";
+import { AccountingNewReminderEmailsPanel } from "@/components/admin/accounting-new/AccountingNewReminderEmailsPanel";
 import {
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
@@ -90,7 +92,7 @@ function getModuleStats(
       }),
     },
     reminders: {
-      badge: t.common.readyBadge,
+      badge: t.common.readOnlyBadge,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.reminders, {
         open: data.metrics.openTodos,
         overdue: data.metrics.overdueTodos,
@@ -214,6 +216,7 @@ export function AccountingNewShell() {
   const expensesError = getResourceError(partialErrors, "expenses");
   const suppliersError = getResourceError(partialErrors, "suppliers");
   const bankTransactionsError = getResourceError(partialErrors, "bank-transactions");
+  const todosError = getResourceError(partialErrors, "todos");
   const moduleStats = getModuleStats(t, dashboard);
   const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
@@ -379,6 +382,17 @@ export function AccountingNewShell() {
           authRequired={state.status === "auth"}
           error={bankTransactionsError}
         />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AccountingNewTodosPanel
+          todos={dashboard?.todos ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={todosError}
+        />
+
+        <AccountingNewReminderEmailsPanel />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">

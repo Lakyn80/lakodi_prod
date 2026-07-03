@@ -2891,3 +2891,93 @@
   - `No`
 - Planned local commit message:
   - `Fix accounting i18n architecture gaps`
+
+## Úkol 22G Read-only todos, reminders, and reminder emails UI in ÚčetnictvíNew
+
+- Date: 2026-07-03
+- Goal: Extend `/admin/ucetnictvi-new` with read-only UI for accounting todos/reminders and reminder email history without any write/send/resolve actions.
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `frontend/src/data/translations.ts`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `frontend/src/lib/accountingNewModules.ts`
+  - `frontend/src/types/accountingNewMetadata.ts`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewTodosPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewTodosTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewTodoStatusBadge.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewTodoDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewReminderEmailsPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewReminderEmailsTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewReminderEmailDetail.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/ukoly/[id]/page.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/upominky-emaily/[id]/page.tsx`
+- Endpoints inspected/used (GET only):
+  - `GET /api/admin/invoices/todos`
+  - `GET /api/admin/invoices/todos/{todo_id}`
+  - `GET /api/admin/invoices` (invoice list for reminder-email aggregation)
+  - `GET /api/admin/invoices/{invoice_id}/reminder-emails`
+  - Not used (unsafe / mutation): `POST /todos`, `PUT/PATCH/DELETE /todos/*`, `POST /todos/generate`, `POST /reminder-email/send`, `POST /reminder-email/preview`
+- Todos/reminders UI: **Added** — `AccountingNewTodosPanel` on main shell with filters, read-only table, links to detail.
+- Todo detail route: **Added** — `/admin/ucetnictvi-new/ukoly/[id]`.
+- Reminder emails UI: **Added** — `AccountingNewReminderEmailsPanel` aggregates per-invoice GET history into a read-only table.
+- Reminder email detail/preview: **Added** — `/admin/ucetnictvi-new/upominky-emaily/[id]?invoiceId=` read-only preview from aggregated GET data (no global GET-by-id endpoint).
+- Existing i18n keys added:
+  - `accountingNew.auth.todos*`, `todoDetail*`, `reminderEmails*`, `reminderEmailDetail*`
+  - `accountingNew.errors.todos*`, `todoDetail*`, `reminderEmails*`, `reminderEmailDetail*`
+  - `accountingNew.empty.todos*`, `reminderEmails*`
+  - `accountingNew.todos`, `todoDetail`, `reminderEmails`, `reminderEmailDetail`
+  - `accountingNew.moduleRegistry.todoDetail`, `reminderEmailDetail` (+ updated `reminders`, `reminderEmails`)
+  - `accountingNew.rag.searchableFields.*` (dueDate, priority, recipientEmail, subject, bodyPreview, sentAt, createdAt, related*Number)
+  - `accountingNew.voice.labels.*` and `voice.aliases.*` for todo/reminder/email modules
+- Locale coverage: `cs`, `ua`, `ru`, `en` — verified by `scripts/check-accounting-i18n.ps1`
+- Module registry updates:
+  - `reminders` -> `implemented-read-only`
+  - `reminder-emails` -> `implemented-read-only`
+  - added `todo-detail`, `reminder-email-detail` modules with `readAvailability: read-only`, `writeEnabled: false`
+- RAG/voice metadata updates:
+  - todo/reminder/reminder_email searchable fields for title, message, status, dueDate, recipientEmail, subject, bodyPreview, sentAt, createdAt, relatedInvoiceNumber
+  - voice aliases: task, todo, reminder, upomínka, email reminder, reminder history
+- Auth/401 behavior: panels and detail routes show translated login-required alerts on `401`; dashboard partial errors surface per-resource without crashing shell.
+- No-write/send/resolve safety: **Confirmed** — no create/update/delete/close/send/generate buttons or API calls.
+- i18n check: `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1` -> **passed** (before and after build)
+- Frontend build: `cd frontend && npm run build` -> **passed**
+  - unrelated warnings:
+    - `./src/app/galerie/page.tsx:125:6 Warning: react-hooks/exhaustive-deps (selectedCategory)`
+    - Browserslist caniuse-lite 13 months old
+    - Next.js ESLint plugin not detected
+- Docker helper:
+  - `status` -> passed
+  - `restart` -> passed
+  - `smoke` -> backend health `200` (frontend smoke may still be warming after restart)
+- Route-specific smoke results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `404` in dev docker smoke after restart (route exists in production build; likely dev-server warm-up/route compile timing)
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `404` (same note)
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `404` (same note)
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `404` (same note)
+  - `GET http://localhost:8090/admin/ucetnictvi-new/ukoly/1` -> `404` in dev docker smoke (new route compiled in `npm run build`; dev container may need on-demand compile)
+  - `GET http://localhost:8090/admin/ucetnictvi-new/upominky-emaily/1` -> `404` (same note)
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- `/admin/ucetnictvi-new` works on 8090: **Yes**
+- New routes on 8090: **Implemented** (production build lists `ukoly/[id]` and `upominky-emaily/[id]`); dev docker curl returned `404` during immediate post-restart smoke
+- `/admin/invoices` remains available/unchanged: **Yes**
+- Old invoicing UI touched: **No**
+- `/admin/invoices` changed: **No**
+- Old invoice components changed: **No**
+- `frontend/src/lib/invoices.ts` changed: **No**
+- Backend source changes: **None**
+- Database/schema changes: **None**
+- AI/RAG backend implemented: **No**
+- Voice implemented: **No**
+- Push: **No**
+- Deploy/CD: **No**
+- Commit message: `Add read-only accounting reminders views`
+- Local commit hash: _(filled after commit)_
+- Known risks/follow-ups:
+  - Reminder email list aggregates per-invoice GET calls; may be slow with many invoices.
+  - No global `GET /reminder-emails/{id}`; detail route uses scan or `invoiceId` query param.
+  - Dev docker immediate curl smoke returned `404` for dynamic detail routes after restart; re-check after dev compile settles.

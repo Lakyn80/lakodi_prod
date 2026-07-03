@@ -24,10 +24,15 @@ import type {
   AccountingNewPaymentSummary,
   AccountingNewPaymentMatchListItem,
   AccountingNewRecurringTemplateSummary,
+  AccountingNewReminderEmailDetail,
+  AccountingNewReminderEmailFilters,
+  AccountingNewReminderEmailListItem,
   AccountingNewSubjectSummary,
   AccountingNewSupplierDetail,
   AccountingNewSupplierFilters,
   AccountingNewSupplierListItem,
+  AccountingNewTodoDetail,
+  AccountingNewTodoFilters,
   AccountingNewTodoSummary,
 } from "@/types/accountingNew";
 
@@ -40,7 +45,7 @@ export interface AccountingNewListParams {
   signal?: AbortSignal;
 }
 
-class AccountingNewRequestError extends Error {
+export class AccountingNewRequestError extends Error {
   readonly apiError: AccountingNewApiError;
 
   constructor(apiError: AccountingNewApiError) {
@@ -111,6 +116,14 @@ function normalizeSupplierId(id: number | string): string {
 
 function normalizeBankTransactionId(id: number | string): string {
   return normalizeEntityId(id, "bank-transaction-detail", "ID bankovní transakce");
+}
+
+function normalizeTodoId(id: number | string): string {
+  return normalizeEntityId(id, "todo-detail", "ID úkolu");
+}
+
+function normalizeReminderEmailId(id: number | string): string {
+  return normalizeEntityId(id, "reminder-email-detail", "ID upomínkového e-mailu");
 }
 
 function mapDocumentListItem(item: {
@@ -1135,6 +1148,92 @@ function matchesSupplierFilters(supplier: AccountingNewSupplierListItem, filters
   return true;
 }
 
+function matchesTodoFilters(todo: AccountingNewTodoSummary, filters: AccountingNewTodoFilters): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [todo.title, todo.message, todo.todoType, todo.status]
+      .map(normalizeSearchText)
+      .join(" ");
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.status && filters.status !== "all" && todo.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.todoType && filters.todoType !== "all" && todo.todoType !== filters.todoType) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesReminderEmailFilters(
+  email: AccountingNewReminderEmailListItem,
+  filters: AccountingNewReminderEmailFilters,
+): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      email.recipientEmail,
+      email.subject,
+      email.message,
+      email.invoiceNumber,
+      email.reminderType,
+      email.status,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.status && filters.status !== "all" && email.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.reminderType && filters.reminderType !== "all" && email.reminderType !== filters.reminderType) {
+    return false;
+  }
+
+  return true;
+}
+
+function mapReminderEmailListItem(
+  item: {
+    id: number;
+    invoice_id: number;
+    todo_id: number | null;
+    reminder_type: string;
+    status: string;
+    recipient_email: string;
+    subject: string;
+    message: string;
+    sent_at: string | null;
+    error_message: string | null;
+    created_at: string;
+  },
+  invoiceNumber: string | null,
+): AccountingNewReminderEmailListItem {
+  return {
+    id: item.id,
+    invoiceId: item.invoice_id,
+    invoiceNumber,
+    todoId: item.todo_id,
+    reminderType: item.reminder_type,
+    status: item.status,
+    recipientEmail: item.recipient_email,
+    subject: item.subject,
+    message: item.message,
+    sentAt: item.sent_at,
+    errorMessage: item.error_message,
+    createdAt: item.created_at,
+  };
+}
+
 function matchesBankTransactionFilters(
   transaction: AccountingNewBankTransactionListItem,
   filters: AccountingNewBankTransactionFilters,
@@ -1624,6 +1723,7 @@ export async function getAccountingNewExpenseAuditEvents(
 }
 
 export async function listAccountingNewTodos(
+  filters: AccountingNewTodoFilters = {},
   params: AccountingNewListParams = {},
 ): Promise<AccountingNewTodoSummary[]> {
   const data = await fetchAccountingNewJson<
@@ -1642,7 +1742,125 @@ export async function listAccountingNewTodos(
     }>
   >("todos", "/todos", params.signal);
 
-  return data.map(mapTodoSummary);
+  return data.map(mapTodoSummary).filter((todo) => matchesTodoFilters(todo, filters));
+}
+
+export async function getAccountingNewTodo(
+  todoId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewTodoDetail> {
+  const id = normalizeTodoId(todoId);
+  const data = await fetchAccountingNewJson<{
+    id: number;
+    invoice_id: number | null;
+    expense_id: number | null;
+    todo_type: string;
+    status: string;
+    title: string;
+    message: string | null;
+    due_date: string;
+    created_at: string;
+    updated_at: string;
+    completed_at: string | null;
+  }>("todo-detail", `/todos/${id}`, params.signal);
+
+  return mapTodoSummary(data);
+}
+
+const REMINDER_EMAIL_BATCH_SIZE = 5;
+
+async function fetchInvoiceReminderEmails(
+  invoiceId: number,
+  invoiceNumber: string | null,
+  signal?: AbortSignal,
+): Promise<AccountingNewReminderEmailListItem[]> {
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      invoice_id: number;
+      todo_id: number | null;
+      reminder_type: string;
+      status: string;
+      recipient_email: string;
+      subject: string;
+      message: string;
+      sent_at: string | null;
+      error_message: string | null;
+      created_at: string;
+    }>
+  >("reminder-emails", `/${invoiceId}/reminder-emails`, signal);
+
+  return data.map((item) => mapReminderEmailListItem(item, invoiceNumber));
+}
+
+export async function listAccountingNewReminderEmails(
+  filters: AccountingNewReminderEmailFilters = {},
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewReminderEmailListItem[]> {
+  const invoices = await listAccountingNewInvoices(params);
+  const aggregated: AccountingNewReminderEmailListItem[] = [];
+
+  for (let index = 0; index < invoices.length; index += REMINDER_EMAIL_BATCH_SIZE) {
+    const batch = invoices.slice(index, index + REMINDER_EMAIL_BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (invoice) => {
+        try {
+          return await fetchInvoiceReminderEmails(invoice.id, invoice.invoiceNumber, params.signal);
+        } catch {
+          return [] as AccountingNewReminderEmailListItem[];
+        }
+      }),
+    );
+
+    for (const items of batchResults) {
+      aggregated.push(...items);
+    }
+  }
+
+  return aggregated
+    .filter((email) => matchesReminderEmailFilters(email, filters))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export async function getAccountingNewReminderEmail(
+  reminderEmailId: number | string,
+  invoiceId?: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewReminderEmailDetail> {
+  const id = normalizeReminderEmailId(reminderEmailId);
+
+  if (invoiceId !== undefined && invoiceId !== null && invoiceId !== "") {
+    const normalizedInvoiceId = normalizeDocumentId(invoiceId);
+    const invoices = await listAccountingNewInvoices(params);
+    const invoice = invoices.find((item) => item.id === Number(normalizedInvoiceId));
+    const emails = await fetchInvoiceReminderEmails(
+      Number(normalizedInvoiceId),
+      invoice?.invoiceNumber ?? null,
+      params.signal,
+    );
+    const match = emails.find((item) => item.id === Number(id));
+    if (!match) {
+      throw new AccountingNewRequestError({
+        resource: "reminder-email-detail",
+        message: "Požadovaný upomínkový e-mail nebyl nalezen.",
+        status: 404,
+        requiresLogin: false,
+      });
+    }
+    return match;
+  }
+
+  const emails = await listAccountingNewReminderEmails({}, params);
+  const match = emails.find((item) => item.id === Number(id));
+  if (!match) {
+    throw new AccountingNewRequestError({
+      resource: "reminder-email-detail",
+      message: "Požadovaný upomínkový e-mail nebyl nalezen.",
+      status: 404,
+      requiresLogin: false,
+    });
+  }
+  return match;
 }
 
 export async function listAccountingNewBankTransactions(
@@ -1916,7 +2134,7 @@ export async function getAccountingNewDashboardData(
   ] = await Promise.allSettled([
     listAccountingNewInvoices(params),
     listAccountingNewExpenses({}, params),
-    listAccountingNewTodos(params),
+    listAccountingNewTodos({}, params),
     listAccountingNewBankTransactions({}, params),
     listAccountingNewAuditEvents(params),
     listAccountingNewRecurringTemplates(params),

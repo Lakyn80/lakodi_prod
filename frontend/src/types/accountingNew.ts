@@ -266,6 +266,69 @@ export interface AccountingNewTodoSummary {
   completedAt: string | null;
 }
 
+export type AccountingNewTodoListItem = AccountingNewTodoSummary;
+export type AccountingNewTodoDetail = AccountingNewTodoSummary;
+
+export interface AccountingNewTodoFilters {
+  query?: string;
+  status?: string | "all";
+  todoType?: string | "all";
+}
+
+export type AccountingNewTodoStatus = string;
+export type AccountingNewTodoPriority = string;
+
+export interface AccountingNewReminderListItem {
+  id: number;
+  invoiceId: number | null;
+  expenseId: number | null;
+  todoType: string;
+  status: string;
+  title: string;
+  message: string | null;
+  dueDate: string;
+  createdAt: string;
+}
+
+export type AccountingNewReminderDetail = AccountingNewReminderListItem;
+
+export interface AccountingNewReminderEmailListItem {
+  id: number;
+  invoiceId: number;
+  invoiceNumber: string | null;
+  todoId: number | null;
+  reminderType: string;
+  status: string;
+  recipientEmail: string;
+  subject: string;
+  message: string;
+  sentAt: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export type AccountingNewReminderEmailDetail = AccountingNewReminderEmailListItem;
+
+export interface AccountingNewReminderEmailFilters {
+  query?: string;
+  status?: string | "all";
+  reminderType?: string | "all";
+}
+
+export type AccountingNewTodoDetailState =
+  | { status: "loading" }
+  | { status: "ready"; detail: AccountingNewTodoDetail }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
+
+export type AccountingNewReminderEmailDetailState =
+  | { status: "loading" }
+  | { status: "ready"; detail: AccountingNewReminderEmailDetail }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
+
 export interface AccountingNewBankTransactionListItem {
   id: number;
   externalId: string | null;
