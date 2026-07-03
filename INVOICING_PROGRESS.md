@@ -2976,8 +2976,100 @@
 - Push: **No**
 - Deploy/CD: **No**
 - Commit message: `Add read-only accounting reminders views`
-- Local commit hash: _(filled after commit)_
+- Local commit hash: `e597039`
 - Known risks/follow-ups:
   - Reminder email list aggregates per-invoice GET calls; may be slow with many invoices.
   - No global `GET /reminder-emails/{id}`; detail route uses scan or `invoiceId` query param.
   - Dev docker immediate curl smoke returned `404` for dynamic detail routes after restart; re-check after dev compile settles.
+
+## Úkol 22G-VERIFY Docker route verification for reminder detail routes
+
+- Date: `2026-07-03`
+- Problem:
+  - right after Docker restart, `/admin/ucetnictvi-new/ukoly/1` and `/admin/ucetnictvi-new/upominky-emaily/1` were reported as `404`
+- Root cause:
+  - confirmed **Docker/Next dev compile timing**, not a missing route file and not a 22G-only code bug
+  - after restart, the frontend dev server was still warming and on-demand compiling app-router pages
+  - during that warm-up window, frontend logs showed temporary `404` responses not only for the two new 22G detail routes, but also for older accounting detail routes:
+    - `/admin/ucetnictvi-new/doklady/1`
+    - `/admin/ucetnictvi-new/vydaje/1`
+    - `/admin/ucetnictvi-new/dodavatele/1`
+    - `/admin/ucetnictvi-new/bankovni-transakce/1`
+  - local production build and container `.next` artifacts both contained the routes correctly
+- Dev compile timing or real route bug:
+  - `Dev compile timing`
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+- Route files existence check:
+  - `frontend/src/app/admin/ucetnictvi-new/ukoly/[id]/page.tsx` -> `True`
+  - `frontend/src/app/admin/ucetnictvi-new/upominky-emaily/[id]/page.tsx` -> `True`
+- Local build result:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - build output explicitly listed:
+    - `/admin/ucetnictvi-new/ukoly/[id]`
+    - `/admin/ucetnictvi-new/upominky-emaily/[id]`
+  - unchanged unrelated warnings:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'. Either include it or remove the dependency array. react-hooks/exhaustive-deps`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old. Please run: npx update-browserslist-db@latest`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Local `.next` route artifact result:
+  - host `frontend/.next` contained:
+    - `server/app/admin/ucetnictvi-new/ukoly/[id]/page.js`
+    - `server/app/admin/ucetnictvi-new/upominky-emaily/[id]/page.js`
+  - frontend container `.next` contained the same route artifacts
+  - `app-paths-manifest.json` inside the container also included the two new routes and older accounting detail routes
+- Docker helper commands/result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 logs` -> reviewed
+- Frontend logs summary:
+  - frontend became ready after restart
+  - logs showed temporary `404` responses for all accounting detail routes during warm-up
+  - a later direct request to `/admin/ucetnictvi-new/ukoly/1` returned `200`
+  - this confirms the initial `404` was not tied specifically to the 22G routes
+- Route-specific smoke results after verification:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/ukoly/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/upominky-emaily/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- Whether `/admin/ucetnictvi-new/ukoly/1` works on `8090`:
+  - `Yes`
+- Whether `/admin/ucetnictvi-new/upominky-emaily/1` works on `8090`:
+  - `Yes`
+- Whether all previous accounting routes still work:
+  - `Yes`
+- Whether `/admin/invoices` remains available/unchanged:
+  - `Yes`
+- i18n check result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1` -> `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Old invoicing UI touched:
+  - `No`
+- `/admin/invoices` changed:
+  - `No`
+- Old invoice components changed:
+  - `No`
+- `frontend/src/lib/invoices.ts` changed:
+  - `No`
+- Backend source changes:
+  - `None`
+- Database/schema changes:
+  - `None`
+- AI/RAG backend implemented:
+  - `No`
+- Voice implemented:
+  - `No`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Planned commit message:
+  - `Record reminder routes Docker verification`
+- Known risks/follow-ups:
+  - immediate post-restart curl checks against the Next dev container can still observe temporary warm-up behavior before on-demand route compilation stabilizes
