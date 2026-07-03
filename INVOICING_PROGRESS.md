@@ -3220,3 +3220,160 @@
 - Known risks/follow-ups:
   - safe GET recurring endpoints do not expose separate template number or recurrence start/end dates, so UI intentionally shows conservative translated notes instead of inventing data
   - generation history is available per template; no safe global recurring generations list was introduced
+
+## Úkol 22I Attachments / Inbox read-only UI in ÚčetnictvíNew
+
+- Date: `2026-07-04`
+- Goal:
+  - extend `/admin/ucetnictvi-new` with read-only attachments list, attachment inbox (unassigned files), attachment detail, and safe relation links to documents/expenses/todos/bank transactions
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `frontend/src/app/admin/ucetnictvi-new/prilohy/[id]/page.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewAttachmentDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewAttachmentInboxPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewAttachmentInboxTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewAttachmentStatusBadge.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewAttachmentsPanel.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewAttachmentsTable.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewShell.tsx`
+  - `frontend/src/components/admin/accounting-new/accountingNewFormat.ts`
+  - `frontend/src/data/translations.ts`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/lib/accountingNewModules.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `frontend/src/types/accountingNewMetadata.ts`
+- Endpoints inspected/used (GET only):
+  - `GET /api/admin/invoices/attachments` (filters: `invoice_id`, `expense_id`, `todo_id`, `bank_transaction_id`, `attachment_type`, `status`, `unlinked_only`)
+  - `GET /api/admin/invoices/attachments/{attachment_id}`
+  - `GET /api/admin/invoices/audit-events?attachment_id={attachment_id}`
+  - helper read paths via existing list filters:
+    - document attachments: `invoice_id`
+    - expense attachments: `expense_id`
+  - not used because unsafe / mutation:
+    - `POST` upload
+    - `POST` link
+    - `POST` archive / unarchive
+    - `DELETE`
+    - download endpoint (auth/side-effect uncertainty; metadata only in UI)
+- Attachments UI:
+  - `Added`
+  - read-only panel on `/admin/ucetnictvi-new`
+  - filters for search, attachment status, and attachment type
+  - table columns: file name, type/MIME, size, status, related entity, created date
+  - rows link to `/admin/ucetnictvi-new/prilohy/[id]`
+  - no upload/delete/archive/link/unlink/edit controls
+- Attachment detail route:
+  - `Added`
+  - `/admin/ucetnictvi-new/prilohy/[id]`
+  - shows metadata, checksum, relations, optional audit events, read-only safety note, legacy `/admin/invoices` preservation notice
+- Inbox UI:
+  - `Added`
+  - read-only inbox panel on `/admin/ucetnictvi-new`
+  - uses safe GET `unlinked_only=true` plus dashboard-loaded data for resilient layout
+  - no upload/link/archive/delete controls
+- Attachment relations:
+  - `Added (read-only display)`
+  - list/detail show links to documents, expenses, todos, and bank transactions when backend returns relation IDs
+  - no dedicated relations list endpoint was required; relation data comes from attachment list/detail GET payloads
+- Existing i18n keys added:
+  - `accountingNew.auth.attachments*|attachmentDetail*|attachmentInbox*`
+  - `accountingNew.errors.attachments*|attachmentDetail*|attachmentInbox*`
+  - `accountingNew.empty.attachments*|attachmentInbox*`
+  - `accountingNew.attachments`
+  - `accountingNew.attachmentDetail`
+  - `accountingNew.attachmentInbox`
+  - `accountingNew.attachmentTypes`
+  - `accountingNew.statusLabels.uploaded|linked|archived`
+  - `accountingNew.moduleRegistry.attachments|attachmentDetail|attachmentInbox`
+  - `accountingNew.rag.entityTypes.attachment_inbox_item`
+  - `accountingNew.rag.searchableFields.mimeType|fileSize|checksum|uploadedAt|archivedAt|rawPayload`
+  - `accountingNew.voice.labels.attachmentDetail|attachmentInbox`
+  - `accountingNew.voice.aliases.attachments|attachmentDetail|attachmentInbox`
+- Locale coverage:
+  - `cs`
+  - `ua`
+  - `ru`
+  - `en`
+  - verified complete by `scripts/check-accounting-i18n.ps1`
+- Module registry updates:
+  - `attachments` changed to `implemented-read-only`
+  - added `attachment-detail` and `attachment-inbox`
+  - capability flags kept read-only:
+    - `canRead: true`
+    - `canCreate/canUpdate/canDelete/canSend/canExport/canImport/canApply/canGenerate/canUpload/canArchive/canLink: false`
+- RAG/voice metadata updates:
+  - attachment searchable metadata for originalFilename, mimeType, fileSize, attachmentType, status, checksum, note, createdAt
+  - attachment inbox entity type `attachment_inbox_item`
+  - voice aliases for attachment, invoice attachment, expense attachment, file, inbox, unassigned file, příloha, soubor, nezařazená příloha equivalents across locales
+  - AI/RAG backend implementation: `No`
+  - voice implementation: `No`
+- Auth/401 behavior:
+  - attachments panel, inbox panel, and attachment detail route show translated login-required alerts on `401`
+  - dashboard/shell remain usable when attachment supplementary requests fail
+- No-upload/delete/archive/link/unlink safety confirmation:
+  - `Confirmed`
+  - no upload/delete/archive/link/unlink/download mutation controls or unsafe API calls were added
+- i18n check:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1`
+  - result before changes: `passed` (with only auth/error gaps in non-cs locales during partial work)
+  - result after changes: `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Frontend build:
+  - `cd frontend`
+  - `npm run build` -> `passed`
+  - build listed:
+    - `/admin/ucetnictvi-new`
+    - `/admin/ucetnictvi-new/prilohy/[id]`
+  - unchanged unrelated warnings:
+    - `./src/app/galerie/page.tsx:125:6 Warning: React Hook useEffect has a missing dependency: 'selectedCategory'.`
+    - `Browserslist: browsers data (caniuse-lite) is 13 months old.`
+    - `The Next.js plugin was not detected in your ESLint configuration.`
+- Docker helper commands/result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 status` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 restart` -> `passed`
+  - `powershell -ExecutionPolicy Bypass -File scripts/lakodi-docker-dev.ps1 smoke` -> `passed`
+- Route-specific smoke results:
+  - `GET http://localhost:8016/api/health` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/doklady/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/vydaje/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/dodavatele/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/bankovni-transakce/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/ukoly/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/upominky-emaily/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/opakovane/1` -> `200`
+  - `GET http://localhost:8090/admin/ucetnictvi-new/prilohy/1` -> `200`
+  - `GET http://localhost:8090/admin/invoices` -> `200`
+  - unauthenticated `GET http://localhost:8090/api/admin/invoices` -> `401`
+- `.next` artifact spot-check:
+  - host build artifacts contained `/admin/ucetnictvi-new/prilohy/[id]` route wrapper
+  - compiled chunks contain Czech defaults such as `Přílohy`, inbox/read-only labels, and `/admin/invoices` preservation references
+- Whether `/admin/ucetnictvi-new` works on `8090`:
+  - `Yes`
+- Whether `/admin/ucetnictvi-new/prilohy/1` works on `8090`:
+  - `Yes`
+- Whether `/admin/invoices` remains available/unchanged:
+  - `Yes`
+- Old invoicing UI touched:
+  - `No`
+- `/admin/invoices` changed:
+  - `No`
+- Old invoice components changed:
+  - `No`
+- `frontend/src/lib/invoices.ts` changed:
+  - `No`
+- Backend source changes:
+  - `None`
+- Database/schema changes:
+  - `None`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Commit message:
+  - `Add read-only accounting attachments views`
+- Local commit hash:
+  - `Recorded in final response after local commit`
+- Known risks/follow-ups:
+  - download action intentionally omitted until a clearly safe GET download path is confirmed
+  - inbox panel relies on `unlinked_only=true`; if backend semantics change, UI should remain conservative and read-only
+  - attachment audit events are optional supplemental GET data and may fail independently without breaking core detail view

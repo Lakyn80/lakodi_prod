@@ -1,6 +1,7 @@
 import { adminApiUrl, apiFetchOptions } from "@/lib/api";
 import type {
   AccountingNewApiError,
+  AccountingNewAttachmentFilters,
   AccountingNewAttachmentSummary,
   AccountingNewAuditEventSummary,
   AccountingNewBankTransactionDetail,
@@ -132,6 +133,52 @@ function normalizeReminderEmailId(id: number | string): string {
 
 function normalizeRecurringTemplateId(id: number | string): string {
   return normalizeEntityId(id, "recurring-detail", "ID opakované šablony");
+}
+
+function normalizeAttachmentId(id: number | string): string {
+  return normalizeEntityId(id, "attachment-detail", "ID přílohy");
+}
+
+type AccountingNewAttachmentApiItem = {
+  id: number;
+  invoice_id: number | null;
+  expense_id: number | null;
+  todo_id: number | null;
+  bank_transaction_id: number | null;
+  attachment_type: string;
+  status: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  checksum_sha256: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+function buildAttachmentQueryPath(filters: AccountingNewAttachmentFilters = {}): string {
+  const searchParams = new URLSearchParams();
+
+  if (filters.invoiceId !== undefined) {
+    searchParams.set("invoice_id", String(filters.invoiceId));
+  }
+
+  if (filters.expenseId !== undefined) {
+    searchParams.set("expense_id", String(filters.expenseId));
+  }
+
+  if (filters.status && filters.status !== "all") {
+    searchParams.set("status", filters.status);
+  }
+
+  if (filters.attachmentType && filters.attachmentType !== "all") {
+    searchParams.set("attachment_type", filters.attachmentType);
+  }
+
+  if (filters.unlinkedOnly) {
+    searchParams.set("unlinked_only", "true");
+  }
+
+  return `/attachments${searchParams.size > 0 ? `?${searchParams.toString()}` : ""}`;
 }
 
 function mapDocumentListItem(item: {
@@ -1378,6 +1425,39 @@ function matchesRecurringTemplateFilters(
   return true;
 }
 
+function matchesAttachmentFilters(
+  attachment: AccountingNewAttachmentSummary,
+  filters: AccountingNewAttachmentFilters,
+): boolean {
+  const query = normalizeSearchText(filters.query);
+  if (query) {
+    const haystack = [
+      attachment.originalFilename,
+      attachment.contentType,
+      attachment.attachmentType,
+      attachment.status,
+      attachment.note,
+      attachment.checksumSha256,
+    ]
+      .map(normalizeSearchText)
+      .join(" ");
+
+    if (!haystack.includes(query)) {
+      return false;
+    }
+  }
+
+  if (filters.status && filters.status !== "all" && attachment.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.attachmentType && filters.attachmentType !== "all" && attachment.attachmentType !== filters.attachmentType) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function listAccountingNewInvoices(
   params: AccountingNewListParams = {},
 ): Promise<AccountingNewDocumentListItem[]> {
@@ -2221,27 +2301,87 @@ export async function listAccountingNewRecurringTemplateGenerations(
 }
 
 export async function listAccountingNewAttachments(
+  filters: AccountingNewAttachmentFilters = {},
   params: AccountingNewListParams = {},
 ): Promise<AccountingNewAttachmentSummary[]> {
+  const data = await fetchAccountingNewJson<AccountingNewAttachmentApiItem[]>(
+    "attachments",
+    buildAttachmentQueryPath(filters),
+    params.signal,
+  );
+
+  return data.map(mapAttachmentSummary).filter((attachment) => matchesAttachmentFilters(attachment, filters));
+}
+
+export async function getAccountingNewAttachment(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAttachmentSummary> {
+  const normalizedId = normalizeAttachmentId(id);
+  const data = await fetchAccountingNewJson<AccountingNewAttachmentApiItem>(
+    "attachment-detail",
+    `/attachments/${normalizedId}`,
+    params.signal,
+  );
+
+  return mapAttachmentSummary(data);
+}
+
+export async function listAccountingNewAttachmentInbox(
+  filters: AccountingNewAttachmentFilters = {},
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAttachmentSummary[]> {
+  return listAccountingNewAttachments({ ...filters, unlinkedOnly: true }, params);
+}
+
+export async function listAccountingNewDocumentAttachments(
+  invoiceId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAttachmentSummary[]> {
+  const normalizedId = normalizeDocumentId(invoiceId);
+  return listAccountingNewAttachments({ invoiceId: Number(normalizedId) }, params);
+}
+
+export async function listAccountingNewExpenseAttachments(
+  expenseId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAttachmentSummary[]> {
+  const normalizedId = normalizeExpenseId(expenseId);
+  return listAccountingNewAttachments({ expenseId: Number(normalizedId) }, params);
+}
+
+export async function getAccountingNewAttachmentAuditEvents(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAuditEventSummary[]> {
+  const normalizedId = normalizeAttachmentId(id);
   const data = await fetchAccountingNewJson<
     Array<{
       id: number;
+      event_type: string;
+      entity_type: string;
+      entity_id: number;
       invoice_id: number | null;
       expense_id: number | null;
-      todo_id: number | null;
+      subject_id: number | null;
+      supplier_id: number | null;
       bank_transaction_id: number | null;
-      attachment_type: string;
-      status: string;
-      original_filename: string;
-      content_type: string;
-      size_bytes: number;
-      checksum_sha256: string | null;
-      note: string | null;
+      payment_match_id: number | null;
+      todo_id: number | null;
+      attachment_id: number | null;
+      recurring_template_id: number | null;
+      reminder_email_id: number | null;
+      actor_type: string | null;
+      actor_id: number | null;
+      actor_email: string | null;
+      source: string;
+      message: string | null;
+      metadata: unknown;
       created_at: string;
     }>
-  >("attachments", "/attachments", params.signal);
+  >("attachment-audit-events", `/audit-events?attachment_id=${normalizedId}`, params.signal);
 
-  return data.map(mapAttachmentSummary);
+  return data.map(mapAuditEventSummary);
 }
 
 export async function listAccountingNewSubjects(
@@ -2335,7 +2475,7 @@ export async function getAccountingNewDashboardData(
     listAccountingNewBankTransactions({}, params),
     listAccountingNewAuditEvents(params),
     listAccountingNewRecurringTemplates({}, params),
-    listAccountingNewAttachments(params),
+    listAccountingNewAttachments({}, params),
     listAccountingNewSubjects(params),
     listAccountingNewSuppliers({}, params),
   ]);

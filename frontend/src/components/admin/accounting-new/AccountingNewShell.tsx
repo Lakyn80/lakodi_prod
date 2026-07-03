@@ -23,6 +23,8 @@ import { AccountingNewBankTransactionsPanel } from "@/components/admin/accountin
 import { AccountingNewPaymentMatchesPanel } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesPanel";
 import { AccountingNewTodosPanel } from "@/components/admin/accounting-new/AccountingNewTodosPanel";
 import { AccountingNewRecurringTemplatesPanel } from "@/components/admin/accounting-new/AccountingNewRecurringTemplatesPanel";
+import { AccountingNewAttachmentsPanel } from "@/components/admin/accounting-new/AccountingNewAttachmentsPanel";
+import { AccountingNewAttachmentInboxPanel } from "@/components/admin/accounting-new/AccountingNewAttachmentInboxPanel";
 import { AccountingNewReminderEmailsPanel } from "@/components/admin/accounting-new/AccountingNewReminderEmailsPanel";
 import {
   formatAccountingNewDateTime,
@@ -100,7 +102,7 @@ function getModuleStats(
       }),
     },
     attachments: {
-      badge: t.common.readyBadge,
+      badge: t.common.readOnlyBadge,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.attachments, {
         count: data.metrics.attachmentsLoaded,
       }),
@@ -219,6 +221,18 @@ export function AccountingNewShell() {
   const bankTransactionsError = getResourceError(partialErrors, "bank-transactions");
   const todosError = getResourceError(partialErrors, "todos");
   const recurringError = getResourceError(partialErrors, "recurring-templates");
+  const attachmentsError = getResourceError(partialErrors, "attachments");
+  const inboxAttachments = useMemo(
+    () =>
+      (dashboard?.attachments ?? []).filter(
+        (attachment) =>
+          !attachment.invoiceId &&
+          !attachment.expenseId &&
+          !attachment.todoId &&
+          !attachment.bankTransactionId,
+      ),
+    [dashboard?.attachments],
+  );
   const moduleStats = getModuleStats(t, dashboard);
   const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
@@ -405,6 +419,22 @@ export function AccountingNewShell() {
       </div>
 
       <AccountingNewReminderEmailsPanel />
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AccountingNewAttachmentsPanel
+          attachments={dashboard?.attachments ?? []}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={attachmentsError}
+        />
+
+        <AccountingNewAttachmentInboxPanel
+          attachments={inboxAttachments}
+          isLoading={state.status === "loading"}
+          authRequired={state.status === "auth"}
+          error={attachmentsError}
+        />
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
         <Card className="border-border bg-card">

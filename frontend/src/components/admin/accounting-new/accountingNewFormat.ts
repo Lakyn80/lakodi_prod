@@ -80,6 +80,30 @@ export function translateAccountingNewDocumentKind(t: AccountingNewTranslations,
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;
 }
 
+export function translateAccountingNewAttachmentType(t: AccountingNewTranslations, value: string): string {
+  const labels = t.attachmentTypes as Record<string, string>;
+  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
+export function formatAccountingNewFileSize(bytes: number, language: Language, fallback: string): string {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return fallback;
+  }
+
+  if (bytes === 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** exponent;
+  const formatted = new Intl.NumberFormat(getAccountingNewLocale(language), {
+    maximumFractionDigits: exponent === 0 ? 0 : 1,
+  }).format(value);
+
+  return `${formatted} ${units[exponent]}`;
+}
+
 export function translateAccountingNewTransactionDirection(t: AccountingNewTranslations, value: string): string {
   const labels = t.transactionDirections as Record<string, string>;
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;

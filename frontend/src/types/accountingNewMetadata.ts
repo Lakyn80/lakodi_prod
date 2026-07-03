@@ -16,6 +16,8 @@ export type AccountingNewModuleId =
   | "reminder-emails"
   | "reminder-email-detail"
   | "attachments"
+  | "attachment-detail"
+  | "attachment-inbox"
   | "recurring"
   | "recurring-detail"
   | "exports"
@@ -33,6 +35,8 @@ export type AccountingNewEntityType =
   | "auditEvent"
   | "audit_event"
   | "attachment"
+  | "attachmentInboxItem"
+  | "attachment_inbox_item"
   | "reminder"
   | "todo"
   | "reminderEmail"
@@ -90,6 +94,11 @@ export type AccountingNewSearchableField =
   | "documentType"
   | "runDate"
   | "originalFilename"
+  | "mimeType"
+  | "fileSize"
+  | "checksum"
+  | "uploadedAt"
+  | "archivedAt"
   | "attachmentType"
   | "name"
   | "entityType"
@@ -124,6 +133,9 @@ export interface AccountingNewCapabilityFlags {
   canImport: boolean;
   canApply: boolean;
   canGenerate: boolean;
+  canUpload: boolean;
+  canArchive: boolean;
+  canLink: boolean;
 }
 
 export interface AccountingNewModuleRegistryEntry {

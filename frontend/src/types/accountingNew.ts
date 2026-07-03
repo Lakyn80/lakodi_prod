@@ -518,6 +518,40 @@ export interface AccountingNewAttachmentSummary {
   createdAt: string;
 }
 
+export type AccountingNewAttachmentListItem = AccountingNewAttachmentSummary;
+export type AccountingNewAttachmentDetail = AccountingNewAttachmentSummary;
+export type AccountingNewAttachmentInboxItem = AccountingNewAttachmentSummary;
+
+export type AccountingNewAttachmentStatus = string;
+
+export interface AccountingNewAttachmentFilters {
+  query?: string;
+  status?: string | "all";
+  attachmentType?: string | "all";
+  invoiceId?: number;
+  expenseId?: number;
+  unlinkedOnly?: boolean;
+}
+
+export type AccountingNewAttachmentInboxFilters = Pick<
+  AccountingNewAttachmentFilters,
+  "query" | "status" | "attachmentType"
+>;
+
+export interface AccountingNewAttachmentRelation {
+  invoiceId: number | null;
+  expenseId: number | null;
+  todoId: number | null;
+  bankTransactionId: number | null;
+}
+
+export type AccountingNewAttachmentDetailState =
+  | { status: "loading" }
+  | { status: "ready"; detail: AccountingNewAttachmentDetail; auditEvents: AccountingNewAuditEventSummary[]; partialErrors: AccountingNewApiError[] }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
+
 export interface AccountingNewSubjectSummary {
   id: number;
   name: string;
