@@ -72,11 +72,12 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     rag: {
       entityType: "document",
       labelKey: "rag.entityTypes.document",
-      searchableFields: [
-        { field: "invoiceNumber", labelKey: "rag.searchableFields.invoiceNumber", weight: 5 },
-        { field: "variableSymbol", labelKey: "rag.searchableFields.variableSymbol", weight: 5 },
-        { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 4 },
-      ],
+        searchableFields: [
+          { field: "invoiceNumber", labelKey: "rag.searchableFields.invoiceNumber", weight: 5 },
+          { field: "variableSymbol", labelKey: "rag.searchableFields.variableSymbol", weight: 5 },
+          { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 4 },
+          { field: "ico", labelKey: "rag.searchableFields.ico", weight: 4 },
+        ],
     },
     voice: {
       labelKey: "voice.labels.documents",
@@ -131,6 +132,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
           { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 5 },
           { field: "ico", labelKey: "rag.searchableFields.ico", weight: 4 },
           { field: "dic", labelKey: "rag.searchableFields.dic", weight: 4 },
+          { field: "email", labelKey: "rag.searchableFields.email", weight: 3 },
         ],
       },
       voice: {

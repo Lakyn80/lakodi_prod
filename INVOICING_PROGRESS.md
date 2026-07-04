@@ -3622,4 +3622,24 @@
 - Commit message (when ready):
   - `Add accounting subjects ARES expenses suppliers write`
 - Local commit hash:
-  - uncommitted at end of session
+  - `7a2846d` — `Add accounting subjects ARES expenses suppliers write`
+
+## Batch 23A/23B-P0 Fix duplicate ARES, auto-save invoice customers, collapse customer list
+
+- Date: `2026-07-04`
+- Scope (P0 production bugfix):
+  - removed duplicate top/dashboard ARES widget (`AccountingNewAresDashboardLookup` from `AccountingNewShell` + `AccountingNewDocumentsPanel`)
+  - single ARES flow remains in document/subject/supplier/expense forms via `AccountingNewAresLookupSection`
+  - auto-save/reuse customers on document create/edit/issue via `accountingNewCustomerPersistence.ts` + `POST /api/admin/invoices/subjects`
+  - dedup matching: IČO → DIČ → email → normalized name+country
+  - collapsed/searchable customer list on dashboard (`AccountingNewSubjectsPanel`) and document form (`AccountingNewSubjectPicker`, max 20 results)
+- Endpoints used:
+  - `GET/POST /api/admin/invoices/subjects`
+  - `GET /api/admin/invoices/ares/{ico}`, `GET /api/admin/invoices/ares/search`
+  - document write unchanged: `POST/PUT /api/admin/invoices` with `subject_id`
+- Backend uniqueness: UI dedup only; backend does not enforce unique IČO on subjects
+- Backend source changes: `None`
+- Database/schema changes: `None`
+- Closes part of 23B P0 customer/subject requirement: yes (auto-save on invoice + dedup + collapsed list; manual subject CRUD already in 23B)
+- Protected legacy invoice files: untouched
+- Commit message: `Fix accounting ARES customer persistence`

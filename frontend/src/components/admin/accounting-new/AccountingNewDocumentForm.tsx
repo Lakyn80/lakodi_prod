@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 
 import { AccountingNewAresLookupSection } from "@/components/admin/accounting-new/AccountingNewAresLookupSection";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
+import { AccountingNewSubjectPicker } from "@/components/admin/accounting-new/AccountingNewSubjectPicker";
 import {
   formatAccountingNewTemplate,
   translateAccountingNewDocumentKind,
@@ -32,6 +33,11 @@ import {
   buildAccountingNewDocumentWritePayloadFromForm,
   createEmptyAccountingNewDocumentFormState,
 } from "@/lib/accountingNewDocumentWrite";
+import {
+  applyAccountingNewSubjectToDocumentForm,
+  buildAccountingNewCustomerInputFromDocumentForm,
+  resolveOrCreateAccountingNewCustomer,
+} from "@/lib/accountingNewCustomerPersistence";
 import type { AccountingNewApiError, AccountingNewDocumentFormState, AccountingNewSubjectSummary } from "@/types/accountingNew";
 
 const DOCUMENT_KINDS = ["invoice", "proforma", "tax_document", "correction", "final_invoice", "quote"] as const;
@@ -156,6 +162,23 @@ export function AccountingNewDocumentForm({
     return null;
   }
 
+  function getPersistenceSuccessMessage(
+    result: Awaited<ReturnType<typeof resolveOrCreateAccountingNewCustomer>>,
+  ): string | null {
+    if (result.status === "created") {
+      return t.customerPersistence.customerSaved;
+    }
+
+    if (result.status === "reused") {
+      if (result.matchField === "ico") {
+        return t.customerPersistence.existingCustomerReused;
+      }
+      return t.customerPersistence.duplicateCustomerFound;
+    }
+
+    return null;
+  }
+
   async function submitForm(statusOverride: "draft" | "issued") {
     setValidationError(null);
     setMutationError(null);
@@ -170,7 +193,45 @@ export function AccountingNewDocumentForm({
     setIsSubmitting(true);
 
     try {
-      const payload = buildAccountingNewDocumentWritePayloadFromForm(form, {
+      let workingForm = form;
+      let persistenceNotice: string | null = null;
+
+      if (!form.subjectId.trim()) {
+        const persistence = await resolveOrCreateAccountingNewCustomer(
+          subjects,
+          buildAccountingNewCustomerInputFromDocumentForm(form),
+        );
+
+        if (persistence.status === "ambiguous") {
+          setValidationError(
+            formatAccountingNewTemplate(t.customerPersistence.ambiguousCustomerMatch, {
+              count: persistence.matches.length,
+            }),
+          );
+          return;
+        }
+
+        if (persistence.status === "failed") {
+          setMutationError(persistence.error);
+          return;
+        }
+
+        if (persistence.status === "skipped") {
+          setValidationError(t.customerPersistence.customerPersistenceRequired);
+          return;
+        }
+
+        workingForm = applyAccountingNewSubjectToDocumentForm(form, persistence.subject);
+        setForm(workingForm);
+
+        if (persistence.status === "created") {
+          setSubjects((current) => [...current, persistence.subject]);
+        }
+
+        persistenceNotice = getPersistenceSuccessMessage(persistence);
+      }
+
+      const payload = buildAccountingNewDocumentWritePayloadFromForm(workingForm, {
         status: statusOverride,
       });
 
@@ -180,7 +241,8 @@ export function AccountingNewDocumentForm({
           : await updateAccountingNewDocument(documentId ?? "", payload);
 
       setSuccessMessage(
-        mode === "create" ? t.documentWrite.mutation.createSuccess : t.documentWrite.mutation.updateSuccess,
+        persistenceNotice ??
+          (mode === "create" ? t.documentWrite.mutation.createSuccess : t.documentWrite.mutation.updateSuccess),
       );
 
       window.location.href = `${ACCOUNTING_NEW_ROUTE}/doklady/${detail.id}`;
@@ -200,7 +262,7 @@ export function AccountingNewDocumentForm({
     }
   }
 
-  if (isLoading) {
+  if (isLoading && mode === "edit") {
     return <p className="text-sm text-muted-foreground">{t.documentWrite.loading}</p>;
   }
 
@@ -260,6 +322,59 @@ export function AccountingNewDocumentForm({
               void submitForm("draft");
             }}
           >
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">{t.documentWrite.customerSectionTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.documentWrite.customerSectionDescription}</p>
+              </div>
+              <AccountingNewSubjectPicker
+                subjects={subjects}
+                selectedSubjectId={form.subjectId}
+                onSelect={(subject) => {
+                  setForm((current) => ({
+                    ...current,
+                    subjectId: String(subject.id),
+                    customerName: subject.name,
+                    customerEmail: subject.email,
+                    customerPhone: subject.phone ?? "",
+                    customerAddress: subject.address,
+                    customerIco: subject.ico ?? "",
+                    customerDic: subject.dic ?? "",
+                  }));
+                }}
+                onClear={() => setForm((current) => ({ ...current, subjectId: "" }))}
+              />
+              {selectedSubject ? (
+                <p className="text-sm text-muted-foreground">
+                  {formatAccountingNewTemplate(t.documentWrite.subjectSelectedHint, { name: selectedSubject.name })}
+                </p>
+              ) : null}
+              <AccountingNewAresLookupSection
+                values={{
+                  name: form.customerName,
+                  email: form.customerEmail,
+                  phone: form.customerPhone,
+                  address: form.customerAddress,
+                  ico: form.customerIco,
+                  dic: form.customerDic,
+                  dataBox: "",
+                  country: "CZ",
+                }}
+                onChange={(patch) =>
+                  setForm((current) => ({
+                    ...current,
+                    subjectId: "",
+                    customerName: patch.name ?? current.customerName,
+                    customerEmail: patch.email ?? current.customerEmail,
+                    customerPhone: patch.phone ?? current.customerPhone,
+                    customerAddress: patch.address ?? current.customerAddress,
+                    customerIco: patch.ico ?? current.customerIco,
+                    customerDic: patch.dic ?? current.customerDic,
+                  }))
+                }
+              />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="documentKind">{t.documentWrite.fields.documentKind}</Label>
@@ -355,58 +470,6 @@ export function AccountingNewDocumentForm({
                   />
                 </div>
               ) : null}
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold">{t.documentWrite.customerSectionTitle}</h2>
-                <p className="text-sm text-muted-foreground">{t.documentWrite.customerSectionDescription}</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subjectId">{t.documentWrite.fields.subject}</Label>
-                <select
-                  id="subjectId"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={form.subjectId}
-                  onChange={(event) => setForm((current) => ({ ...current, subjectId: event.target.value }))}
-                >
-                  <option value="">{t.documentWrite.fields.subjectNone}</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {selectedSubject ? (
-                <p className="text-sm text-muted-foreground">
-                  {formatAccountingNewTemplate(t.documentWrite.subjectSelectedHint, { name: selectedSubject.name })}
-                </p>
-              ) : (
-                <AccountingNewAresLookupSection
-                  values={{
-                    name: form.customerName,
-                    email: form.customerEmail,
-                    phone: form.customerPhone,
-                    address: form.customerAddress,
-                    ico: form.customerIco,
-                    dic: form.customerDic,
-                    dataBox: "",
-                    country: "CZ",
-                  }}
-                  onChange={(patch) =>
-                    setForm((current) => ({
-                      ...current,
-                      customerName: patch.name ?? current.customerName,
-                      customerEmail: patch.email ?? current.customerEmail,
-                      customerPhone: patch.phone ?? current.customerPhone,
-                      customerAddress: patch.address ?? current.customerAddress,
-                      customerIco: patch.ico ?? current.customerIco,
-                      customerDic: patch.dic ?? current.customerDic,
-                    }))
-                  }
-                />
-              )}
             </div>
 
             <div className="space-y-4">

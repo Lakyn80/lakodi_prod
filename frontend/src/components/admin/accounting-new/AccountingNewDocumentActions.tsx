@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AccountingNewConfirmDialog } from "@/components/admin/accounting-new/AccountingNewConfirmDialog";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
+import { formatAccountingNewTemplate } from "@/components/admin/accounting-new/accountingNewFormat";
 import { Button } from "@/components/ui/button";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -13,7 +14,12 @@ import {
   AccountingNewRequestError,
   downloadAccountingNewDocumentPdf,
   finalizeAccountingNewDocument,
+  listAccountingNewSubjects,
 } from "@/lib/accountingNew";
+import {
+  buildAccountingNewCustomerInputFromDocumentDetail,
+  resolveOrCreateAccountingNewCustomer,
+} from "@/lib/accountingNewCustomerPersistence";
 import {
   buildAccountingNewDocumentWritePayloadFromDetail,
   canAccountingNewDocumentEdit,
@@ -45,9 +51,62 @@ export function AccountingNewDocumentActions({
     setSuccessMessage(null);
 
     try {
-      const payload = buildAccountingNewDocumentWritePayloadFromDetail(detail, "issued");
+      let payload = buildAccountingNewDocumentWritePayloadFromDetail(detail, "issued");
+      let issueSuccessMessage = t.documentWrite.issue.success;
+
+      if (!detail.subjectId) {
+        const subjects = await listAccountingNewSubjects();
+        const persistence = await resolveOrCreateAccountingNewCustomer(
+          subjects,
+          buildAccountingNewCustomerInputFromDocumentDetail(detail),
+        );
+
+        if (persistence.status === "ambiguous") {
+          setMutationError({
+            resource: "customer-persistence",
+            message: formatAccountingNewTemplate(t.customerPersistence.ambiguousCustomerMatch, {
+              count: persistence.matches.length,
+            }),
+            status: null,
+            requiresLogin: false,
+          });
+          return;
+        }
+
+        if (persistence.status === "failed") {
+          setMutationError(persistence.error);
+          return;
+        }
+
+        if (persistence.status === "skipped") {
+          setMutationError({
+            resource: "customer-persistence",
+            message: t.customerPersistence.customerPersistenceRequired,
+            status: null,
+            requiresLogin: false,
+          });
+          return;
+        }
+
+        payload = {
+          ...payload,
+          subject_id: persistence.subject.id,
+          customer_name: null,
+          customer_email: null,
+          customer_address: null,
+        };
+
+        if (persistence.status === "created") {
+          issueSuccessMessage = t.customerPersistence.customerSaved;
+        } else if (persistence.matchField === "ico") {
+          issueSuccessMessage = t.customerPersistence.existingCustomerReused;
+        } else {
+          issueSuccessMessage = t.customerPersistence.duplicateCustomerFound;
+        }
+      }
+
       const updated = await finalizeAccountingNewDocument(detail.id, payload);
-      setSuccessMessage(t.documentWrite.issue.success);
+      setSuccessMessage(issueSuccessMessage);
       setIssueOpen(false);
       onUpdated(updated);
     } catch (error) {

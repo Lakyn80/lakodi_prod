@@ -21,7 +21,7 @@ Routes:
 | Layer | Status |
 |-------|--------|
 | Backend `/api/admin/invoices/*` | Largely complete (~70+ admin endpoints) |
-| New FE `/admin/ucetnictvi-new` | **Partial** — read-only shell (22B–22I) + **23A document/payment write** (`6aaccc4`) |
+| New FE `/admin/ucetnictvi-new` | **Partial** — 23A document write + 23B master-data write + **P0 fix** (single ARES, auto-save customers, collapsed subject list) |
 | Legacy FE `/admin/invoices` | Functional fallback — invoice-only, ARES, PDF, email, payments, settings |
 | Mobile/PWA for accounting | **Not validated / not production-hardened** |
 | RAG / Voice | **Metadata-only** — no runtime implementation |
@@ -65,11 +65,13 @@ Dashboard, documents, expenses, suppliers, bank transactions, payment matching o
 
 | Requirement | Legacy `/admin/invoices` | New `/admin/ucetnictvi-new` | Backend |
 |-------------|--------------------------|-------------------------------|---------|
-| ARES lookup by IČO | Yes (`InvoiceForm.tsx`) | **No** | Yes (`GET /ares/{ico}`) |
-| ARES name search | Yes | **No** | Yes (`GET /ares/search`) |
-| Save reusable customer | **No** (snapshot only on invoice) | **No** (picker if subjects exist) | Yes (`POST /subjects`) |
-| Duplicate prevention | N/A | **No** | **No DB unique on IČO** |
-| Pre-seed legacy customers | N/A | **No backfill yet** | Data in `invoices.customer_*` |
+| ARES lookup by IČO | Yes (`InvoiceForm.tsx`) | **Yes** (document/subject forms) | Yes (`GET /ares/{ico}`) |
+| ARES name search | Yes | **Yes** | Yes (`GET /ares/search`) |
+| Save reusable customer | **No** (snapshot only on invoice) | **Yes** — auto on document save/issue | Yes (`POST /subjects`) |
+| Duplicate prevention | N/A | **Yes** — UI dedup IČO/DIČ/email/name | **No DB unique on IČO** |
+| Pre-seed legacy customers | N/A | Backfill script available | Data in `invoices.customer_*` |
+| Single ARES on dashboard | N/A | **Yes** — duplicate widget removed | N/A |
+| Collapsed customer list | N/A | **Yes** — dashboard + document picker | N/A |
 
 **User requirement (P0):** All companies already invoiced in legacy UI must be pre-loaded into `invoice_subjects` so new accounting starts with saved clients ready. This is a **one-time backfill** from invoice customer snapshots — it does **not** migrate or rewrite legacy invoices.
 

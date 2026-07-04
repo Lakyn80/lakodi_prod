@@ -16,16 +16,20 @@ import type { AccountingNewApiError, AccountingNewSubjectSummary } from "@/types
 import { AccountingNewSubjectsTable } from "@/components/admin/accounting-new/AccountingNewSubjectsTable";
 import {
   formatAccountingNewTemplate,
-  getAccountingNewLocale,
   translateAccountingNewApiError,
 } from "@/components/admin/accounting-new/accountingNewFormat";
+
+const MAX_VISIBLE_SUBJECTS = 20;
 
 function normalizeFilterValue(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
 function matchesQuery(subject: AccountingNewSubjectSummary, query: string): boolean {
-  if (!query) return true;
+  if (!query) {
+    return true;
+  }
+
   const haystack = [subject.name, subject.email, subject.phone, subject.ico, subject.dic, subject.country]
     .map(normalizeFilterValue)
     .join(" ");
@@ -45,23 +49,31 @@ export function AccountingNewSubjectsPanel({
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
-  const locale = getAccountingNewLocale(language);
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
-  const filteredSubjects = subjects.filter((subject) => matchesQuery(subject, normalizeFilterValue(deferredQuery)));
+  const normalizedQuery = normalizeFilterValue(deferredQuery);
+  const filteredSubjects = subjects.filter((subject) => matchesQuery(subject, normalizedQuery));
+  const visibleSubjects = filteredSubjects.slice(0, MAX_VISIBLE_SUBJECTS);
+  const hasMoreResults = filteredSubjects.length > MAX_VISIBLE_SUBJECTS;
 
   return (
-    <Card className="border-border bg-card">
+    <Card id="subjects" className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{t.subjectWrite.badgeFunctional}</Badge>
             <Badge variant="outline">{t.subjects.badge}</Badge>
           </div>
-          <Button asChild>
-            <Link href={`${ACCOUNTING_NEW_ROUTE}/odberatele/novy`}>{t.subjectWrite.actions.createSubject}</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setExpanded((current) => !current)}>
+              {expanded ? t.customerPersistence.hideCustomers : t.customerPersistence.showCustomers}
+            </Button>
+            <Button asChild>
+              <Link href={`${ACCOUNTING_NEW_ROUTE}/odberatele/novy`}>{t.subjectWrite.actions.createSubject}</Link>
+            </Button>
+          </div>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.subjects.title}</CardTitle>
@@ -69,6 +81,10 @@ export function AccountingNewSubjectsPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.customerPersistence.customerListCollapsed, { count: subjects.length })}
+        </p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.subjectsTitle}</AlertTitle>
@@ -83,7 +99,7 @@ export function AccountingNewSubjectsPanel({
           </Alert>
         ) : null}
 
-        {!authRequired && !error ? (
+        {expanded && !authRequired && !error ? (
           <>
             <Input
               value={query}
@@ -92,12 +108,15 @@ export function AccountingNewSubjectsPanel({
               aria-label={t.subjects.searchLabel}
             />
             <div className="text-sm text-muted-foreground">
-              {formatAccountingNewTemplate(t.subjects.shownCount, { count: filteredSubjects.length })}
+              {formatAccountingNewTemplate(t.subjects.shownCount, { count: visibleSubjects.length })}
             </div>
+            {hasMoreResults ? (
+              <p className="text-xs text-muted-foreground">{t.customerPersistence.tooManyCustomersUseSearch}</p>
+            ) : null}
           </>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && expanded ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -105,12 +124,18 @@ export function AccountingNewSubjectsPanel({
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && filteredSubjects.length > 0 ? (
-          <AccountingNewSubjectsTable subjects={filteredSubjects} />
+        {expanded && !isLoading && !authRequired && !error && visibleSubjects.length > 0 ? (
+          <AccountingNewSubjectsTable subjects={visibleSubjects} />
         ) : null}
 
-        {!isLoading && !authRequired && !error && subjects.length === 0 ? (
+        {expanded && !isLoading && !authRequired && !error && subjects.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">{t.empty.subjects}</div>
+        ) : null}
+
+        {expanded && !isLoading && !authRequired && !error && subjects.length > 0 && visibleSubjects.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+            {t.customerPersistence.noCustomersFound}
+          </div>
         ) : null}
       </CardContent>
     </Card>

@@ -13,7 +13,7 @@ Purpose: define what the accounting system must do, what already exists, what is
 | Layer | State |
 |-------|--------|
 | Backend (`/api/admin/invoices/*`) | **Largely complete** — CRUD + payments + bank + attachments + recurring + exports + audit + settings |
-| New FE (`/admin/ucetnictvi-new`) | **Batch 23A complete** — document draft create/edit, issue, PDF download, add payment; expenses/subjects/suppliers/bank/etc. still read-only |
+| New FE (`/admin/ucetnictvi-new`) | **Batch 23A + 23B + P0 fix** — document write, subjects/expenses/suppliers write, single ARES flow, auto-save customers on invoice |
 | Old FE (`/admin/invoices`) | **Functional for legacy outgoing invoices only** — create/edit, PDF, email, payments, settings, ARES |
 | Gap | New UI must gain write flows; old UI must remain untouched for issued legacy invoices |
 

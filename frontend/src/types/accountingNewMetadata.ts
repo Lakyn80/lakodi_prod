@@ -57,6 +57,7 @@ export type AccountingNewSearchableField =
   | "expenseNumber"
   | "variableSymbol"
   | "customerName"
+  | "email"
   | "supplierName"
   | "counterpartyName"
   | "amount"
