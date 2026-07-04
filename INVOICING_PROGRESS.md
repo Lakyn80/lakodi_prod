@@ -3377,3 +3377,60 @@
   - download action intentionally omitted until a clearly safe GET download path is confirmed
   - inbox panel relies on `unlinked_only=true`; if backend semantics change, UI should remain conservative and read-only
   - attachment audit events are optional supplemental GET data and may fail independently without breaking core detail view
+
+## Úkol 22J-FUNCTIONAL-MAP Complete accounting functionality map and today-finish cutline
+
+- Date: `2026-07-04`
+- Goal:
+  - produce a hard functional map of backend vs new read-only FE vs legacy invoice FE, define P0/P1/P2, today-finish verdict, and max-3 implementation batches toward functional non-RAG MVP
+- Backend capability summary:
+  - `/api/admin/invoices/*` is largely complete: documents CRUD (no document delete), payments, expenses, subjects, suppliers, bank import/match apply, attachments upload/link/archive/delete/download, todos, reminders, recurring, exports, settings, audit
+  - ~70+ admin endpoints; majority of P0 actions already exist server-side
+- New FE capability summary:
+  - `/admin/ucetnictvi-new` has read-only list/detail for documents, expenses, suppliers, bank, matching overview, todos, reminder emails, attachments/inbox, recurring (22B–22I)
+  - `accountingNew.ts` is GET-only (32 functions); **zero write actions** in new UI
+  - missing: all forms, confirmations, uploads, match apply, settings panel, exports UI, subject detail route
+- Old FE capability summary:
+  - `/admin/invoices` supports create/edit invoice, PDF, email, payments, settings, ARES — **outgoing invoices only**
+  - does not cover expenses, suppliers, bank, attachments, todos, recurring, exports
+  - can temporarily cover P0 outgoing invoice write until Batch 23A lands in new UI
+- Functional matrix location:
+  - `docs/accounting-functional-map.md`
+- P0/P1/P2/deferred summary:
+  - **P0:** document create/edit/issue, PDF, payments, expenses CRUD+payments, subjects+ARES, suppliers CRUD, attachment upload/link/download, bank match apply, settings read (update before new issue)
+  - **P1:** email send, document conversions (proforma/final/quote/correction/tax), bank import/reject, reminders send, todo write, recurring generate, exports download, attachment archive
+  - **P2/deferred:** entity deletes, todo auto-generate, old invoice migration, AI/RAG, voice
+- Today-finish verdict:
+  - **Verdict C** — functional non-RAG MVP cannot be finished today without unsafe shortcuts; **minimum safe path is 3 batches** (23A → 23B → 23C)
+- Max-3 implementation batch plan:
+  - **23A** Core documents and payments write
+  - **23B** Expenses, subjects, suppliers, attachments write
+  - **23C** Bank matching, reminders, recurring, exports/settings closure
+- Next batch prompt location:
+  - ready-to-copy prompt at end of `docs/accounting-functional-map.md` (Batch 23A)
+- i18n check result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1` → `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Frontend build result:
+  - `cd frontend && npm run build` → `passed`
+  - unchanged warnings: galerie useEffect deps, Browserslist age, Next.js ESLint plugin
+- Docker helper smoke result:
+  - `lakodi-docker-dev.ps1 status` → passed (stack up)
+  - `lakodi-docker-dev.ps1 smoke` → passed (health 200, ucetnictvi-new 200, detail 200, invoices 200, API 401)
+- Protected old invoice diff result:
+  - no diffs on protected invoice files
+- Backend source changes:
+  - `None`
+- Database/schema changes:
+  - `None`
+- AI/RAG backend implemented:
+  - `No`
+- Voice implemented:
+  - `No`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Commit message:
+  - `Add accounting functional completion map`
+- Local commit hash:
+  - `Recorded in final response after local commit`
