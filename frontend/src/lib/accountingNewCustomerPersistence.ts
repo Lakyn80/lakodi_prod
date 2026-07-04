@@ -15,6 +15,7 @@ export type AccountingNewCustomerInput = {
   address: string;
   ico?: string | null;
   dic?: string | null;
+  dataBox?: string | null;
   country?: string | null;
   note?: string | null;
 };
@@ -137,7 +138,7 @@ export function buildAccountingNewCustomerWritePayload(input: AccountingNewCusto
     address: input.address.trim(),
     ico: input.ico?.trim() || null,
     dic: input.dic?.trim() || null,
-    data_box: null,
+    data_box: input.dataBox?.trim() || null,
     country: normalizeCountry(input.country),
     note: input.note?.trim() || null,
   };
@@ -169,6 +170,7 @@ export function buildAccountingNewCustomerInputFromDocumentForm(
     address: form.customerAddress,
     ico: form.customerIco,
     dic: form.customerDic,
+    dataBox: form.customerDataBox,
     country: "CZ",
     note: form.note,
   };

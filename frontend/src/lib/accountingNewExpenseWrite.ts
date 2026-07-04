@@ -1,8 +1,16 @@
+import {
+  formatAccountingNewMoneyInputFromApiDecimal,
+  minorUnitsToApiDecimal,
+  parseAccountingNewMoneyInput,
+} from "@/lib/accountingNewMoney";
+import { resolveAccountingNewPaymentMethodForApi } from "@/lib/accountingNewPaymentMethods";
 import type {
   AccountingNewExpenseDetail,
   AccountingNewExpenseFormState,
   AccountingNewExpenseWritePayload,
 } from "@/types/accountingNew";
+
+export const ACCOUNTING_NEW_EXPENSE_STORED_STATUS_IDS = ["open", "cancelled"] as const;
 
 export function canAccountingNewExpenseAddPayment(detail: AccountingNewExpenseDetail): boolean {
   if (detail.status.trim().toLowerCase() === "cancelled") {
@@ -73,7 +81,7 @@ export function buildAccountingNewExpenseFormStateFromDetail(
     items: detail.items.map((item) => ({
       description: item.description,
       quantity: String(item.quantity),
-      unitPrice: String(item.unitPrice),
+      unitPrice: formatAccountingNewMoneyInputFromApiDecimal(item.unitPrice),
     })),
   };
 }
@@ -89,14 +97,14 @@ export function buildAccountingNewExpenseWritePayloadFromForm(
     received_date: form.receivedDate,
     due_date: form.dueDate,
     taxable_supply_date: form.taxableSupplyDate,
-    payment_method: form.paymentMethod.trim(),
+    payment_method: resolveAccountingNewPaymentMethodForApi(form.paymentMethod),
     bank_account_number: form.bankAccountNumber.trim(),
     bank_account_prefix: form.bankAccountPrefix.trim() || null,
     bank_code: form.bankCode.trim(),
     bank_iban: form.bankIban.trim() || null,
     currency: form.currency.trim().toUpperCase(),
     status: form.status,
-    vat_rate: form.vatRate.trim() ? Number(form.vatRate) : null,
+    vat_rate: form.vatRate.trim() ? Number(form.vatRate.replace(",", ".")) : null,
     note: form.note.trim() || null,
     supplier_id: supplierId,
     supplier_name: supplierId ? null : form.supplierName.trim() || null,
@@ -105,10 +113,17 @@ export function buildAccountingNewExpenseWritePayloadFromForm(
     supplier_address: supplierId ? null : form.supplierAddress.trim() || null,
     supplier_ico: form.supplierIco.trim() || null,
     supplier_dic: form.supplierDic.trim() || null,
-    items: form.items.map((item) => ({
-      description: item.description.trim(),
-      quantity: Number(item.quantity),
-      unit_price: Number(item.unitPrice),
-    })),
+    items: form.items.map((item) => {
+      const parsedPrice = parseAccountingNewMoneyInput(item.unitPrice, form.currency);
+      if (!parsedPrice.ok) {
+        throw new Error("INVALID_MONEY");
+      }
+
+      return {
+        description: item.description.trim(),
+        quantity: Number(item.quantity.replace(",", ".")),
+        unit_price: minorUnitsToApiDecimal(parsedPrice.minorUnits),
+      };
+    }),
   };
 }

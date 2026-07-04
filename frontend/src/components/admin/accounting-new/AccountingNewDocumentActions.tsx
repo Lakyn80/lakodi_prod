@@ -112,6 +112,13 @@ export function AccountingNewDocumentActions({
     } catch (error) {
       if (error instanceof AccountingNewRequestError) {
         setMutationError(error.apiError);
+      } else {
+        setMutationError({
+          resource: "document-actions",
+          message: t.errors.actionFailed,
+          status: null,
+          requiresLogin: false,
+        });
       }
     } finally {
       setIsIssuing(false);

@@ -1,8 +1,7 @@
 "use client";
 
-import { useDeferredValue, useState } from "react";
-
 import Link from "next/link";
+import { useDeferredValue, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +18,11 @@ import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
   translateAccountingNewApiError,
+  translateAccountingNewDocumentKind,
+  translateAccountingNewStatus,
 } from "@/components/admin/accounting-new/accountingNewFormat";
+
+const MAX_VISIBLE_DOCUMENTS = 20;
 
 function normalizeFilterValue(value: string): string {
   return value.trim().toLowerCase();
@@ -56,6 +59,7 @@ export function AccountingNewDocumentsPanel({
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [documentKind, setDocumentKind] = useState("all");
   const [effectiveStatus, setEffectiveStatus] = useState("all");
@@ -65,8 +69,8 @@ export function AccountingNewDocumentsPanel({
   const kindOptions = Array.from(new Set(documents.map((document) => document.documentKind))).sort((left, right) =>
     left.localeCompare(right, locale),
   );
-  const effectiveStatusOptions = Array.from(new Set(documents.map((document) => document.effectiveStatus))).sort((left, right) =>
-    left.localeCompare(right, locale),
+  const effectiveStatusOptions = Array.from(new Set(documents.map((document) => document.effectiveStatus))).sort(
+    (left, right) => left.localeCompare(right, locale),
   );
 
   const filteredDocuments = documents.filter((document) => {
@@ -85,6 +89,9 @@ export function AccountingNewDocumentsPanel({
     return true;
   });
 
+  const visibleDocuments = filteredDocuments.slice(0, MAX_VISIBLE_DOCUMENTS);
+  const hasMoreResults = filteredDocuments.length > MAX_VISIBLE_DOCUMENTS;
+
   return (
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
@@ -97,12 +104,21 @@ export function AccountingNewDocumentsPanel({
             <CardTitle>{t.documents.title}</CardTitle>
             <CardDescription>{t.documents.description}</CardDescription>
           </div>
-          <Button asChild>
-            <Link href={`${ACCOUNTING_NEW_ROUTE}/doklady/novy`}>{t.documentWrite.actions.createDocument}</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setExpanded((current) => !current)}>
+              {expanded ? t.documents.hideDocuments : t.documents.showDocuments}
+            </Button>
+            <Button asChild>
+              <Link href={`${ACCOUNTING_NEW_ROUTE}/doklady/novy`}>{t.documentWrite.actions.createDocument}</Link>
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.documents.listCollapsed, { count: documents.length })}
+        </p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.documentsTitle}</AlertTitle>
@@ -117,7 +133,7 @@ export function AccountingNewDocumentsPanel({
           </Alert>
         ) : null}
 
-        {!authRequired && !error ? (
+        {expanded && !authRequired && !error ? (
           <>
             <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <Input
@@ -136,7 +152,7 @@ export function AccountingNewDocumentsPanel({
                 <option value="all">{t.documents.kindAll}</option>
                 {kindOptions.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {translateAccountingNewDocumentKind(t, option)}
                   </option>
                 ))}
               </select>
@@ -150,14 +166,14 @@ export function AccountingNewDocumentsPanel({
                 <option value="all">{t.documents.statusAll}</option>
                 {effectiveStatusOptions.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {translateAccountingNewStatus(t, option)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>{formatAccountingNewTemplate(t.documents.shownCount, { count: filteredDocuments.length })}</span>
+              <span>{formatAccountingNewTemplate(t.documents.shownCount, { count: visibleDocuments.length })}</span>
               <span>·</span>
               <span>
                 {formatAccountingNewTemplate(t.documents.detailRouteHint, {
@@ -165,10 +181,14 @@ export function AccountingNewDocumentsPanel({
                 })}
               </span>
             </div>
+
+            {hasMoreResults ? (
+              <p className="text-xs text-muted-foreground">{t.documents.tooManyUseSearch}</p>
+            ) : null}
           </>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && expanded ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -176,17 +196,15 @@ export function AccountingNewDocumentsPanel({
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && filteredDocuments.length > 0 ? (
-          <AccountingNewDocumentsTable documents={filteredDocuments} />
+        {expanded && !isLoading && !authRequired && !error && visibleDocuments.length > 0 ? (
+          <AccountingNewDocumentsTable documents={visibleDocuments} />
         ) : null}
 
-        {!isLoading && !authRequired && !error && documents.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-            {t.empty.documents}
-          </div>
+        {expanded && !isLoading && !authRequired && !error && documents.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">{t.empty.documents}</div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && documents.length > 0 && filteredDocuments.length === 0 ? (
+        {expanded && !isLoading && !authRequired && !error && documents.length > 0 && visibleDocuments.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.documentsFiltered}
           </div>

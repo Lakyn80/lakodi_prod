@@ -3643,3 +3643,17 @@
 - Closes part of 23B P0 customer/subject requirement: yes (auto-save on invoice + dedup + collapsed list; manual subject CRUD already in 23B)
 - Protected legacy invoice files: untouched
 - Commit message: `Fix accounting ARES customer persistence`
+
+## Batch 23A/23B-UX Harden accounting document and expense UX
+
+- Date: `2026-07-04`
+- Scope:
+  - localized payment method dropdown (bank transfer / cash / card) in document and expense payment forms
+  - shared money parser (`accountingNewMoney.ts`) accepts `925,55` and `925.55`, sends decimal API amounts from minor units
+  - humanized API errors via `translateAccountingNewApiError` (422/generic/action failed)
+  - fixed document issue flow visibility (no full-page reload on issue/payment update)
+  - collapsed/searchable document list on dashboard (max 20)
+  - expense form: localized status/payment method/currency selects, date pickers, money inputs
+  - ARES data box saved with customer auto-save when present
+- Backend source changes: `None`
+- Commit message: `Harden accounting document and expense UX`

@@ -197,6 +197,8 @@ export const translations = {
         requestAborted: "Načítání read-only účetních dat bylo přerušeno.",
         networkGeneric: "Read-only načtení účetních dat selhalo kvůli síťové chybě.",
         httpGeneric: "Read-only načtení účetních dat selhalo ({status}).",
+        validationFailed: "Zadané údaje nejsou platné. Zkontrolujte formulář a zkuste to znovu.",
+        actionFailed: "Akci se nepodařilo dokončit. Zkuste to prosím znovu.",
       },
       empty: {
         documents: "Backend zatím nevrátil žádné read-only doklady. Nová paralelní sekce přesto zůstává připravená a původní faktury v `/admin/invoices` se nemění.",
@@ -293,6 +295,10 @@ export const translations = {
         statusFilterLabel: "Filtrovat podle výsledného stavu",
         statusAll: "Všechny stavy",
         shownCount: "{count} zobrazených dokladů",
+        showDocuments: "Zobrazit doklady",
+        hideDocuments: "Skrýt doklady",
+        listCollapsed: "V seznamu je {count} dokladů — přehled je sbalený.",
+        tooManyUseSearch: "Pro vyhledání použijte filtr — zobrazen je jen omezený výběr.",
         detailRouteHint: "detail vede pouze do nové paralelní route `{route}`",
         table: {
           document: "Doklad",
@@ -523,6 +529,14 @@ export const translations = {
         pickerDescription: "Vyberte existujícího odběratele nebo vyplňte údaje ručně / z ARES.",
         validationMissingCompanyName: "Vyplňte název firmy odběratele.",
         validationMissingIco: "Pro jednoznačné párování doporučujeme vyplnit IČO.",
+      },
+      money: {
+        invalidFormat: "Zadejte částku ve formátu 925,55 nebo 925.55",
+      },
+      paymentMethods: {
+        bank_transfer: "Bankovní převod",
+        cash: "Hotově",
+        card: "Platební kartou",
       },
       subjectWrite: {
         badgeFunctional: "Funkční write vrstva",
@@ -1366,7 +1380,7 @@ export const translations = {
         cancelled: "Zrušeno",
         matched: "Spárováno",
         ignored: "Ignorováno",
-        open: "Otevřeno",
+        open: "Otevřený",
         unmatched: "Nespárováno",
         completed: "Dokončeno",
         done: "Hotovo",
@@ -1600,6 +1614,8 @@ export const translations = {
         requestAborted: "Завантаження read-only бухгалтерських даних було перервано.",
         networkGeneric: "Read-only завантаження бухгалтерських даних не вдалося через мережеву помилку.",
         httpGeneric: "Read-only завантаження бухгалтерських даних не вдалося ({status}).",
+        validationFailed: "Введені дані недійсні. Перевірте форму та спробуйте ще раз.",
+        actionFailed: "Не вдалося виконати дію. Спробуйте ще раз.",
       },
       empty: {
         documents: "Бекенд ще не повернув жодних read-only документів. Нова паралельна секція все одно готова, а початкові рахунки в `/admin/invoices` не змінюються.",
@@ -1696,6 +1712,10 @@ export const translations = {
         statusFilterLabel: "Фільтрувати за підсумковим статусом",
         statusAll: "Усі статуси",
         shownCount: "{count} документів показано",
+        showDocuments: "Показати документи",
+        hideDocuments: "Сховати документи",
+        listCollapsed: "У списку {count} документів — перегляд згорнуто.",
+        tooManyUseSearch: "Для пошуку використовуйте фільтр — показано лише обмежений вибір.",
         detailRouteHint: "деталі ведуть лише до нового паралельного маршруту `{route}`",
         table: {
           document: "Документ",
@@ -1926,6 +1946,14 @@ export const translations = {
         pickerDescription: "Оберіть існуючого замовника або заповніть дані вручну / з ARES.",
         validationMissingCompanyName: "Заповніть назву компанії замовника.",
         validationMissingIco: "Для однозначного зіставлення рекомендуємо заповнити IČO.",
+      },
+      money: {
+        invalidFormat: "Введіть суму у форматі 925,55 або 925.55",
+      },
+      paymentMethods: {
+        bank_transfer: "Банківський переказ",
+        cash: "Готівка",
+        card: "Платіжна картка",
       },
       subjectWrite: {
         badgeFunctional: "Funkční write vrstva",
@@ -2925,6 +2953,8 @@ export const translations = {
         requestAborted: "Загрузка read-only бухгалтерских данных была прервана.",
         networkGeneric: "Read-only загрузка бухгалтерских данных не удалась из-за сетевой ошибки.",
         httpGeneric: "Read-only загрузка бухгалтерских данных не удалась ({status}).",
+        validationFailed: "Введённые данные недействительны. Проверьте форму и попробуйте снова.",
+        actionFailed: "Не удалось выполнить действие. Попробуйте снова.",
       },
       empty: {
         documents: "Бэкенд пока не вернул ни одного read-only документа. Новая параллельная секция все равно готова, а исходные счета в `/admin/invoices` не меняются.",
@@ -3021,6 +3051,10 @@ export const translations = {
         statusFilterLabel: "Фильтр по итоговому статусу",
         statusAll: "Все статусы",
         shownCount: "{count} документов показано",
+        showDocuments: "Показать документы",
+        hideDocuments: "Скрыть документы",
+        listCollapsed: "В списке {count} документов — обзор свёрнут.",
+        tooManyUseSearch: "Для поиска используйте фильтр — показан только ограниченный выбор.",
         detailRouteHint: "детали открываются только в новом параллельном маршруте `{route}`",
         table: {
           document: "Документ",
@@ -3251,6 +3285,14 @@ export const translations = {
         pickerDescription: "Выберите существующего заказчика или заполните данные вручную / из ARES.",
         validationMissingCompanyName: "Заполните название компании заказчика.",
         validationMissingIco: "Для однозначного сопоставления рекомендуем заполнить IČO.",
+      },
+      money: {
+        invalidFormat: "Введите сумму в формате 925,55 или 925.55",
+      },
+      paymentMethods: {
+        bank_transfer: "Банковский перевод",
+        cash: "Наличные",
+        card: "Банковская карта",
       },
       subjectWrite: {
         badgeFunctional: "Funkční write vrstva",
@@ -4250,6 +4292,8 @@ export const translations = {
         requestAborted: "Loading the read-only accounting data was aborted.",
         networkGeneric: "Read-only accounting data loading failed because of a network error.",
         httpGeneric: "Read-only accounting data loading failed ({status}).",
+        validationFailed: "The entered data is invalid. Check the form and try again.",
+        actionFailed: "The action could not be completed. Please try again.",
       },
       empty: {
         documents: "The backend has not returned any read-only documents yet. The new parallel section still stays ready and the original invoices in `/admin/invoices` are unchanged.",
@@ -4346,6 +4390,10 @@ export const translations = {
         statusFilterLabel: "Filter by effective status",
         statusAll: "All statuses",
         shownCount: "{count} documents shown",
+        showDocuments: "Show documents",
+        hideDocuments: "Hide documents",
+        listCollapsed: "{count} documents in the list — overview is collapsed.",
+        tooManyUseSearch: "Use search to filter — only a limited selection is shown.",
         detailRouteHint: "detail opens only in the new parallel route `{route}`",
         table: {
           document: "Document",
@@ -4576,6 +4624,14 @@ export const translations = {
         pickerDescription: "Select an existing customer or fill details manually / from ARES.",
         validationMissingCompanyName: "Enter the customer company name.",
         validationMissingIco: "For reliable matching, we recommend entering the company ID.",
+      },
+      money: {
+        invalidFormat: "Enter the amount as 925.55 or 925,55",
+      },
+      paymentMethods: {
+        bank_transfer: "Bank transfer",
+        cash: "Cash",
+        card: "Card payment",
       },
       subjectWrite: {
         badgeFunctional: "Funkční write vrstva",

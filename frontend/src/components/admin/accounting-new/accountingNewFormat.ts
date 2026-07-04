@@ -124,16 +124,68 @@ export function translateAccountingNewRecurringFrequency(t: AccountingNewTransla
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;
 }
 
+export function translateAccountingNewBusinessMode(t: AccountingNewTranslations, value: string): string {
+  const labels = t.documentWrite.businessModes as Record<string, string>;
+  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
+export function translateAccountingNewTaxMode(t: AccountingNewTranslations, value: string): string {
+  const labels = t.documentWrite.taxModes as Record<string, string>;
+  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
+export { translateAccountingNewPaymentMethod } from "@/lib/accountingNewPaymentMethods";
+
 const ACCOUNTING_NEW_ABORT_MESSAGE = "Načítání bylo přerušeno.";
 const ACCOUNTING_NEW_LOGIN_MESSAGE = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
 const ACCOUNTING_NEW_NOT_FOUND_MESSAGE = "Požadovaný accounting dokument nebyl nalezen.";
 const ACCOUNTING_NEW_NETWORK_MESSAGE = "Read-only načtení selhalo kvůli síťové chybě.";
 const ACCOUNTING_NEW_HTTP_MESSAGE_PATTERN = /^Read-only načtení selhalo \((\d+)\)\.$/;
 const ACCOUNTING_NEW_INVALID_ID_PATTERN = /musí být kladné číslo\.$/;
+const ACCOUNTING_NEW_MUTATION_FAILED_PATTERN = /^(Write|Mutation|ARES).*selhal/i;
+const ACCOUNTING_NEW_JSON_DETAIL_PATTERN = /^(\[|\{)|"type"\s*:\s*"/;
+const ACCOUNTING_NEW_STATUS_CODE_IN_MESSAGE_PATTERN = /\b(4\d{2}|5\d{2})\b/;
+
+function isLikelyUserFacingBackendMessage(message: string): boolean {
+  const trimmed = message.trim();
+  if (!trimmed || ACCOUNTING_NEW_JSON_DETAIL_PATTERN.test(trimmed)) {
+    return false;
+  }
+
+  if (ACCOUNTING_NEW_MUTATION_FAILED_PATTERN.test(trimmed)) {
+    return false;
+  }
+
+  if (trimmed.includes("Traceback") || trimmed.includes("Exception")) {
+    return false;
+  }
+
+  return trimmed.length <= 240;
+}
 
 export function translateAccountingNewApiError(t: AccountingNewTranslations, error: AccountingNewApiError): string {
+  if (error.message === "INVALID_MONEY") {
+    return t.money.invalidFormat;
+  }
+
+  if (error.status === 422) {
+    if (isLikelyUserFacingBackendMessage(error.message)) {
+      return error.message;
+    }
+
+    return t.errors.validationFailed;
+  }
+
   if (error.status === 400 && ACCOUNTING_NEW_INVALID_ID_PATTERN.test(error.message)) {
     return t.errors.invalidIdentifier;
+  }
+
+  if (error.status === 400) {
+    if (isLikelyUserFacingBackendMessage(error.message)) {
+      return error.message;
+    }
+
+    return t.errors.validationFailed;
   }
 
   if (error.status === 401 || error.message === ACCOUNTING_NEW_LOGIN_MESSAGE) {
@@ -158,5 +210,13 @@ export function translateAccountingNewApiError(t: AccountingNewTranslations, err
     });
   }
 
-  return error.message;
+  if (ACCOUNTING_NEW_STATUS_CODE_IN_MESSAGE_PATTERN.test(error.message) && !isLikelyUserFacingBackendMessage(error.message)) {
+    return t.errors.actionFailed;
+  }
+
+  if (isLikelyUserFacingBackendMessage(error.message)) {
+    return error.message;
+  }
+
+  return t.errors.actionFailed;
 }

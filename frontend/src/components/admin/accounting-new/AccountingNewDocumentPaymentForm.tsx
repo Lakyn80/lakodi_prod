@@ -3,13 +3,24 @@
 import { FormEvent, useState } from "react";
 
 import { AccountingNewConfirmDialog } from "@/components/admin/accounting-new/AccountingNewConfirmDialog";
+import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
+import { AccountingNewPaymentMethodSelect } from "@/components/admin/accounting-new/AccountingNewPaymentMethodSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AccountingNewRequestError, addAccountingNewDocumentPayment } from "@/lib/accountingNew";
+import {
+  minorUnitsToApiDecimal,
+  parseAccountingNewMoneyInput,
+} from "@/lib/accountingNewMoney";
+import {
+  backendPaymentMethodToId,
+  paymentMethodIdToBackendValue,
+  type AccountingNewPaymentMethodId,
+} from "@/lib/accountingNewPaymentMethods";
 import type { AccountingNewApiError, AccountingNewDocumentDetail } from "@/types/accountingNew";
 
 export function AccountingNewDocumentPaymentForm({
@@ -23,10 +34,11 @@ export function AccountingNewDocumentPaymentForm({
   const t = translations[language].accountingNew;
   const [amount, setAmount] = useState("");
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
-  const [paymentMethod, setPaymentMethod] = useState(detail.paymentMethod || "bank_transfer");
+  const [paymentMethod, setPaymentMethod] = useState(backendPaymentMethodToId(detail.paymentMethod));
   const [note, setNote] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<AccountingNewApiError | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -34,12 +46,20 @@ export function AccountingNewDocumentPaymentForm({
     setIsSubmitting(true);
     setMutationError(null);
     setSuccessMessage(null);
+    setValidationError(null);
+
+    const parsedAmount = parseAccountingNewMoneyInput(amount, detail.currency);
+    if (!parsedAmount.ok) {
+      setValidationError(t.money.invalidFormat);
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const updated = await addAccountingNewDocumentPayment(detail.id, {
-        amount: Number(amount),
+        amount: minorUnitsToApiDecimal(parsedAmount.minorUnits),
         paid_at: paidAt,
-        payment_method: paymentMethod,
+        payment_method: paymentMethodIdToBackendValue(paymentMethod),
         note: note.trim() || null,
       });
       setSuccessMessage(t.documentWrite.payment.success);
@@ -50,6 +70,13 @@ export function AccountingNewDocumentPaymentForm({
     } catch (error) {
       if (error instanceof AccountingNewRequestError) {
         setMutationError(error.apiError);
+      } else {
+        setMutationError({
+          resource: "document-payment",
+          message: t.errors.actionFailed,
+          status: null,
+          requiresLogin: false,
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -58,6 +85,13 @@ export function AccountingNewDocumentPaymentForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setValidationError(null);
+    const parsedAmount = parseAccountingNewMoneyInput(amount, detail.currency);
+    if (!parsedAmount.ok) {
+      setValidationError(t.money.invalidFormat);
+      return;
+    }
+
     setConfirmOpen(true);
   }
 
@@ -70,11 +104,20 @@ export function AccountingNewDocumentPaymentForm({
 
       <AccountingNewMutationNotice successMessage={successMessage} error={mutationError} />
 
+      {validationError ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {validationError}
+        </p>
+      ) : null}
+
       <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="paymentAmount">{t.documentWrite.payment.fields.amount}</Label>
-          <Input id="paymentAmount" value={amount} onChange={(event) => setAmount(event.target.value)} required />
-        </div>
+        <AccountingNewMoneyInput
+          id="paymentAmount"
+          label={t.documentWrite.payment.fields.amount}
+          value={amount}
+          onChange={setAmount}
+          required
+        />
         <div className="space-y-2">
           <Label htmlFor="paymentPaidAt">{t.documentWrite.payment.fields.paidAt}</Label>
           <Input
@@ -85,15 +128,13 @@ export function AccountingNewDocumentPaymentForm({
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="paymentMethod">{t.documentWrite.payment.fields.method}</Label>
-          <Input
-            id="paymentMethod"
-            value={paymentMethod}
-            onChange={(event) => setPaymentMethod(event.target.value)}
-            required
-          />
-        </div>
+        <AccountingNewPaymentMethodSelect
+          id="paymentMethod"
+          label={t.documentWrite.payment.fields.method}
+          value={paymentMethod}
+          onChange={(value: AccountingNewPaymentMethodId) => setPaymentMethod(value)}
+          required
+        />
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="paymentNote">{t.documentWrite.payment.fields.note}</Label>
           <Input id="paymentNote" value={note} onChange={(event) => setNote(event.target.value)} />

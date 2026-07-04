@@ -700,6 +700,7 @@ export interface AccountingNewDocumentFormState {
   customerAddress: string;
   customerIco: string;
   customerDic: string;
+  customerDataBox: string;
   note: string;
   businessMode: AccountingNewBusinessMode;
   taxMode: AccountingNewTaxMode;

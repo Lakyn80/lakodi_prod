@@ -29,6 +29,7 @@ import {
   formatAccountingNewTemplate,
   translateAccountingNewApiError,
   translateAccountingNewEntityType,
+  translateAccountingNewPaymentMethod,
   translateAccountingNewStatus,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
@@ -236,7 +237,7 @@ export function AccountingNewExpenseDetail({
               value={formatAccountingNewDate(detail.taxableSupplyDate, language, t.common.noValue)}
             />
             <MetaRow label={t.expenseDetail.fields.dueDate} value={formatAccountingNewDate(detail.dueDate, language, t.common.noValue)} />
-            <MetaRow label={t.expenseDetail.fields.paymentMethod} value={detail.paymentMethod} />
+            <MetaRow label={t.expenseDetail.fields.paymentMethod} value={translateAccountingNewPaymentMethod(t, detail.paymentMethod)} />
             <MetaRow label={t.expenseDetail.fields.expenseStatus} value={translateAccountingNewStatus(t, detail.status)} />
             <MetaRow
               label={t.expenseDetail.fields.createdAt}
@@ -371,7 +372,7 @@ export function AccountingNewExpenseDetail({
                   <div key={payment.id} className="rounded-lg border border-border bg-background p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <AccountingNewMoney amount={payment.amount} currency={detail.currency} className="font-medium text-foreground" />
-                      <Badge variant="outline">{payment.paymentMethod}</Badge>
+                      <Badge variant="outline">{translateAccountingNewPaymentMethod(t, payment.paymentMethod)}</Badge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
                       {formatAccountingNewTemplate(t.common.paidAt, {

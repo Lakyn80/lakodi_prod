@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { AccountingNewAresLookupSection } from "@/components/admin/accounting-new/AccountingNewAresLookupSection";
+import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { AccountingNewSubjectPicker } from "@/components/admin/accounting-new/AccountingNewSubjectPicker";
 import {
@@ -38,6 +39,7 @@ import {
   buildAccountingNewCustomerInputFromDocumentForm,
   resolveOrCreateAccountingNewCustomer,
 } from "@/lib/accountingNewCustomerPersistence";
+import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
 import type { AccountingNewApiError, AccountingNewDocumentFormState, AccountingNewSubjectSummary } from "@/types/accountingNew";
 
 const DOCUMENT_KINDS = ["invoice", "proforma", "tax_document", "correction", "final_invoice", "quote"] as const;
@@ -155,8 +157,12 @@ export function AccountingNewDocumentForm({
       return t.documentWrite.validation.itemsRequired;
     }
 
-    if (form.items.some((item) => Number(item.quantity) <= 0 || Number(item.unitPrice) < 0)) {
+    if (form.items.some((item) => Number(item.quantity.replace(",", ".")) <= 0)) {
       return t.documentWrite.validation.itemNumbers;
+    }
+
+    if (form.items.some((item) => !parseAccountingNewMoneyInput(item.unitPrice, form.currency).ok)) {
+      return t.money.invalidFormat;
     }
 
     return null;
@@ -247,12 +253,17 @@ export function AccountingNewDocumentForm({
 
       window.location.href = `${ACCOUNTING_NEW_ROUTE}/doklady/${detail.id}`;
     } catch (error) {
+      if (error instanceof Error && error.message === "INVALID_MONEY") {
+        setValidationError(t.money.invalidFormat);
+        return;
+      }
+
       if (error instanceof AccountingNewRequestError) {
         setMutationError(error.apiError);
       } else {
         setMutationError({
           resource: "document-form",
-          message: error instanceof Error ? error.message : t.documentWrite.mutation.errorTitle,
+          message: t.errors.actionFailed,
           status: null,
           requiresLogin: false,
         });
@@ -357,7 +368,7 @@ export function AccountingNewDocumentForm({
                   address: form.customerAddress,
                   ico: form.customerIco,
                   dic: form.customerDic,
-                  dataBox: "",
+                  dataBox: form.customerDataBox,
                   country: "CZ",
                 }}
                 onChange={(patch) =>
@@ -370,6 +381,7 @@ export function AccountingNewDocumentForm({
                     customerAddress: patch.address ?? current.customerAddress,
                     customerIco: patch.ico ?? current.customerIco,
                     customerDic: patch.dic ?? current.customerDic,
+                    customerDataBox: patch.dataBox ?? current.customerDataBox,
                   }))
                 }
               />
@@ -519,14 +531,15 @@ export function AccountingNewDocumentForm({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t.documentWrite.fields.itemUnitPrice}</Label>
-                    <Input
+                    <AccountingNewMoneyInput
+                      id={`itemUnitPrice-${index}`}
+                      label={t.documentWrite.fields.itemUnitPrice}
                       value={item.unitPrice}
-                      onChange={(event) =>
+                      onChange={(value) =>
                         setForm((current) => ({
                           ...current,
                           items: current.items.map((entry, entryIndex) =>
-                            entryIndex === index ? { ...entry, unitPrice: event.target.value } : entry,
+                            entryIndex === index ? { ...entry, unitPrice: value } : entry,
                           ),
                         }))
                       }

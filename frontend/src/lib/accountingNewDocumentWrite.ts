@@ -1,3 +1,8 @@
+import {
+  formatAccountingNewMoneyInputFromApiDecimal,
+  minorUnitsToApiDecimal,
+  parseAccountingNewMoneyInput,
+} from "@/lib/accountingNewMoney";
 import type {
   AccountingNewDocumentDetail,
   AccountingNewDocumentFormState,
@@ -57,11 +62,18 @@ export function buildAccountingNewDocumentWritePayloadFromForm(
     tax_mode: form.taxMode,
     currency: form.currency.trim().toUpperCase(),
     vat_rate: form.taxMode === "standard" ? Number(form.vatRate) : null,
-    items: form.items.map((item) => ({
-      description: item.description.trim(),
-      quantity: Number(item.quantity),
-      unit_price: Number(item.unitPrice),
-    })),
+    items: form.items.map((item) => {
+      const parsedPrice = parseAccountingNewMoneyInput(item.unitPrice, form.currency);
+      if (!parsedPrice.ok) {
+        throw new Error("INVALID_MONEY");
+      }
+
+      return {
+        description: item.description.trim(),
+        quantity: Number(item.quantity.replace(",", ".")),
+        unit_price: minorUnitsToApiDecimal(parsedPrice.minorUnits),
+      };
+    }),
   };
 }
 
@@ -111,6 +123,7 @@ export function buildAccountingNewDocumentFormStateFromDetail(
     customerAddress: detail.customerAddress ?? "",
     customerIco: detail.customerIco ?? "",
     customerDic: detail.customerDic ?? "",
+    customerDataBox: "",
     note: detail.note ?? "",
     businessMode: detail.businessMode as AccountingNewDocumentFormState["businessMode"],
     taxMode: detail.taxMode as AccountingNewDocumentFormState["taxMode"],
@@ -119,7 +132,7 @@ export function buildAccountingNewDocumentFormStateFromDetail(
     items: detail.items.map((item) => ({
       description: item.description,
       quantity: String(item.quantity),
-      unitPrice: String(item.unitPrice),
+      unitPrice: formatAccountingNewMoneyInputFromApiDecimal(item.unitPrice),
     })),
   };
 }
@@ -142,6 +155,7 @@ export function createEmptyAccountingNewDocumentFormState(): AccountingNewDocume
     customerAddress: "",
     customerIco: "",
     customerDic: "",
+    customerDataBox: "",
     note: "",
     businessMode: "autoservice",
     taxMode: "standard",

@@ -31,7 +31,10 @@ import {
   translateAccountingNewApiError,
   translateAccountingNewDocumentKind,
   translateAccountingNewEntityType,
+  translateAccountingNewPaymentMethod,
   translateAccountingNewStatus,
+  translateAccountingNewBusinessMode,
+  translateAccountingNewTaxMode,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function getFirstError(errors: AccountingNewApiError[]): AccountingNewApiError | null {
@@ -152,7 +155,6 @@ export function AccountingNewDocumentDetail({
           }
         : current,
     );
-    setReloadKey((value) => value + 1);
   }
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
@@ -240,8 +242,8 @@ export function AccountingNewDocumentDetail({
               label={t.documentDetail.fields.dueDate}
               value={formatAccountingNewDate(detail.dueDate, language, t.common.noValue)}
             />
-            <MetaRow label={t.documentDetail.fields.businessMode} value={detail.businessMode} />
-            <MetaRow label={t.documentDetail.fields.taxMode} value={detail.taxMode} />
+            <MetaRow label={t.documentDetail.fields.businessMode} value={translateAccountingNewBusinessMode(t, detail.businessMode)} />
+            <MetaRow label={t.documentDetail.fields.taxMode} value={translateAccountingNewTaxMode(t, detail.taxMode)} />
             <MetaRow label={t.documentDetail.fields.status} value={translateAccountingNewStatus(t, detail.status)} />
             <MetaRow
               label={t.documentDetail.fields.createdAt}
@@ -280,7 +282,7 @@ export function AccountingNewDocumentDetail({
                 />
                 <MetaRow label={t.documentDetail.fields.ico} value={detail.issuerIco} />
                 <MetaRow label={t.documentDetail.fields.dic} value={detail.issuerDic} />
-                <MetaRow label={t.documentDetail.fields.paymentMethod} value={detail.paymentMethod} />
+                <MetaRow label={t.documentDetail.fields.paymentMethod} value={translateAccountingNewPaymentMethod(t, detail.paymentMethod)} />
                 <MetaRow
                   label={t.documentDetail.fields.account}
                   value={`${detail.bankAccountPrefix ? `${detail.bankAccountPrefix}-` : ""}${detail.bankAccountNumber}/${detail.bankCode}`}
@@ -381,7 +383,7 @@ export function AccountingNewDocumentDetail({
                   <div key={payment.id} className="rounded-lg border border-border bg-background p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <AccountingNewMoney amount={payment.amount} currency={detail.currency} className="font-medium text-foreground" />
-                      <Badge variant="outline">{payment.paymentMethod}</Badge>
+                      <Badge variant="outline">{translateAccountingNewPaymentMethod(t, payment.paymentMethod)}</Badge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
                       {formatAccountingNewTemplate(t.common.paidAt, {

@@ -5,7 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { AccountingNewAresLookupSection } from "@/components/admin/accounting-new/AccountingNewAresLookupSection";
+import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
+import { AccountingNewPaymentMethodSelect } from "@/components/admin/accounting-new/AccountingNewPaymentMethodSelect";
+import { translateAccountingNewStatus } from "@/components/admin/accounting-new/accountingNewFormat";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,10 +26,13 @@ import {
   updateAccountingNewExpense,
 } from "@/lib/accountingNew";
 import {
+  ACCOUNTING_NEW_EXPENSE_STORED_STATUS_IDS,
   buildAccountingNewExpenseFormStateFromDetail,
   buildAccountingNewExpenseWritePayloadFromForm,
   createEmptyAccountingNewExpenseFormState,
 } from "@/lib/accountingNewExpenseWrite";
+import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
+import type { AccountingNewPaymentMethodId } from "@/lib/accountingNewPaymentMethods";
 import type { AccountingNewApiError, AccountingNewExpenseFormState, AccountingNewSupplierListItem } from "@/types/accountingNew";
 
 function createEmptyItem() {
@@ -100,8 +106,12 @@ export function AccountingNewExpenseForm({
       return t.expenseWrite.validation.itemsRequired;
     }
 
-    if (form.items.some((item) => Number(item.quantity) <= 0)) {
+    if (form.items.some((item) => Number(item.quantity.replace(",", ".")) <= 0)) {
       return t.expenseWrite.validation.itemNumbers;
+    }
+
+    if (form.items.some((item) => !parseAccountingNewMoneyInput(item.unitPrice, form.currency).ok)) {
+      return t.money.invalidFormat;
     }
 
     return null;
@@ -127,8 +137,20 @@ export function AccountingNewExpenseForm({
       setSuccessMessage(mode === "create" ? t.expenseWrite.mutation.createSuccess : t.expenseWrite.mutation.updateSuccess);
       window.location.href = `${ACCOUNTING_NEW_ROUTE}/vydaje/${result.id}`;
     } catch (error) {
+      if (error instanceof Error && error.message === "INVALID_MONEY") {
+        setValidationError(t.money.invalidFormat);
+        return;
+      }
+
       if (error instanceof AccountingNewRequestError) {
         setMutationError(error.apiError);
+      } else {
+        setMutationError({
+          resource: "expense-form",
+          message: t.errors.actionFailed,
+          status: null,
+          requiresLogin: false,
+        });
       }
     } finally {
       setIsSaving(false);
@@ -185,11 +207,18 @@ export function AccountingNewExpenseForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="expenseStatus">{t.expenseWrite.fields.status}</Label>
-                <Input
+                <select
                   id="expenseStatus"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={form.status}
                   onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-                />
+                >
+                  {ACCOUNTING_NEW_EXPENSE_STORED_STATUS_IDS.map((statusId) => (
+                    <option key={statusId} value={statusId}>
+                      {translateAccountingNewStatus(t, statusId)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="issueDate">{t.expenseWrite.fields.issueDate}</Label>
@@ -227,21 +256,25 @@ export function AccountingNewExpenseForm({
                   onChange={(event) => setForm((current) => ({ ...current, taxableSupplyDate: event.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="paymentMethod">{t.expenseWrite.fields.paymentMethod}</Label>
-                <Input
-                  id="paymentMethod"
-                  value={form.paymentMethod}
-                  onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value }))}
-                />
-              </div>
+              <AccountingNewPaymentMethodSelect
+                id="paymentMethod"
+                label={t.expenseWrite.fields.paymentMethod}
+                value={form.paymentMethod}
+                onChange={(value: AccountingNewPaymentMethodId) =>
+                  setForm((current) => ({ ...current, paymentMethod: value }))
+                }
+              />
               <div className="space-y-2">
                 <Label htmlFor="currency">{t.expenseWrite.fields.currency}</Label>
-                <Input
+                <select
                   id="currency"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={form.currency}
                   onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))}
-                />
+                >
+                  <option value="CZK">CZK</option>
+                  <option value="EUR">EUR</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="vatRate">{t.expenseWrite.fields.vatRate}</Label>
@@ -306,30 +339,43 @@ export function AccountingNewExpenseForm({
                 </select>
               </div>
               {!selectedSupplier ? (
-                <AccountingNewAresLookupSection
-                  values={{
-                    name: form.supplierName,
-                    email: form.supplierEmail,
-                    phone: form.supplierPhone,
-                    address: form.supplierAddress,
-                    ico: form.supplierIco,
-                    dic: form.supplierDic,
-                    dataBox: "",
-                    country: "CZ",
-                  }}
-                  onChange={(patch) =>
-                    setForm((current) => ({
-                      ...current,
-                      supplierName: patch.name ?? current.supplierName,
-                      supplierEmail: patch.email ?? current.supplierEmail,
-                      supplierPhone: patch.phone ?? current.supplierPhone,
-                      supplierAddress: patch.address ?? current.supplierAddress,
-                      supplierIco: patch.ico ?? current.supplierIco,
-                      supplierDic: patch.dic ?? current.supplierDic,
-                    }))
-                  }
-                />
-              ) : null}
+                <p className="text-sm text-muted-foreground">{t.expenseWrite.fields.supplierNone}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {selectedSupplier.name}{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                    onClick={() => setForm((current) => ({ ...current, supplierId: "" }))}
+                  >
+                    {t.aresWrite.clearSubjectLink}
+                  </button>
+                </p>
+              )}
+              <AccountingNewAresLookupSection
+                values={{
+                  name: form.supplierName,
+                  email: form.supplierEmail,
+                  phone: form.supplierPhone,
+                  address: form.supplierAddress,
+                  ico: form.supplierIco,
+                  dic: form.supplierDic,
+                  dataBox: "",
+                  country: "CZ",
+                }}
+                onChange={(patch) =>
+                  setForm((current) => ({
+                    ...current,
+                    supplierId: "",
+                    supplierName: patch.name ?? current.supplierName,
+                    supplierEmail: patch.email ?? current.supplierEmail,
+                    supplierPhone: patch.phone ?? current.supplierPhone,
+                    supplierAddress: patch.address ?? current.supplierAddress,
+                    supplierIco: patch.ico ?? current.supplierIco,
+                    supplierDic: patch.dic ?? current.supplierDic,
+                  }))
+                }
+              />
             </div>
 
             <div className="space-y-4">
@@ -376,14 +422,15 @@ export function AccountingNewExpenseForm({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t.expenseWrite.fields.itemUnitPrice}</Label>
-                    <Input
+                    <AccountingNewMoneyInput
+                      id={`expenseItemUnitPrice-${index}`}
+                      label={t.expenseWrite.fields.itemUnitPrice}
                       value={item.unitPrice}
-                      onChange={(event) =>
+                      onChange={(value) =>
                         setForm((current) => ({
                           ...current,
                           items: current.items.map((entry, entryIndex) =>
-                            entryIndex === index ? { ...entry, unitPrice: event.target.value } : entry,
+                            entryIndex === index ? { ...entry, unitPrice: value } : entry,
                           ),
                         }))
                       }
