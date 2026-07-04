@@ -32,6 +32,8 @@ Rationale: P0 spans document forms, payments, expenses, master data, attachments
 
 Legacy issued invoices stay in old UI by design. New write UI must not migrate or rewrite them.
 
+**Production readiness plan:** see [`docs/accounting-production-readiness-plan.md`](accounting-production-readiness-plan.md) — verdict: not production-ready; batches 23B–23E remain after closed 23A (`6aaccc4`).
+
 ---
 
 ## 1. What the accounting system must do (target)

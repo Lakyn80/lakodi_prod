@@ -3534,10 +3534,62 @@
 - Commit message:
   - `Add accounting document write actions`
 - Local commit hash:
-  - recorded in final response after local commit
+  - `6aaccc4`
 - Known risks/follow-ups for 23B/23C:
   - subject/customer create still deferred to 23B (manual snapshot or existing subject picker only)
   - payment delete/reverse deferred
   - email send deferred to 23C with confirmation/preview
   - settings update in new UI deferred to 23C (backend defaults used on create)
   - expenses, suppliers, attachments, bank apply, reminders, recurring, exports remain read-only until 23B/23C
+
+## Accounting Production Readiness Plan
+
+- Date: `2026-07-04`
+- Goal:
+  - define complete production-focused roadmap for `/admin/ucetnictvi-new` before go-live, including ARES, saved/reusable clients, legacy customer backfill, mobile/PWA, RAG/voice metadata readiness, and controlled deploy
+- Plan file:
+  - `docs/accounting-production-readiness-plan.md`
+- Production readiness verdict:
+  - **Not production-ready** — backend largely complete; new FE partial (23A write + read-only shell); mobile/PWA not hardened
+- 23A status:
+  - **Closed** — commit `6aaccc4` (`Add accounting document write actions`)
+- Remaining implementation batches (max 4 after 23A):
+  - **23B** — customers/subjects + ARES + legacy customer backfill + expenses/suppliers write
+  - **23C** — attachments upload/link + bank matching apply + reminders/todos send
+  - **23D** — recurring write + exports/settings + document email + central audit UI
+  - **23E** — mobile/PWA production hardening + full QA + controlled deploy
+- P0 explicit requirements:
+  - ARES lookup in new accounting (parity with legacy `InvoiceForm.tsx`)
+  - saved/reusable clients via `invoice_subjects`
+  - **one-time backfill** of all companies already invoiced in legacy UI into subjects registry (dedup by IČO, then email+name)
+  - duplicate prevention before subject create (UI-first; backend unique on IČO as hardening item)
+  - bank matching apply with confirmation (23C)
+  - mobile/PWA acceptance matrix (23E)
+- RAG/voice:
+  - metadata-only readiness in plan; **no** AI/voice runtime implementation
+- Legacy safety:
+  - `/admin/invoices` remains available; protected invoice files untouched; no migration until separate controlled plan
+- Stop rule before deploy:
+  - all P0 sections A–I in production plan implemented; backfill executed; mobile QA passed; build/i18n/Docker smoke green
+- Next recommended batch prompt:
+  - `23B Customers subjects ARES backfill expenses suppliers write`
+- i18n check result (planning task):
+  - recorded after checks in final response
+- Frontend build result (planning task):
+  - recorded after checks in final response
+- Docker smoke result (planning task):
+  - recorded after checks in final response
+- Protected old invoice diff result (planning task):
+  - recorded after checks in final response
+- Backend source changes:
+  - `None` (planning/docs only)
+- Database/schema changes:
+  - `None`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Commit message:
+  - `Add accounting production readiness plan`
+- Local commit hash:
+  - recorded in final response after local commit
