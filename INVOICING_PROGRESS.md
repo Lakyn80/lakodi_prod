@@ -3593,3 +3593,33 @@
   - `Add accounting production readiness plan`
 - Local commit hash:
   - recorded in final response after local commit
+
+## Batch 23B Customers subjects ARES expenses suppliers write
+
+- Date: `2026-07-04`
+- Scope:
+  - subjects registry write (create/edit/detail/list) with ARES lookup and duplicate IČO guard in UI
+  - expenses + suppliers write (create/edit forms, expense payment form on detail)
+  - document form manual customer section uses ARES (when no subject selected)
+  - module registry: subjects grid module; expenses/suppliers write enabled
+  - one-time backfill script: `scripts/backfill-invoice-subjects.ps1` (dedup by IČO, then email+name)
+- New routes:
+  - `/admin/ucetnictvi-new/odberatele/novy`, `/odberatele/[id]`, `/odberatele/[id]/upravit`
+  - `/admin/ucetnictvi-new/dodavatele/novy`, `/dodavatele/[id]/upravit`
+  - `/admin/ucetnictvi-new/vydaje/novy`, `/vydaje/[id]/upravit`
+- i18n check result:
+  - `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Frontend build result:
+  - `npm run build` green (includes new odberatele/dodavatele/vydaje routes)
+- Docker smoke result:
+  - `scripts/lakodi-docker-dev.ps1 smoke` — all checks OK (backend health, ucetnictvi-new, legacy invoices, API 401)
+- Protected old invoice diff result:
+  - empty diff for `frontend/src/app/admin/invoices`, `frontend/src/components/admin/invoices`, `frontend/src/lib/invoices.ts`
+- Backend source changes:
+  - `None`
+- Push:
+  - `No`
+- Commit message (when ready):
+  - `Add accounting subjects ARES expenses suppliers write`
+- Local commit hash:
+  - uncommitted at end of session

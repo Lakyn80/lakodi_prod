@@ -1,6 +1,7 @@
 export type AccountingNewModuleId =
   | "dashboard"
   | "documents"
+  | "subjects"
   | "expenses"
   | "suppliers"
   | "bank-transactions"
@@ -709,4 +710,122 @@ export interface AccountingNewDocumentFormState {
 
 export interface AccountingNewDocumentMutationResult {
   detail: AccountingNewDocumentDetail;
+}
+
+export type AccountingNewSubjectDetail = AccountingNewSubjectSummary;
+
+export interface AccountingNewSubjectWritePayload {
+  name: string;
+  email: string;
+  phone?: string | null;
+  address: string;
+  ico?: string | null;
+  dic?: string | null;
+  data_box?: string | null;
+  country?: string | null;
+  note?: string | null;
+}
+
+export interface AccountingNewSubjectFormState {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  ico: string;
+  dic: string;
+  dataBox: string;
+  country: string;
+  note: string;
+}
+
+export type AccountingNewSubjectDetailState =
+  | { status: "loading" }
+  | { status: "ready"; detail: AccountingNewSubjectDetail }
+  | { status: "auth"; error: AccountingNewApiError }
+  | { status: "not_found"; error: AccountingNewApiError }
+  | { status: "error"; error: AccountingNewApiError };
+
+export interface AccountingNewSupplierWritePayload {
+  name: string;
+  email: string;
+  phone?: string | null;
+  address: string;
+  ico?: string | null;
+  dic?: string | null;
+  data_box?: string | null;
+  country?: string | null;
+  note?: string | null;
+}
+
+export type AccountingNewSupplierFormState = AccountingNewSubjectFormState;
+
+export interface AccountingNewExpenseItemInput {
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface AccountingNewExpenseWritePayload {
+  expense_number?: string | null;
+  issue_date: string;
+  received_date: string;
+  due_date: string;
+  taxable_supply_date: string;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix?: string | null;
+  bank_code: string;
+  bank_iban?: string | null;
+  currency?: string;
+  status?: string;
+  vat_rate?: number | null;
+  note?: string | null;
+  supplier_id?: number | null;
+  supplier_name?: string | null;
+  supplier_email?: string | null;
+  supplier_phone?: string | null;
+  supplier_address?: string | null;
+  supplier_ico?: string | null;
+  supplier_dic?: string | null;
+  supplier_data_box?: string | null;
+  supplier_country?: string | null;
+  items: AccountingNewExpenseItemInput[];
+}
+
+export interface AccountingNewExpensePaymentCreatePayload {
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note?: string | null;
+}
+
+export interface AccountingNewExpenseFormItemState {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+}
+
+export interface AccountingNewExpenseFormState {
+  expenseNumber: string;
+  issueDate: string;
+  receivedDate: string;
+  dueDate: string;
+  taxableSupplyDate: string;
+  paymentMethod: string;
+  bankAccountNumber: string;
+  bankAccountPrefix: string;
+  bankCode: string;
+  bankIban: string;
+  currency: string;
+  vatRate: string;
+  status: string;
+  note: string;
+  supplierId: string;
+  supplierName: string;
+  supplierEmail: string;
+  supplierPhone: string;
+  supplierAddress: string;
+  supplierIco: string;
+  supplierDic: string;
+  items: AccountingNewExpenseFormItemState[];
 }

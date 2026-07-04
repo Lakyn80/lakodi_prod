@@ -4,6 +4,8 @@ export type AccountingNewModuleId =
   | "dashboard"
   | "documents"
   | "document-detail"
+  | "subjects"
+  | "subject-detail"
   | "expenses"
   | "expense-detail"
   | "suppliers"

@@ -1,14 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ACCOUNTING_NEW_ROUTE } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewSupplierListItem } from "@/types/accountingNew";
 import { AccountingNewSuppliersTable } from "@/components/admin/accounting-new/AccountingNewSuppliersTable";
 import {
@@ -77,9 +80,14 @@ export function AccountingNewSuppliersPanel({
   return (
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{t.common.readOnly}</Badge>
-          <Badge variant="outline">{t.suppliers.badge}</Badge>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{t.supplierWrite.badgeFunctional}</Badge>
+            <Badge variant="outline">{t.suppliers.badge}</Badge>
+          </div>
+          <Button asChild>
+            <Link href={`${ACCOUNTING_NEW_ROUTE}/dodavatele/novy`}>{t.supplierWrite.actions.createSupplier}</Link>
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.suppliers.title}</CardTitle>

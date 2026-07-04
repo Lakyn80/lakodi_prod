@@ -18,9 +18,11 @@ import {
   getAccountingNewExpenseAuditEvents,
   getAccountingNewExpensePayments,
 } from "@/lib/accountingNew";
-import type { AccountingNewApiError, AccountingNewExpenseDetailState } from "@/types/accountingNew";
+import type { AccountingNewApiError, AccountingNewExpenseDetail, AccountingNewExpenseDetailState } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
+import { AccountingNewExpensePaymentForm } from "@/components/admin/accounting-new/AccountingNewExpensePaymentForm";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
+import { canAccountingNewExpenseAddPayment } from "@/lib/accountingNewExpenseWrite";
 import {
   formatAccountingNewDate,
   formatAccountingNewDateTime,
@@ -140,6 +142,18 @@ export function AccountingNewExpenseDetail({
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
+  function handleDetailUpdated(updatedDetail: AccountingNewExpenseDetail) {
+    if (state.status !== "ready") {
+      return;
+    }
+
+    setState({
+      ...state,
+      detail: updatedDetail,
+      payments: updatedDetail.payments,
+    });
+  }
+
   if (state.status === "loading") {
     return <DetailLoading />;
   }
@@ -194,8 +208,11 @@ export function AccountingNewExpenseDetail({
         <Button variant="outline" asChild>
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
+        <Badge variant="secondary">{t.expenseWrite.badgeFunctional}</Badge>
         <Badge variant="outline">{t.expenses.badge}</Badge>
+        <Button asChild>
+          <Link href={`${ACCOUNTING_NEW_ROUTE}/vydaje/${expenseId}/upravit`}>{t.expenseWrite.actions.editExpense}</Link>
+        </Button>
       </div>
 
       <Card className="border-border bg-card">
@@ -203,7 +220,6 @@ export function AccountingNewExpenseDetail({
           <div className="flex flex-wrap items-center gap-2">
             <AccountingNewDocumentStatusBadge label={detail.paymentStatus} />
             <AccountingNewDocumentStatusBadge label={detail.status} />
-            <Badge variant="secondary">{t.common.withoutWriteActions}</Badge>
           </div>
           <div className="space-y-1">
             <CardTitle>{detail.expenseNumber}</CardTitle>
@@ -377,10 +393,12 @@ export function AccountingNewExpenseDetail({
             <CardTitle>{t.expenseDetail.operationsTitle}</CardTitle>
             <CardDescription>{t.expenseDetail.operationsDescription}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>{t.expenseDetail.operationsItemOne}</p>
-            <p>{t.expenseDetail.operationsItemTwo}</p>
-            <p>{t.expenseDetail.operationsItemThree}</p>
+          <CardContent className="space-y-4">
+            {canAccountingNewExpenseAddPayment(detail) ? (
+              <AccountingNewExpensePaymentForm detail={detail} onPaymentAdded={handleDetailUpdated} />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t.expenseWrite.payment.disabledHint}</p>
+            )}
           </CardContent>
         </Card>
       </div>

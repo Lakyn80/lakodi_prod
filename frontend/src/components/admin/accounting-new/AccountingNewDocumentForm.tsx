@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
+import { AccountingNewAresLookupSection } from "@/components/admin/accounting-new/AccountingNewAresLookupSection";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import {
   formatAccountingNewTemplate,
@@ -382,33 +383,29 @@ export function AccountingNewDocumentForm({
                   {formatAccountingNewTemplate(t.documentWrite.subjectSelectedHint, { name: selectedSubject.name })}
                 </p>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerName">{t.documentWrite.fields.customerName}</Label>
-                    <Input
-                      id="customerName"
-                      value={form.customerName}
-                      onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customerEmail">{t.documentWrite.fields.customerEmail}</Label>
-                    <Input
-                      id="customerEmail"
-                      type="email"
-                      value={form.customerEmail}
-                      onChange={(event) => setForm((current) => ({ ...current, customerEmail: event.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="customerAddress">{t.documentWrite.fields.customerAddress}</Label>
-                    <Input
-                      id="customerAddress"
-                      value={form.customerAddress}
-                      onChange={(event) => setForm((current) => ({ ...current, customerAddress: event.target.value }))}
-                    />
-                  </div>
-                </div>
+                <AccountingNewAresLookupSection
+                  values={{
+                    name: form.customerName,
+                    email: form.customerEmail,
+                    phone: form.customerPhone,
+                    address: form.customerAddress,
+                    ico: form.customerIco,
+                    dic: form.customerDic,
+                    dataBox: "",
+                    country: "CZ",
+                  }}
+                  onChange={(patch) =>
+                    setForm((current) => ({
+                      ...current,
+                      customerName: patch.name ?? current.customerName,
+                      customerEmail: patch.email ?? current.customerEmail,
+                      customerPhone: patch.phone ?? current.customerPhone,
+                      customerAddress: patch.address ?? current.customerAddress,
+                      customerIco: patch.ico ?? current.customerIco,
+                      customerDic: patch.dic ?? current.customerDic,
+                    }))
+                  }
+                />
               )}
             </div>
 

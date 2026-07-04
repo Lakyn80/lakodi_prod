@@ -18,6 +18,7 @@ import {
 import { AccountingNewModuleGrid, type AccountingNewModuleStat } from "@/components/admin/accounting-new/AccountingNewModuleGrid";
 import { AccountingNewDocumentsPanel } from "@/components/admin/accounting-new/AccountingNewDocumentsPanel";
 import { AccountingNewExpensesPanel } from "@/components/admin/accounting-new/AccountingNewExpensesPanel";
+import { AccountingNewSubjectsPanel } from "@/components/admin/accounting-new/AccountingNewSubjectsPanel";
 import { AccountingNewSuppliersPanel } from "@/components/admin/accounting-new/AccountingNewSuppliersPanel";
 import { AccountingNewBankTransactionsPanel } from "@/components/admin/accounting-new/AccountingNewBankTransactionsPanel";
 import { AccountingNewPaymentMatchesPanel } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesPanel";
@@ -69,14 +70,20 @@ function getModuleStats(
         count: data.metrics.documentsLoaded,
       }),
     },
+    subjects: {
+      badge: t.subjectWrite.badgeFunctional,
+      detail: formatAccountingNewTemplate(t.dashboard.subjectsDescription, {
+        count: data.metrics.subjectsLoaded,
+      }),
+    },
     expenses: {
-      badge: t.common.readOnlyBadge,
+      badge: t.expenseWrite.badgeFunctional,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.expenses, {
         count: data.metrics.expensesLoaded,
       }),
     },
     suppliers: {
-      badge: t.common.readOnlyBadge,
+      badge: t.supplierWrite.badgeFunctional,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.suppliers, {
         count: data.metrics.suppliersLoaded,
       }),
@@ -218,6 +225,7 @@ export function AccountingNewShell() {
   const documentsError = getResourceError(partialErrors, "documents");
   const expensesError = getResourceError(partialErrors, "expenses");
   const suppliersError = getResourceError(partialErrors, "suppliers");
+  const subjectsError = getResourceError(partialErrors, "subjects");
   const bankTransactionsError = getResourceError(partialErrors, "bank-transactions");
   const todosError = getResourceError(partialErrors, "todos");
   const recurringError = getResourceError(partialErrors, "recurring-templates");
@@ -366,6 +374,13 @@ export function AccountingNewShell() {
         isLoading={state.status === "loading"}
         authRequired={state.status === "auth"}
         error={documentsError}
+      />
+
+      <AccountingNewSubjectsPanel
+        subjects={dashboard?.subjects ?? []}
+        isLoading={state.status === "loading"}
+        authRequired={state.status === "auth"}
+        error={subjectsError}
       />
 
       <div className="grid gap-4 xl:grid-cols-2">

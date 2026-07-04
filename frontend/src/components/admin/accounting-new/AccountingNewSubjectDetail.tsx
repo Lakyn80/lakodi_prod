@@ -11,8 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ACCOUNTING_NEW_ROUTE, getAccountingNewSupplier } from "@/lib/accountingNew";
-import type { AccountingNewApiError, AccountingNewSupplierDetailState } from "@/types/accountingNew";
+import { ACCOUNTING_NEW_ROUTE, getAccountingNewSubject } from "@/lib/accountingNew";
+import type { AccountingNewApiError, AccountingNewSubjectDetailState } from "@/types/accountingNew";
 import { formatAccountingNewDateTime, translateAccountingNewApiError } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function DetailLoading() {
@@ -25,13 +25,7 @@ function DetailLoading() {
   );
 }
 
-function MetaRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -40,14 +34,10 @@ function MetaRow({
   );
 }
 
-export function AccountingNewSupplierDetail({
-  supplierId,
-}: {
-  supplierId: string;
-}) {
+export function AccountingNewSubjectDetail({ subjectId }: { subjectId: string }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
-  const [state, setState] = useState<AccountingNewSupplierDetailState>({ status: "loading" });
+  const [state, setState] = useState<AccountingNewSubjectDetailState>({ status: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,7 +46,7 @@ export function AccountingNewSupplierDetail({
       setState({ status: "loading" });
 
       try {
-        const detail = await getAccountingNewSupplier(supplierId, { signal: controller.signal });
+        const detail = await getAccountingNewSubject(subjectId, { signal: controller.signal });
         setState({ status: "ready", detail });
       } catch (error) {
         if (controller.signal.aborted) {
@@ -70,8 +60,8 @@ export function AccountingNewSupplierDetail({
           typeof (error as { apiError?: unknown }).apiError === "object"
             ? ((error as { apiError: AccountingNewApiError }).apiError as AccountingNewApiError)
             : {
-                resource: "supplier-detail",
-                message: error instanceof Error ? error.message : t.errors.supplierDetailTitle,
+                resource: "subject-detail",
+                message: error instanceof Error ? error.message : t.errors.subjectDetailTitle,
                 status: null,
                 requiresLogin: false,
               };
@@ -93,7 +83,7 @@ export function AccountingNewSupplierDetail({
     void loadDetail();
 
     return () => controller.abort();
-  }, [supplierId, t.errors.supplierDetailTitle]);
+  }, [subjectId, t.errors.subjectDetailTitle]);
 
   if (state.status === "loading") {
     return <DetailLoading />;
@@ -106,8 +96,8 @@ export function AccountingNewSupplierDetail({
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>{t.auth.supplierDetailTitle}</AlertTitle>
-          <AlertDescription>{t.auth.supplierDetailDescription}</AlertDescription>
+          <AlertTitle>{t.auth.subjectDetailTitle}</AlertTitle>
+          <AlertDescription>{t.auth.subjectDetailDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -120,8 +110,8 @@ export function AccountingNewSupplierDetail({
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
-          <AlertTitle>{t.supplierDetail.notFoundTitle}</AlertTitle>
-          <AlertDescription>{t.supplierDetail.notFoundDescription}</AlertDescription>
+          <AlertTitle>{t.subjectDetail.notFoundTitle}</AlertTitle>
+          <AlertDescription>{t.subjectDetail.notFoundDescription}</AlertDescription>
         </Alert>
       </div>
     );
@@ -134,7 +124,7 @@ export function AccountingNewSupplierDetail({
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
-          <AlertTitle>{t.errors.supplierDetailTitle}</AlertTitle>
+          <AlertTitle>{t.errors.subjectDetailTitle}</AlertTitle>
           <AlertDescription>{translateAccountingNewApiError(t, state.error)}</AlertDescription>
         </Alert>
       </div>
@@ -149,59 +139,43 @@ export function AccountingNewSupplierDetail({
         <Button variant="outline" asChild>
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">{t.supplierWrite.badgeFunctional}</Badge>
-        <Badge variant="outline">{t.suppliers.badge}</Badge>
+        <Badge variant="secondary">{t.subjectWrite.badgeFunctional}</Badge>
+        <Badge variant="outline">{t.subjects.badge}</Badge>
         <Button asChild>
-          <Link href={`${ACCOUNTING_NEW_ROUTE}/dodavatele/${supplierId}/upravit`}>{t.supplierWrite.actions.editSupplier}</Link>
+          <Link href={`${ACCOUNTING_NEW_ROUTE}/odberatele/${subjectId}/upravit`}>{t.subjectWrite.actions.editSubject}</Link>
         </Button>
       </div>
 
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{t.suppliers.badge}</Badge>
-          </div>
           <div className="space-y-1">
             <CardTitle>{detail.name}</CardTitle>
-            <CardDescription>{t.supplierDetail.description}</CardDescription>
+            <CardDescription>{t.subjectDetail.description}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetaRow label={t.supplierDetail.fields.ico} value={detail.ico ?? t.common.noValue} />
-            <MetaRow label={t.supplierDetail.fields.dic} value={detail.dic ?? t.common.noValue} />
-            <MetaRow label={t.supplierDetail.fields.dataBox} value={detail.dataBox ?? t.common.noValue} />
-            <MetaRow label={t.supplierDetail.fields.country} value={detail.country ?? t.common.noValue} />
-            <MetaRow label={t.supplierDetail.fields.createdAt} value={formatAccountingNewDateTime(detail.createdAt, language, t.common.noValue)} />
-            <MetaRow label={t.supplierDetail.fields.updatedAt} value={formatAccountingNewDateTime(detail.updatedAt, language, t.common.noValue)} />
+            <MetaRow label={t.aresWrite.ico} value={detail.ico ?? t.common.noValue} />
+            <MetaRow label={t.aresWrite.dic} value={detail.dic ?? t.common.noValue} />
+            <MetaRow label={t.subjectWrite.fields.dataBox} value={detail.dataBox ?? t.common.noValue} />
+            <MetaRow label={t.subjectWrite.fields.country} value={detail.country ?? t.common.noValue} />
+            <MetaRow
+              label={t.supplierDetail.fields.createdAt}
+              value={formatAccountingNewDateTime(detail.createdAt, language, t.common.noValue)}
+            />
+            <MetaRow
+              label={t.supplierDetail.fields.updatedAt}
+              value={formatAccountingNewDateTime(detail.updatedAt, language, t.common.noValue)}
+            />
           </div>
 
           <Separator />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{t.supplierDetail.identityTitle}</h2>
-                <p className="text-sm text-muted-foreground">{t.supplierDetail.identityDescription}</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <MetaRow label={t.supplierDetail.fields.name} value={detail.name} />
-                <MetaRow label={t.supplierDetail.fields.email} value={detail.email} />
-                <MetaRow label={t.supplierDetail.fields.phone} value={detail.phone ?? t.common.noValue} />
-                <MetaRow label={t.supplierDetail.fields.address} value={detail.address} />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{t.supplierDetail.scopeTitle}</h2>
-                <p className="text-sm text-muted-foreground">{t.supplierDetail.scopeDescription}</p>
-              </div>
-              <div className="space-y-3 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
-                <p>{t.supplierDetail.scopeItemOne}</p>
-                <p>{t.supplierDetail.scopeItemTwo}</p>
-                <p>{t.supplierDetail.scopeItemThree}</p>
-              </div>
+            <MetaRow label={t.aresWrite.email} value={detail.email} />
+            <MetaRow label={t.aresWrite.phone} value={detail.phone ?? t.common.noPhone} />
+            <div className="md:col-span-2">
+              <MetaRow label={t.aresWrite.address} value={detail.address} />
             </div>
           </div>
 
@@ -209,7 +183,7 @@ export function AccountingNewSupplierDetail({
             <>
               <Separator />
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">{t.supplierDetail.noteTitle}</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t.subjectWrite.fields.note}</h2>
                 <p className="text-sm text-muted-foreground">{detail.note}</p>
               </div>
             </>

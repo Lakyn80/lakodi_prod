@@ -24,7 +24,9 @@ import type {
   AccountingNewExpenseFilters,
   AccountingNewExpenseItem,
   AccountingNewExpenseListItem,
+  AccountingNewExpensePaymentCreatePayload,
   AccountingNewExpensePaymentSummary,
+  AccountingNewExpenseWritePayload,
   AccountingNewPaymentSummary,
   AccountingNewPaymentMatchListItem,
   AccountingNewRecurringGenerationListItem,
@@ -36,9 +38,11 @@ import type {
   AccountingNewReminderEmailFilters,
   AccountingNewReminderEmailListItem,
   AccountingNewSubjectSummary,
+  AccountingNewSubjectWritePayload,
   AccountingNewSupplierDetail,
   AccountingNewSupplierFilters,
   AccountingNewSupplierListItem,
+  AccountingNewSupplierWritePayload,
   AccountingNewTodoDetail,
   AccountingNewTodoFilters,
   AccountingNewTodoSummary,
@@ -120,6 +124,10 @@ function normalizeExpenseId(id: number | string): string {
 
 function normalizeSupplierId(id: number | string): string {
   return normalizeEntityId(id, "supplier-detail", "ID dodavatele");
+}
+
+function normalizeSubjectId(id: number | string): string {
+  return normalizeEntityId(id, "subject-detail", "ID subjektu");
 }
 
 function normalizeBankTransactionId(id: number | string): string {
@@ -2714,4 +2722,123 @@ export async function downloadAccountingNewDocumentPdf(id: number | string): Pro
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+}
+
+type AccountingNewSubjectApi = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  address: string;
+  ico: string | null;
+  dic: string | null;
+  data_box: string | null;
+  country: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type AccountingNewExpenseDetailApi = Parameters<typeof mapExpenseDetail>[0];
+
+export async function getAccountingNewSubject(
+  id: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSubjectSummary> {
+  const normalizedId = normalizeSubjectId(id);
+  const data = await fetchAccountingNewJson<AccountingNewSubjectApi>(
+    "subject-detail",
+    `/subjects/${normalizedId}`,
+    params.signal,
+  );
+
+  return mapSubjectSummary(data);
+}
+
+export async function createAccountingNewSubject(
+  payload: AccountingNewSubjectWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSubjectSummary> {
+  const data = await mutateAccountingNewJson<AccountingNewSubjectApi>("subject-create", "/subjects", "POST", payload, params.signal);
+  return mapSubjectSummary(data);
+}
+
+export async function updateAccountingNewSubject(
+  id: number | string,
+  payload: AccountingNewSubjectWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSubjectSummary> {
+  const normalizedId = normalizeSubjectId(id);
+  const data = await mutateAccountingNewJson<AccountingNewSubjectApi>(
+    "subject-update",
+    `/subjects/${normalizedId}`,
+    "PUT",
+    payload,
+    params.signal,
+  );
+  return mapSubjectSummary(data);
+}
+
+export async function createAccountingNewSupplier(
+  payload: AccountingNewSupplierWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSupplierDetail> {
+  const data = await mutateAccountingNewJson<AccountingNewSubjectApi>("supplier-create", "/suppliers", "POST", payload, params.signal);
+  return mapSupplierSummary(data);
+}
+
+export async function updateAccountingNewSupplier(
+  id: number | string,
+  payload: AccountingNewSupplierWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSupplierDetail> {
+  const normalizedId = normalizeSupplierId(id);
+  const data = await mutateAccountingNewJson<AccountingNewSubjectApi>(
+    "supplier-update",
+    `/suppliers/${normalizedId}`,
+    "PUT",
+    payload,
+    params.signal,
+  );
+  return mapSupplierSummary(data);
+}
+
+export async function createAccountingNewExpense(
+  payload: AccountingNewExpenseWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewExpenseDetail> {
+  const data = await mutateAccountingNewJson<AccountingNewExpenseDetailApi>("expense-create", "/expenses", "POST", payload, params.signal);
+  return mapExpenseDetail(data);
+}
+
+export async function updateAccountingNewExpense(
+  id: number | string,
+  payload: AccountingNewExpenseWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewExpenseDetail> {
+  const normalizedId = normalizeExpenseId(id);
+  const data = await mutateAccountingNewJson<AccountingNewExpenseDetailApi>(
+    "expense-update",
+    `/expenses/${normalizedId}`,
+    "PUT",
+    payload,
+    params.signal,
+  );
+  return mapExpenseDetail(data);
+}
+
+export async function addAccountingNewExpensePayment(
+  id: number | string,
+  payload: AccountingNewExpensePaymentCreatePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewExpenseDetail> {
+  const normalizedId = normalizeExpenseId(id);
+  const data = await mutateAccountingNewJson<AccountingNewExpenseDetailApi>(
+    "expense-payment-create",
+    `/expenses/${normalizedId}/payments`,
+    "POST",
+    payload,
+    params.signal,
+  );
+  return mapExpenseDetail(data);
 }

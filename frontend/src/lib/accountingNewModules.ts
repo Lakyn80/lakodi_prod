@@ -114,15 +114,70 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     { canUpdate: true, canExport: true },
   ),
-  createRegistryEntry({
+  createRegistryEntry(
+    {
+      id: "subjects",
+      route: `${ACCOUNTING_NEW_BASE_ROUTE}#subjects`,
+      labelKey: "moduleRegistry.subjects.label",
+      descriptionKey: "moduleRegistry.subjects.description",
+      entityType: "document",
+      readAvailability: "read-only",
+      writeEnabled: true,
+      featureStatus: "implemented-write",
+      rag: {
+        entityType: "document",
+        labelKey: "rag.entityTypes.document",
+        searchableFields: [
+          { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 5 },
+          { field: "ico", labelKey: "rag.searchableFields.ico", weight: 4 },
+          { field: "dic", labelKey: "rag.searchableFields.dic", weight: 4 },
+        ],
+      },
+      voice: {
+        labelKey: "voice.labels.subjects",
+        aliasKeys: ["voice.aliases.subjects"],
+      },
+      relatedModuleIds: ["subject-detail", "documents"],
+      gridModuleId: "subjects",
+    },
+    { canCreate: true, canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
+      id: "subject-detail",
+      route: `${ACCOUNTING_NEW_BASE_ROUTE}/odberatele/[id]`,
+      labelKey: "moduleRegistry.subjectDetail.label",
+      descriptionKey: "moduleRegistry.subjectDetail.description",
+      entityType: "document",
+      readAvailability: "read-only",
+      writeEnabled: true,
+      featureStatus: "implemented-write",
+      rag: {
+        entityType: "document",
+        labelKey: "rag.entityTypes.document",
+        searchableFields: [
+          { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 5 },
+          { field: "note", labelKey: "rag.searchableFields.note", weight: 2 },
+        ],
+      },
+      voice: {
+        labelKey: "voice.labels.subjectDetail",
+        aliasKeys: ["voice.aliases.subjectDetail"],
+      },
+      relatedModuleIds: ["subjects", "documents"],
+    },
+    { canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "expenses",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#expenses`,
     labelKey: "moduleRegistry.expenses.label",
     descriptionKey: "moduleRegistry.expenses.description",
     entityType: "expense",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "expense",
       labelKey: "rag.entityTypes.expense",
@@ -138,16 +193,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["expense-detail", "suppliers"],
     gridModuleId: "expenses",
-  }),
-  createRegistryEntry({
+    },
+    { canCreate: true, canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "expense-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/vydaje/[id]`,
     labelKey: "moduleRegistry.expenseDetail.label",
     descriptionKey: "moduleRegistry.expenseDetail.description",
     entityType: "expense",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "expense",
       labelKey: "rag.entityTypes.expense",
@@ -162,16 +220,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.expenseDetail"],
     },
     relatedModuleIds: ["expenses", "suppliers"],
-  }),
-  createRegistryEntry({
+    },
+    { canUpdate: true, canApply: true },
+  ),
+  createRegistryEntry(
+    {
     id: "suppliers",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#suppliers`,
     labelKey: "moduleRegistry.suppliers.label",
     descriptionKey: "moduleRegistry.suppliers.description",
     entityType: "supplier",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "supplier",
       labelKey: "rag.entityTypes.supplier",
@@ -187,16 +248,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["supplier-detail", "expenses"],
     gridModuleId: "suppliers",
-  }),
-  createRegistryEntry({
+    },
+    { canCreate: true, canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "supplier-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/dodavatele/[id]`,
     labelKey: "moduleRegistry.supplierDetail.label",
     descriptionKey: "moduleRegistry.supplierDetail.description",
     entityType: "supplier",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "supplier",
       labelKey: "rag.entityTypes.supplier",
@@ -211,7 +275,9 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.supplierDetail"],
     },
     relatedModuleIds: ["suppliers", "expenses"],
-  }),
+    },
+    { canUpdate: true },
+  ),
   createRegistryEntry({
     id: "bank-transactions",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#bank-transactions`,
@@ -606,6 +672,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
 export const accountingNewGridModuleIds: AccountingNewModuleId[] = [
   "dashboard",
   "documents",
+  "subjects",
   "expenses",
   "suppliers",
   "bank-transactions",
