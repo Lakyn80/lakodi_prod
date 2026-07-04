@@ -13,7 +13,7 @@ Purpose: define what the accounting system must do, what already exists, what is
 | Layer | State |
 |-------|--------|
 | Backend (`/api/admin/invoices/*`) | **Largely complete** — CRUD + payments + bank + attachments + recurring + exports + audit + settings |
-| New FE (`/admin/ucetnictvi-new`) | **Read-only shell complete** (22B–22I) — **zero write actions** in `accountingNew.ts` |
+| New FE (`/admin/ucetnictvi-new`) | **Batch 23A complete** — document draft create/edit, issue, PDF download, add payment; expenses/subjects/suppliers/bank/etc. still read-only |
 | Old FE (`/admin/invoices`) | **Functional for legacy outgoing invoices only** — create/edit, PDF, email, payments, settings, ARES |
 | Gap | New UI must gain write flows; old UI must remain untouched for issued legacy invoices |
 
@@ -24,12 +24,11 @@ Purpose: define what the accounting system must do, what already exists, what is
 
 Rationale: P0 spans document forms, payments, expenses, master data, attachments, bank apply, and settings. Each batch is already a large, confirmation-heavy UI surface. Rushing all P0 into one day would skip confirmations, duplicate legacy logic unsafely, or break isolation rules.
 
-### Pragmatic interim (available **today** without new code)
+### Pragmatic interim (available **today**)
 
-Until Batch 23A lands, operators can:
-
-- **Create/edit/issue outgoing invoices, PDF, email, payments** → `/admin/invoices` (legacy, working)
-- **Read full accounting picture** → `/admin/ucetnictvi-new` (dashboard + all modules read-only)
+- **Create/edit/issue outgoing invoices, PDF, email, payments (legacy invoice kind only)** → `/admin/invoices` (legacy, working)
+- **Create/edit/issue accounting documents (all kinds), PDF, add payment** → `/admin/ucetnictvi-new/doklady/*` (Batch 23A)
+- **Read full accounting picture** → `/admin/ucetnictvi-new` (dashboard + all modules; non-document modules still read-only until 23B/23C)
 
 Legacy issued invoices stay in old UI by design. New write UI must not migrate or rewrite them.
 
@@ -249,42 +248,42 @@ Full matrix — key P0/P1 rows:
 Area: Documents
 Capability: Create draft / issue document
 Backend: yes | POST / | PUT /{id} | status field
-New FE: missing | route: doklady/[id], documents panel
+New FE: **implemented-write (23A)** | routes: doklady/novy, doklady/[id]/upravit, detail actions
 Old FE: available (create/update, defaults to issued, invoice kind only)
 Risk: medium
 Confirmation required: yes when issuing / editing issued doc
 Priority: P0
-Recommended next action: Batch 23A — document form + issue flow in new UI
+Recommended next action: Batch 23B — expenses/subjects write
 
 Area: Documents
 Capability: PDF download
 Backend: yes | GET /{id}/pdf
-New FE: missing
+New FE: **implemented-write (23A)** | download button on document detail
 Old FE: available
 Risk: low
 Confirmation required: no
 Priority: P0
-Recommended next action: Batch 23A — safe download link in document detail
+Recommended next action: Batch 23B
 
 Area: Documents
 Capability: Send email
 Backend: yes | POST /{id}/send-email
-New FE: missing
+New FE: **deferred (23C)** | translated deferred note on detail; confirm/preview flow not ready
 Old FE: available
 Risk: medium
 Confirmation required: yes
 Priority: P1 (P0 if new UI replaces old for sending)
-Recommended next action: Batch 23A with confirm dialog
+Recommended next action: Batch 23C with confirm dialog
 
 Area: Documents
 Capability: Add / remove payment
 Backend: yes | POST/DELETE payments
-New FE: missing (read-only list only)
+New FE: **add implemented (23A)** | POST payment with confirm; delete deferred
 Old FE: available
 Risk: medium / high for delete
 Confirmation required: yes on delete
 Priority: P0
-Recommended next action: Batch 23A
+Recommended next action: Batch 23C or later safe delete with confirm
 
 Area: Expenses
 Capability: Create / edit expense
@@ -437,25 +436,17 @@ Recommended next action: defer past MVP
 
 ### Batch 23A — Core documents and payments write
 
+**Status:** **Implemented** (`2026-07-04`)
+
 **Goal:** Make `/admin/ucetnictvi-new` able to create and manage **new** accounting documents (all supported kinds) with payments and PDF — without touching legacy `/admin/invoices`.
 
-**Endpoints:** `POST/PUT /`, `GET /{id}/pdf`, `POST/DELETE /{id}/payments`, `GET /defaults`, `GET /settings` (read-only link or inline read)
+**Endpoints used:** `POST/PUT /api/admin/invoices`, `GET /{id}/pdf`, `POST /{id}/payments`, `GET /defaults`, `GET /subjects` (read-only picker)
 
-**Actions:** create draft, edit draft, issue, PDF download, add payment, delete payment (confirm), preserve legacy notice
+**Implemented:** create draft, edit draft, issue (confirm), PDF download, add payment (confirm), legacy preservation notice
 
-**Files likely touched:**
-- `frontend/src/lib/accountingNew.ts` (write client)
-- `frontend/src/types/accountingNew.ts`
-- `frontend/src/components/admin/accounting-new/AccountingNewDocumentForm.tsx` (new)
-- `AccountingNewDocumentDetail.tsx`, `AccountingNewDocumentsPanel.tsx`
-- `frontend/src/app/admin/ucetnictvi-new/doklady/novy/page.tsx` (optional)
-- `translations.ts`, `accountingNewModules.ts`, `accountingNewMetadata.ts`
+**Deferred:** email send (confirm/preview not ready), delete payment, settings update
 
-**Safety:** confirm on issue, payment delete, edit issued document; no legacy file changes
-
-**Acceptance:** create draft from new UI → issue → PDF → add payment; legacy invoices unchanged; i18n + build + Docker smoke pass
-
-**Commit message:** `Add write flows for accounting documents and payments`
+**Commit message:** `Add accounting document write actions`
 
 ---
 

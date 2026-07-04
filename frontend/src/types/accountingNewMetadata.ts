@@ -47,7 +47,7 @@ export type AccountingNewEntityType =
   | "recurring_generation"
   | "export";
 
-export type AccountingNewFeatureStatus = "implemented-read-only" | "deferred" | "future";
+export type AccountingNewFeatureStatus = "implemented-read-only" | "implemented-write" | "deferred" | "future";
 
 export type AccountingNewSearchableField =
   | "number"

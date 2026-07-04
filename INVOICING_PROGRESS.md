@@ -3434,3 +3434,110 @@
   - `Add accounting functional completion map`
 - Local commit hash:
   - `Recorded in final response after local commit`
+
+## Batch 23A Core documents and payments write
+
+- Date: `2026-07-04`
+- Goal:
+  - make `/admin/ucetnictvi-new` functionally useful for core outgoing accounting documents and document payments (create/edit draft, issue, add payment, PDF) without touching legacy `/admin/invoices`
+- Files changed:
+  - `INVOICING_PROGRESS.md`
+  - `docs/accounting-functional-map.md`
+  - `frontend/src/data/translations.ts`
+  - `frontend/src/lib/accountingNew.ts`
+  - `frontend/src/lib/accountingNewDocumentWrite.ts` (new)
+  - `frontend/src/lib/accountingNewModules.ts`
+  - `frontend/src/types/accountingNew.ts`
+  - `frontend/src/types/accountingNewMetadata.ts`
+  - `frontend/src/components/admin/accounting-new/AccountingNewConfirmDialog.tsx` (new)
+  - `frontend/src/components/admin/accounting-new/AccountingNewMutationNotice.tsx` (new)
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentForm.tsx` (new)
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentActions.tsx` (new)
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentPaymentForm.tsx` (new)
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentDetail.tsx`
+  - `frontend/src/components/admin/accounting-new/AccountingNewDocumentsPanel.tsx`
+  - `frontend/src/app/admin/ucetnictvi-new/doklady/novy/page.tsx` (new)
+  - `frontend/src/app/admin/ucetnictvi-new/doklady/[id]/upravit/page.tsx` (new)
+- Backend endpoints used:
+  - `GET /api/admin/invoices/defaults?document_kind=`
+  - `GET /api/admin/invoices/subjects`
+  - `POST /api/admin/invoices` (create draft or issued)
+  - `PUT /api/admin/invoices/{id}` (update draft; issue via `status: issued`)
+  - `POST /api/admin/invoices/{id}/payments` (add payment)
+  - `GET /api/admin/invoices/{id}/pdf` (download)
+  - existing read GETs for detail refresh after mutation
+- Create draft implemented:
+  - `Yes` — `/admin/ucetnictvi-new/doklady/novy` with subject picker or manual customer snapshot, items, save draft / save+issue
+- Edit draft implemented:
+  - `Yes` — `/admin/ucetnictvi-new/doklady/[id]/upravit` only when `status === draft`; non-draft shows translated blocked state
+- Finalize/issue implemented:
+  - `Yes` — detail actions + optional save+issue on create; confirmation dialog before issue
+- Add payment implemented:
+  - `Yes` — payment form on document detail with confirmation dialog; refreshes detail after success
+- PDF/download implemented:
+  - `Yes` — authenticated blob download via `downloadAccountingNewDocumentPdf` on issued/detail-capable documents
+- Email/send implemented:
+  - `Deferred` — backend endpoint exists but confirm/preview flow not safe enough for 23A; translated deferred note shown
+- Confirmation dialogs added:
+  - issue document (detail actions)
+  - add payment (payment form)
+- i18n keys added:
+  - new `documentWrite.*` group (create/edit/issue/payment/validation/actions/mutation/legacy notice)
+- Locale coverage:
+  - `cs`, `ua`, `ru`, `en`
+- Registry/metadata updates:
+  - `documents` + `document-detail` modules → `writeEnabled: true`, `featureStatus: implemented-write`, `canCreate/canUpdate/canExport: true`, `canSend: false`, `canDelete: false`
+- Auth/401 behavior:
+  - mutations use existing admin auth wrapper; unauthenticated API returns 401; UI shows safe error states
+- Validation behavior:
+  - client-side translated validation for dates, customer, VAT rate, items; backend validation errors surfaced via mutation notice
+- Frontend build result:
+  - `cd frontend && npm run build` → `passed`
+  - unchanged warnings: Browserslist age, Next.js ESLint plugin not detected, galerie useEffect deps
+- i18n check result:
+  - `powershell -ExecutionPolicy Bypass -File scripts/check-accounting-i18n.ps1` → `Accounting i18n keys are complete for locales: cs, ua, ru, en`
+- Docker helper result:
+  - `lakodi-docker-dev.ps1 status` → passed
+  - `lakodi-docker-dev.ps1 restart` → passed
+  - `lakodi-docker-dev.ps1 smoke` → passed (health 200, ucetnictvi-new 200, detail 200, invoices 200, API 401)
+- Route-specific smoke result:
+  - `/api/health` → 200
+  - `/admin/ucetnictvi-new` → 200
+  - `/admin/ucetnictvi-new/doklady/1` → 200
+  - `/admin/ucetnictvi-new/doklady/novy` → 200
+  - `/admin/ucetnictvi-new/doklady/1/upravit` → 200
+  - `/admin/ucetnictvi-new/vydaje/1` → 200
+  - `/admin/ucetnictvi-new/dodavatele/1` → 200
+  - `/admin/ucetnictvi-new/bankovni-transakce/1` → 200
+  - `/admin/ucetnictvi-new/ukoly/1` → 200
+  - `/admin/ucetnictvi-new/upominky-emaily/1` → 200
+  - `/admin/ucetnictvi-new/opakovane/1` → 200
+  - `/admin/ucetnictvi-new/prilohy/1` → 200
+  - `/admin/invoices` → 200
+  - unauthenticated `/api/admin/invoices` → 401
+- Old invoice route result:
+  - `/admin/invoices` → 200, unchanged
+- Protected old invoice diff result:
+  - no diffs on protected invoice files
+- Backend source changes:
+  - `None`
+- Database/schema changes:
+  - `None`
+- AI/RAG backend implemented:
+  - `No`
+- Voice implemented:
+  - `No`
+- Push:
+  - `No`
+- Deploy/CD:
+  - `No`
+- Commit message:
+  - `Add accounting document write actions`
+- Local commit hash:
+  - recorded in final response after local commit
+- Known risks/follow-ups for 23B/23C:
+  - subject/customer create still deferred to 23B (manual snapshot or existing subject picker only)
+  - payment delete/reverse deferred
+  - email send deferred to 23C with confirmation/preview
+  - settings update in new UI deferred to 23C (backend defaults used on create)
+  - expenses, suppliers, attachments, bank apply, reminders, recurring, exports remain read-only until 23B/23C

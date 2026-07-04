@@ -633,3 +633,80 @@ export interface AccountingNewDashboardLoadResult {
   dashboard: AccountingNewDashboardData;
   partialErrors: AccountingNewApiError[];
 }
+
+export type AccountingNewDocumentStoredStatus = "draft" | "issued" | "cancelled";
+
+export type AccountingNewBusinessMode = "autoservice" | "construction";
+
+export type AccountingNewTaxMode = "standard" | "reverse_charge";
+
+export interface AccountingNewDocumentItemInput {
+  description: string;
+  quantity: number;
+  unit_price: number;
+}
+
+export interface AccountingNewDocumentWritePayload {
+  invoice_number?: string | null;
+  document_kind?: string;
+  status?: AccountingNewDocumentStoredStatus;
+  issue_date: string;
+  due_date: string;
+  subject_id?: number | null;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  customer_address?: string | null;
+  customer_ico?: string | null;
+  customer_dic?: string | null;
+  note?: string | null;
+  business_mode: AccountingNewBusinessMode;
+  tax_mode: AccountingNewTaxMode;
+  currency: string;
+  vat_rate?: number | null;
+  items: AccountingNewDocumentItemInput[];
+}
+
+export interface AccountingNewDocumentPaymentCreatePayload {
+  amount: number;
+  paid_at: string;
+  payment_method: string;
+  note?: string | null;
+}
+
+export interface AccountingNewDocumentDefaults {
+  documentKind: string;
+  suggestedInvoiceNumber: string;
+  suggestedVariableSymbol: string;
+}
+
+export interface AccountingNewDocumentFormItemState {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+}
+
+export interface AccountingNewDocumentFormState {
+  invoiceNumber: string;
+  documentKind: string;
+  status: AccountingNewDocumentStoredStatus;
+  issueDate: string;
+  dueDate: string;
+  subjectId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerAddress: string;
+  customerIco: string;
+  customerDic: string;
+  note: string;
+  businessMode: AccountingNewBusinessMode;
+  taxMode: AccountingNewTaxMode;
+  currency: string;
+  vatRate: string;
+  items: AccountingNewDocumentFormItemState[];
+}
+
+export interface AccountingNewDocumentMutationResult {
+  detail: AccountingNewDocumentDetail;
+}

@@ -18,8 +18,11 @@ import {
   getAccountingNewDocumentAuditEvents,
   getAccountingNewDocumentRelations,
 } from "@/lib/accountingNew";
-import type { AccountingNewApiError, AccountingNewDocumentDetailState } from "@/types/accountingNew";
+import type { AccountingNewApiError, AccountingNewDocumentDetail, AccountingNewDocumentDetailState } from "@/types/accountingNew";
+import { AccountingNewDocumentActions } from "@/components/admin/accounting-new/AccountingNewDocumentActions";
+import { AccountingNewDocumentPaymentForm } from "@/components/admin/accounting-new/AccountingNewDocumentPaymentForm";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
+import { canAccountingNewDocumentAddPayment } from "@/lib/accountingNewDocumentWrite";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
 import {
   formatAccountingNewDate,
@@ -69,6 +72,7 @@ export function AccountingNewDocumentDetail({
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewDocumentDetailState>({ status: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,7 +141,19 @@ export function AccountingNewDocumentDetail({
     void loadDetail();
 
     return () => controller.abort();
-  }, [documentId, t.errors.documentDetailTitle]);
+  }, [documentId, t.errors.documentDetailTitle, reloadKey]);
+
+  function handleDetailUpdated(detail: AccountingNewDocumentDetail) {
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            ...current,
+            detail,
+          }
+        : current,
+    );
+    setReloadKey((value) => value + 1);
+  }
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
@@ -195,16 +211,17 @@ export function AccountingNewDocumentDetail({
         <Button variant="outline" asChild>
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
+        <Badge variant="secondary">{t.documentWrite.badgeFunctional}</Badge>
         <Badge variant="outline">{translateAccountingNewDocumentKind(t, detail.documentKind)}</Badge>
       </div>
+
+      <AccountingNewDocumentActions detail={detail} onUpdated={handleDetailUpdated} />
 
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <AccountingNewDocumentStatusBadge label={detail.paymentStatus} />
             <AccountingNewDocumentStatusBadge label={detail.effectiveStatus} />
-            <Badge variant="secondary">{t.common.withoutWriteActions}</Badge>
           </div>
           <div className="space-y-1">
             <CardTitle>{detail.invoiceNumber}</CardTitle>
@@ -357,7 +374,7 @@ export function AccountingNewDocumentDetail({
             <CardTitle>{t.documentDetail.paymentsTitle}</CardTitle>
             <CardDescription>{t.documentDetail.paymentsDescription}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {detail.payments.length > 0 ? (
               <div className="space-y-3">
                 {detail.payments.map((payment) => (
@@ -377,6 +394,12 @@ export function AccountingNewDocumentDetail({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">{t.empty.documentPayments}</p>
+            )}
+
+            {canAccountingNewDocumentAddPayment(detail) ? (
+              <AccountingNewDocumentPaymentForm detail={detail} onPaymentAdded={handleDetailUpdated} />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t.documentWrite.payment.disabledHint}</p>
             )}
           </CardContent>
         </Card>

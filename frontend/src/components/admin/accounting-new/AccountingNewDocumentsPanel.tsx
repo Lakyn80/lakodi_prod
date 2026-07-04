@@ -2,13 +2,17 @@
 
 import { useDeferredValue, useState } from "react";
 
+import Link from "next/link";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ACCOUNTING_NEW_ROUTE } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewDocumentListItem } from "@/types/accountingNew";
 import { AccountingNewDocumentsTable } from "@/components/admin/accounting-new/AccountingNewDocumentsTable";
 import {
@@ -85,12 +89,17 @@ export function AccountingNewDocumentsPanel({
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{t.common.readOnly}</Badge>
+          <Badge variant="secondary">{t.documentWrite.badgeFunctional}</Badge>
           <Badge variant="outline">{t.documents.badge}</Badge>
         </div>
-        <div className="space-y-1">
-          <CardTitle>{t.documents.title}</CardTitle>
-          <CardDescription>{t.documents.description}</CardDescription>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <CardTitle>{t.documents.title}</CardTitle>
+            <CardDescription>{t.documents.description}</CardDescription>
+          </div>
+          <Button asChild>
+            <Link href={`${ACCOUNTING_NEW_ROUTE}/doklady/novy`}>{t.documentWrite.actions.createDocument}</Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

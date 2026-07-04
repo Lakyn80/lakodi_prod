@@ -13,6 +13,9 @@ import type {
   AccountingNewDocumentFilters,
   AccountingNewDocumentItem,
   AccountingNewDocumentListItem,
+  AccountingNewDocumentDefaults,
+  AccountingNewDocumentPaymentCreatePayload,
+  AccountingNewDocumentWritePayload,
   AccountingNewDocumentRelationDocumentSummary,
   AccountingNewDocumentRelationPaymentSummary,
   AccountingNewDocumentRelationSummary,
@@ -1153,6 +1156,53 @@ async function fetchAccountingNewJson<T>(resource: string, path: string, signal?
 
   return (await response.json()) as T;
 }
+
+async function mutateAccountingNewJson<T>(
+  resource: string,
+  path: string,
+  method: "POST" | "PUT" | "DELETE",
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(adminApiUrl(`${ACCOUNTING_NEW_INVOICES_BASE}${path}`), {
+      ...apiFetchOptions,
+      method,
+      cache: "no-store",
+      signal,
+      headers: {
+        ...apiFetchOptions.headers,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    throw new AccountingNewRequestError(buildNetworkError(resource, error));
+  }
+
+  if (!response.ok) {
+    throw new AccountingNewRequestError(await buildApiError(resource, response));
+  }
+
+  return (await response.json()) as T;
+}
+
+function mapDocumentDefaults(item: {
+  document_kind: string;
+  suggested_invoice_number: string;
+  suggested_variable_symbol: string;
+}): AccountingNewDocumentDefaults {
+  return {
+    documentKind: item.document_kind,
+    suggestedInvoiceNumber: item.suggested_invoice_number,
+    suggestedVariableSymbol: item.suggested_variable_symbol,
+  };
+}
+
+type AccountingNewDocumentDetailApi = Parameters<typeof mapDocumentDetail>[0];
 
 function isOpenTodo(status: string): boolean {
   const normalized = status.trim().toLowerCase();
@@ -2552,4 +2602,116 @@ export async function getAccountingNewDashboardData(
     dashboard,
     partialErrors,
   };
+}
+
+export async function getAccountingNewDocumentDefaults(
+  documentKind?: string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentDefaults> {
+  const searchParams = new URLSearchParams();
+  if (documentKind) {
+    searchParams.set("document_kind", documentKind);
+  }
+
+  const path = `/defaults${searchParams.size > 0 ? `?${searchParams.toString()}` : ""}`;
+  const data = await fetchAccountingNewJson<{
+    document_kind: string;
+    suggested_invoice_number: string;
+    suggested_variable_symbol: string;
+  }>("document-defaults", path, params.signal);
+
+  return mapDocumentDefaults(data);
+}
+
+export async function createAccountingNewDocument(
+  payload: AccountingNewDocumentWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentDetail> {
+  const data = await mutateAccountingNewJson<AccountingNewDocumentDetailApi>(
+    "document-create",
+    "",
+    "POST",
+    payload,
+    params.signal,
+  );
+
+  return mapDocumentDetail(data);
+}
+
+export async function updateAccountingNewDocument(
+  id: number | string,
+  payload: AccountingNewDocumentWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentDetail> {
+  const normalizedId = normalizeDocumentId(id);
+  const data = await mutateAccountingNewJson<AccountingNewDocumentDetailApi>(
+    "document-update",
+    `/${normalizedId}`,
+    "PUT",
+    payload,
+    params.signal,
+  );
+
+  return mapDocumentDetail(data);
+}
+
+export async function finalizeAccountingNewDocument(
+  id: number | string,
+  payload: AccountingNewDocumentWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentDetail> {
+  return updateAccountingNewDocument(id, { ...payload, status: "issued" }, params);
+}
+
+export async function addAccountingNewDocumentPayment(
+  id: number | string,
+  payload: AccountingNewDocumentPaymentCreatePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentDetail> {
+  const normalizedId = normalizeDocumentId(id);
+  const data = await mutateAccountingNewJson<AccountingNewDocumentDetailApi>(
+    "document-payment-create",
+    `/${normalizedId}/payments`,
+    "POST",
+    payload,
+    params.signal,
+  );
+
+  return mapDocumentDetail(data);
+}
+
+function extractPdfFilename(contentDisposition: string | null, fallback: string): string {
+  if (!contentDisposition) {
+    return fallback;
+  }
+
+  const match = /filename="?([^"]+)"?/i.exec(contentDisposition);
+  return match?.[1] ?? fallback;
+}
+
+export async function downloadAccountingNewDocumentPdf(id: number | string): Promise<void> {
+  const normalizedId = normalizeDocumentId(id);
+  const response = await fetch(adminApiUrl(`${ACCOUNTING_NEW_INVOICES_BASE}/${normalizedId}/pdf`), {
+    ...apiFetchOptions,
+    method: "GET",
+    headers: {
+      ...apiFetchOptions.headers,
+      Accept: "application/pdf",
+    },
+  });
+
+  if (!response.ok) {
+    throw new AccountingNewRequestError(await buildApiError("document-pdf", response));
+  }
+
+  const blob = await response.blob();
+  const filename = extractPdfFilename(response.headers.get("content-disposition"), `doklad-${normalizedId}.pdf`);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }

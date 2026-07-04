@@ -5,8 +5,11 @@ const ACCOUNTING_NEW_BASE_ROUTE = "/admin/ucetnictvi-new";
 
 type AccountingNewModuleRegistrySeed = Omit<AccountingNewModuleRegistryEntry, "capabilities">;
 
-function createRegistryEntry(entry: AccountingNewModuleRegistrySeed): AccountingNewModuleRegistryEntry {
-  const canRead = entry.readAvailability === "read-only";
+function createRegistryEntry(
+  entry: AccountingNewModuleRegistrySeed,
+  capabilityOverrides?: Partial<AccountingNewModuleRegistryEntry["capabilities"]>,
+): AccountingNewModuleRegistryEntry {
+  const canRead = entry.readAvailability === "read-only" || entry.writeEnabled;
 
   return {
     ...entry,
@@ -25,6 +28,7 @@ function createRegistryEntry(entry: AccountingNewModuleRegistrySeed): Accounting
       canUpload: false,
       canArchive: false,
       canLink: false,
+      ...capabilityOverrides,
     },
   };
 }
@@ -55,15 +59,16 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     relatedModuleIds: ["documents", "expenses", "suppliers", "bank-transactions", "payment-matching"],
     gridModuleId: "dashboard",
   }),
-  createRegistryEntry({
+  createRegistryEntry(
+    {
     id: "documents",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#documents`,
     labelKey: "moduleRegistry.documents.label",
     descriptionKey: "moduleRegistry.documents.description",
     entityType: "document",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "document",
       labelKey: "rag.entityTypes.document",
@@ -79,16 +84,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["document-detail", "payment-matching"],
     gridModuleId: "documents",
-  }),
-  createRegistryEntry({
+    },
+    { canCreate: true, canUpdate: true, canExport: true },
+  ),
+  createRegistryEntry(
+    {
     id: "document-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/doklady/[id]`,
     labelKey: "moduleRegistry.documentDetail.label",
     descriptionKey: "moduleRegistry.documentDetail.description",
     entityType: "document",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "document",
       labelKey: "rag.entityTypes.document",
@@ -103,7 +111,9 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.documentDetail"],
     },
     relatedModuleIds: ["documents", "payment-matching"],
-  }),
+    },
+    { canUpdate: true, canExport: true },
+  ),
   createRegistryEntry({
     id: "expenses",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#expenses`,
