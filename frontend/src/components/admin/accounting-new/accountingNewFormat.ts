@@ -71,8 +71,18 @@ function normalizeAccountingNewLookupKey(value: string): string {
 }
 
 export function translateAccountingNewStatus(t: AccountingNewTranslations, value: string): string {
+  const key = normalizeAccountingNewLookupKey(value);
   const labels = t.statusLabels as Record<string, string>;
-  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+  if (labels[key]) {
+    return labels[key];
+  }
+
+  const paymentLabels = t.paymentMethods as Record<string, string>;
+  if (paymentLabels[key]) {
+    return paymentLabels[key];
+  }
+
+  return t.common.noValue;
 }
 
 export function translateAccountingNewDocumentKind(t: AccountingNewTranslations, value: string): string {
@@ -110,8 +120,33 @@ export function translateAccountingNewTransactionDirection(t: AccountingNewTrans
 }
 
 export function translateAccountingNewEntityType(t: AccountingNewTranslations, value: string): string {
+  const auditLabels = (t as AccountingNewTranslations & { auditEventTypes?: Record<string, string> }).auditEventTypes;
+  const auditLabel = auditLabels?.[normalizeAccountingNewLookupKey(value)];
+  if (auditLabel) {
+    return auditLabel;
+  }
+
   const labels = t.rag.entityTypes as Record<string, string>;
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
+export function translateAccountingNewAuditEvent(t: AccountingNewTranslations, value: string): string {
+  const labels = (t as AccountingNewTranslations & { auditEventTypes?: Record<string, string> }).auditEventTypes;
+  if (!labels) {
+    return translateAccountingNewEntityType(t, value);
+  }
+
+  return labels[normalizeAccountingNewLookupKey(value)] ?? translateAccountingNewEntityType(t, value);
+}
+
+export function translateAccountingNewAuditSource(t: AccountingNewTranslations, value: string): string {
+  const normalized = normalizeAccountingNewLookupKey(value);
+  if (!normalized || normalized === "admin_api") {
+    const labels = (t as AccountingNewTranslations & { auditEventTypes?: Record<string, string> }).auditEventTypes;
+    return labels?.admin_api ?? t.navigation.section;
+  }
+
+  return translateAccountingNewAuditEvent(t, value);
 }
 
 export function translateAccountingNewRecurringKind(t: AccountingNewTranslations, value: string): string {
@@ -137,10 +172,10 @@ export function translateAccountingNewTaxMode(t: AccountingNewTranslations, valu
 export { translateAccountingNewPaymentMethod } from "@/lib/accountingNewPaymentMethods";
 
 const ACCOUNTING_NEW_ABORT_MESSAGE = "Načítání bylo přerušeno.";
-const ACCOUNTING_NEW_LOGIN_MESSAGE = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
-const ACCOUNTING_NEW_NOT_FOUND_MESSAGE = "Požadovaný accounting dokument nebyl nalezen.";
-const ACCOUNTING_NEW_NETWORK_MESSAGE = "Read-only načtení selhalo kvůli síťové chybě.";
-const ACCOUNTING_NEW_HTTP_MESSAGE_PATTERN = /^Read-only načtení selhalo \((\d+)\)\.$/;
+const ACCOUNTING_NEW_LOGIN_MESSAGE = "Pro zobrazení účetnictví se prosím přihlaste.";
+const ACCOUNTING_NEW_NOT_FOUND_MESSAGE = "Požadovaný záznam nebyl nalezen.";
+const ACCOUNTING_NEW_NETWORK_MESSAGE = "Nepodařilo se načíst data kvůli síťové chybě.";
+const ACCOUNTING_NEW_HTTP_MESSAGE_PATTERN = /^Nepodařilo se načíst data \(chyba (\d+)\)\.$|^Read-only načtení selhalo \((\d+)\)\.$/;
 const ACCOUNTING_NEW_INVALID_ID_PATTERN = /musí být kladné číslo\.$/;
 const ACCOUNTING_NEW_MUTATION_FAILED_PATTERN = /^(Write|Mutation|ARES).*selhal/i;
 const ACCOUNTING_NEW_JSON_DETAIL_PATTERN = /^(\[|\{)|"type"\s*:\s*"/;
@@ -206,7 +241,7 @@ export function translateAccountingNewApiError(t: AccountingNewTranslations, err
 
   if (ACCOUNTING_NEW_HTTP_MESSAGE_PATTERN.test(error.message) && error.status !== null) {
     return formatAccountingNewTemplate(t.errors.httpGeneric, {
-      status: error.status,
+      status: error.status ?? error.message.match(/\d+/)?.[0] ?? "",
     });
   }
 

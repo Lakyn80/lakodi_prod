@@ -185,11 +185,7 @@ export function AccountingNewRecurringTemplatesPanel({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{formatAccountingNewTemplate(t.recurring.shownCount, { count: filteredTemplates.length })}</span>
               <span>·</span>
-              <span>
-                {formatAccountingNewTemplate(t.recurring.detailRouteHint, {
-                  route: "/admin/ucetnictvi-new/opakovane/[id]",
-                })}
-              </span>
+              <span>{t.recurring.detailRouteHint}</span>
             </div>
           </>
         ) : null}

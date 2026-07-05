@@ -29,6 +29,8 @@ import {
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
   translateAccountingNewApiError,
+  translateAccountingNewAuditEvent,
+  translateAccountingNewAuditSource,
   translateAccountingNewDocumentKind,
   translateAccountingNewEntityType,
   translateAccountingNewPaymentMethod,
@@ -468,12 +470,12 @@ export function AccountingNewDocumentDetail({
                 <div key={event.id} className="rounded-lg border border-border bg-background p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{translateAccountingNewEntityType(t, event.entityType)}</Badge>
-                    <Badge variant="secondary">{event.eventType}</Badge>
+                    <Badge variant="secondary">{translateAccountingNewAuditEvent(t, event.eventType)}</Badge>
                   </div>
                   <p className="mt-3 text-sm text-foreground">{event.message ?? t.common.noAuditMessage}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {formatAccountingNewDateTime(event.createdAt, language, t.common.noValue)} ·{" "}
-                    {formatAccountingNewTemplate(t.common.sourcePrefix, { value: event.source })}
+                    {translateAccountingNewAuditSource(t, event.source)}
                   </p>
                 </div>
               ))}

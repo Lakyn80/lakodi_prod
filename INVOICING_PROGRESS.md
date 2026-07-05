@@ -3657,3 +3657,17 @@
   - ARES data box saved with customer auto-save when present
 - Backend source changes: `None`
 - Commit message: `Harden accounting document and expense UX`
+
+## Batch 23A/23B-COPY Clean accounting client-facing UI copy
+
+- Date: `2026-07-05`
+- Scope:
+  - replaced developer/internal wording in `translations.ts` (cs/ua/ru/en) for `/admin/ucetnictvi-new`
+  - visible nav label `ÚčetnictvíNew` -> `Účetnictví` (route unchanged)
+  - client-friendly module descriptions, empty states, auth/error messages
+  - audit event/source label mappers (`translateAccountingNewAuditEvent`, `translateAccountingNewAuditSource`)
+  - status/payment enum fallbacks no longer show raw backend values in UI
+  - removed dashboard developer badges/notices and route hints with raw paths
+- Backend source changes: `None`
+- Protected legacy invoice files: untouched
+- Commit message: `Clean accounting client-facing UI copy`

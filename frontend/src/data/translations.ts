@@ -98,11 +98,11 @@ export const translations = {
         bankTransactions: "Bankovní transakce",
         paymentMatching: "Párování plateb",
         backToDashboard: "Zpět do Účetnictví",
-        legacyInvoices: "Původní faktury",
+        legacyInvoices: "Původní faktury"
       },
       common: {
-        readOnly: "Read-only",
-        readOnlyDetail: "Read-only detail",
+        readOnly: "Přehled",
+        readOnlyDetail: "Detail záznamu",
         noValue: "Neuvedeno",
         noMessage: "Bez zprávy",
         noReason: "Bez detailu",
@@ -111,140 +111,140 @@ export const translations = {
         noVariableSymbol: "VS neuveden",
         noConstantSymbol: "KS -",
         noSpecificSymbol: "SS -",
-        readOnlyBadge: "Read-only",
+        readOnlyBadge: "Přehled",
         readyBadge: "Připraveno",
-        noMetrics: "Bez aktivních read-only metrik v této fázi.",
-        withoutWriteActions: "Bez write akcí",
+        noMetrics: "Zatím bez statistik.",
+        withoutWriteActions: "",
         paidAt: "Uhrazeno {value}",
         appliedAt: "Aplikováno {value}",
-        sourcePrefix: "zdroj {value}",
-        detailRouteOnly: "detail vede pouze do nové paralelní route `{route}`",
-        noAuditMessage: "Backend neposlal textovou zprávu, proto UI zobrazuje pouze typ události.",
-        noRefresh: "Dashboard zatím nemá uložený úspěšný refresh.",
+        sourcePrefix: "zdroj: {value}",
+        detailRouteOnly: "Klikněte na řádek pro detail záznamu.",
+        noAuditMessage: "Událost byla zaznamenána.",
+        noRefresh: "Poslední aktualizace zatím není k dispozici."
       },
       auth: {
-        dashboardTitle: "Pro read-only accounting dashboard je nutné přihlášení",
-        dashboardDescription: "Bez aktivní admin session se nové účetní přehledy nenačtou. Původní `/admin/invoices` tím zůstává beze změny.",
-        documentsTitle: "Pro načtení dokladů je nutné přihlášení",
-        documentsDescription: "Bez aktivní admin session se read-only seznam dokladů nezobrazí. Legacy invoicing UI zůstává nedotčené.",
-        documentDetailTitle: "Pro read-only detail dokladu je nutné přihlášení",
-        documentDetailDescription: "Bez aktivní admin session se detail nového dokladu nenačte. Původní `/admin/invoices` zůstává zachovaný.",
-        expensesTitle: "Pro načtení výdajů je nutné přihlášení",
-        expensesDescription: "Bez aktivní admin session se read-only seznam výdajů nenačte. Původní issued invoices se tím nemění.",
-        expenseDetailTitle: "Pro read-only detail výdaje je nutné přihlášení",
-        expenseDetailDescription: "Bez aktivní admin session se detail přijatého dokladu nenačte. Legacy faktury zůstávají v `/admin/invoices`.",
-        suppliersTitle: "Pro načtení dodavatelů je nutné přihlášení",
-        suppliersDescription: "Bez aktivní admin session se read-only seznam dodavatelů nenačte. Legacy invoicing UI zůstává beze změny.",
-        supplierDetailTitle: "Pro read-only detail dodavatele je nutné přihlášení",
-        supplierDetailDescription: "Bez aktivní admin session se detail dodavatele nenačte. Původní `/admin/invoices` zůstává zachovaný.",
-        bankTransactionsTitle: "Pro načtení bankovních transakcí je nutné přihlášení",
-        bankTransactionsDescription: "Bez aktivní admin session se read-only bankovní transakce nenačtou.",
-        bankTransactionDetailTitle: "Pro read-only detail bankovní transakce je nutné přihlášení",
-        bankTransactionDetailDescription: "Bez aktivní admin session se detail bankovní transakce nenačte.",
-        paymentMatchingTitle: "Pro načtení přehledu párování je nutné přihlášení",
-        paymentMatchingDescription: "Bez aktivní admin session se read-only data párování nenačtou.",
-        todosTitle: "Pro načtení úkolů je nutné přihlášení",
-        todosDescription: "Bez aktivní admin session se read-only seznam úkolů a upomínek nenačte.",
-        todoDetailTitle: "Pro read-only detail úkolu je nutné přihlášení",
-        todoDetailDescription: "Bez aktivní admin session se detail úkolu nenačte. Původní `/admin/invoices` zůstává zachovaný.",
-        reminderEmailsTitle: "Pro načtení upomínkových e-mailů je nutné přihlášení",
-        reminderEmailsDescription: "Bez aktivní admin session se historie upomínkových e-mailů nenačte.",
-        reminderEmailDetailTitle: "Pro read-only detail upomínkového e-mailu je nutné přihlášení",
-        reminderEmailDetailDescription: "Bez aktivní admin session se náhled upomínkového e-mailu nenačte.",
-        recurringTitle: "Pro načtení opakovaných šablon je nutné přihlášení",
-        recurringDescription: "Bez aktivní admin session se read-only seznam opakovaných šablon nenačte.",
-        recurringDetailTitle: "Pro read-only detail opakované šablony je nutné přihlášení",
-        recurringDetailDescription: "Bez aktivní admin session se detail opakované šablony nenačte. Původní `/admin/invoices` zůstává zachovaný.",
-        attachmentsTitle: "Pro načtení příloh je nutné přihlášení",
-        attachmentsDescription: "Bez aktivní admin session se read-only seznam příloh nenačte.",
-        attachmentDetailTitle: "Pro read-only detail přílohy je nutné přihlášení",
-        attachmentDetailDescription: "Bez aktivní admin session se detail přílohy nenačte. Původní `/admin/invoices` zůstává zachovaný.",
-        attachmentInboxTitle: "Pro načtení inboxu příloh je nutné přihlášení",
-        attachmentInboxDescription: "Bez aktivní admin session se nezařazené přílohy nenačtou.",
-        subjectsTitle: "Pro načtení odběratelů je nutné přihlášení",
-        subjectsDescription: "Bez aktivní admin session se seznam odběratelů nenačte.",
-        subjectDetailTitle: "Pro detail odběratele je nutné přihlášení",
-        subjectDetailDescription: "Bez aktivní admin session se detail odběratele nenačte.",
+        dashboardTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        dashboardDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        documentsTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        documentsDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        documentDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        documentDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        expensesTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        expensesDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        expenseDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        expenseDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        suppliersTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        suppliersDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        supplierDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        supplierDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        bankTransactionsTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        bankTransactionsDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        bankTransactionDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        bankTransactionDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        paymentMatchingTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        paymentMatchingDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        todosTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        todosDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        todoDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        todoDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        reminderEmailsTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        reminderEmailsDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        reminderEmailDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        reminderEmailDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        recurringTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        recurringDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        recurringDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        recurringDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        attachmentsTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        attachmentsDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        attachmentDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        attachmentDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        attachmentInboxTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        attachmentInboxDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        subjectsTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        subjectsDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        subjectDetailTitle: "Pro zobrazení účetnictví se prosím přihlaste.",
+        subjectDetailDescription: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví."
       },
       errors: {
-        dashboardTitle: "Read-only accounting dashboard se nepodařilo načíst",
-        partialDataTitle: "Část read-only dat se nepodařilo načíst",
-        partialDataDescription: "Dashboard proto zobrazuje pouze bezpečná data, která backend skutečně vrátil.",
-        documentsTitle: "Read-only seznam dokladů se nepodařilo načíst",
-        documentDetailTitle: "Read-only detail dokladu se nepodařilo načíst",
-        expensesTitle: "Read-only seznam výdajů se nepodařilo načíst",
-        expenseDetailTitle: "Read-only detail výdaje se nepodařilo načíst",
-        suppliersTitle: "Read-only seznam dodavatelů se nepodařilo načíst",
-        supplierDetailTitle: "Read-only detail dodavatele se nepodařilo načíst",
-        subjectsTitle: "Seznam odběratelů se nepodařilo načíst",
-        subjectDetailTitle: "Detail odběratele se nepodařilo načíst",
-        bankTransactionsTitle: "Read-only seznam bankovních transakcí se nepodařilo načíst",
-        bankTransactionDetailTitle: "Read-only detail bankovní transakce se nepodařilo načíst",
-        paymentMatchingTitle: "Read-only přehled párování se nepodařilo načíst",
-        todosTitle: "Read-only seznam úkolů se nepodařilo načíst",
-        todoDetailTitle: "Read-only detail úkolu se nepodařilo načíst",
-        reminderEmailsTitle: "Read-only historie upomínkových e-mailů se nepodařilo načíst",
-        reminderEmailDetailTitle: "Read-only detail upomínkového e-mailu se nepodařilo načíst",
-        recurringTitle: "Read-only seznam opakovaných šablon se nepodařilo načíst",
-        recurringDetailTitle: "Read-only detail opakované šablony se nepodařilo načíst",
-        attachmentsTitle: "Read-only seznam příloh se nepodařilo načíst",
-        attachmentDetailTitle: "Read-only detail přílohy se nepodařilo načíst",
-        attachmentInboxTitle: "Read-only inbox příloh se nepodařilo načíst",
-        supplementalTitle: "Část doplňkových read-only sekcí se nepodařilo načíst",
-        invalidIdentifier: "Požadovaný identifikátor účetní entity není platné kladné číslo.",
-        loginRequiredGeneric: "Pro načtení read-only účetní části je nutné přihlášení do adminu.",
-        notFoundGeneric: "Požadovaný účetní záznam nebyl na read-only endpointu nalezen.",
-        requestAborted: "Načítání read-only účetních dat bylo přerušeno.",
-        networkGeneric: "Read-only načtení účetních dat selhalo kvůli síťové chybě.",
-        httpGeneric: "Read-only načtení účetních dat selhalo ({status}).",
-        validationFailed: "Zadané údaje nejsou platné. Zkontrolujte formulář a zkuste to znovu.",
-        actionFailed: "Akci se nepodařilo dokončit. Zkuste to prosím znovu.",
+        dashboardTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        partialDataTitle: "Některá data se nepodařilo načíst. Zobrazen je dostupný přehled.",
+        partialDataDescription: "",
+        documentsTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        documentDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        expensesTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        expenseDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        suppliersTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        supplierDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        subjectsTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        subjectDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        bankTransactionsTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        bankTransactionDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        paymentMatchingTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        todosTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        todoDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        reminderEmailsTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        reminderEmailDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        recurringTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        recurringDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        attachmentsTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        attachmentDetailTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        attachmentInboxTitle: "Nepodařilo se načíst data. Zkuste to prosím znovu.",
+        supplementalTitle: "Některá data se nepodařilo načíst. Zobrazen je dostupný přehled.",
+        invalidIdentifier: "Neplatný identifikátor záznamu.",
+        loginRequiredGeneric: "Pro zobrazení účetnictví se prosím přihlaste.",
+        notFoundGeneric: "Požadovaný záznam nebyl nalezen.",
+        requestAborted: "Načítání bylo přerušeno.",
+        networkGeneric: "Nepodařilo se načíst data kvůli síťové chybě.",
+        httpGeneric: "Nepodařilo se načíst data (chyba {status}).",
+        validationFailed: "Zkontrolujte prosím zadané údaje.",
+        actionFailed: "Akci se nepodařilo dokončit. Zkuste to prosím znovu."
       },
       empty: {
-        documents: "Backend zatím nevrátil žádné read-only doklady. Nová paralelní sekce přesto zůstává připravená a původní faktury v `/admin/invoices` se nemění.",
+        documents: "Zatím tu nejsou žádné doklady.",
         documentsFiltered: "Aktuální filtry nevrátily žádný doklad. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        expenses: "Backend zatím nevrátil žádné read-only výdaje. Nová paralelní sekce přesto zůstává bezpečná a původní faktury se nemění.",
+        expenses: "Zatím tu nejsou žádné výdaje.",
         expensesFiltered: "Aktuální filtry nevrátily žádný výdaj. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        suppliers: "Backend zatím nevrátil žádné read-only dodavatele. Nová paralelní sekce přesto zůstává připravená bez zásahu do starého invoicing UI.",
+        suppliers: "Zatím tu nejsou žádní dodavatelé.",
         suppliersFiltered: "Aktuální filtry nevrátily žádného dodavatele. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        bankTransactions: "Backend zatím nevrátil žádné read-only bankovní transakce. Nová paralelní sekce přesto zůstává bezpečná a bez importních akcí.",
+        bankTransactions: "Zatím tu nejsou žádné bankovní transakce.",
         bankTransactionsFiltered: "Aktuální filtry nevrátily žádnou bankovní transakci. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        documentItems: "Tento doklad zatím neobsahuje žádné položky v read-only detailu.",
-        expenseItems: "Tento výdaj zatím neobsahuje žádné položky v read-only detailu.",
-        documentPayments: "K tomuto dokladu zatím backend nevrátil žádné platby.",
-        expensePayments: "K tomuto výdaji zatím backend nevrátil žádné platby.",
-        documentRelations: "K tomuto dokladu zatím nebyly načteny žádné read-only relace.",
-        documentAudit: "Žádné auditní události se pro tento doklad zatím nepodařilo načíst.",
-        expenseAudit: "Žádné auditní události se pro tento výdaj zatím nepodařilo načíst.",
-        bankTransactionMatches: "K této bankovní transakci zatím backend nevrátil žádné read-only match záznamy.",
-        todos: "Backend zatím nevrátil žádné read-only úkoly ani upomínky.",
+        documentItems: "Tento doklad zatím nemá žádné položky.",
+        expenseItems: "Tento výdaj zatím nemá žádné položky.",
+        documentPayments: "K tomuto dokladu zatím nejsou evidované platby.",
+        expensePayments: "K tomuto výdaji zatím nejsou evidované platby.",
+        documentRelations: "K tomuto dokladu zatím nejsou navázané související záznamy.",
+        documentAudit: "Pro tento doklad zatím nejsou žádné auditní události.",
+        expenseAudit: "Pro tento výdaj zatím nejsou žádné auditní události.",
+        bankTransactionMatches: "K této transakci zatím nejsou přiřazené platby.",
+        todos: "Zatím tu nejsou žádné úkoly ani upomínky.",
         todosFiltered: "Aktuální filtry nevrátily žádný úkol. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        reminderEmails: "Backend zatím nevrátil žádné read-only upomínkové e-maily.",
+        reminderEmails: "Zatím tu nejsou žádné upomínkové e-maily.",
         reminderEmailsFiltered: "Aktuální filtry nevrátily žádný upomínkový e-mail. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        recurring: "Backend zatím nevrátil žádné read-only opakované šablony. Nová paralelní sekce přesto zůstává bezpečná a negeneruje doklady.",
+        recurring: "Zatím tu nejsou žádné opakované šablony.",
         recurringFiltered: "Aktuální filtry nevrátily žádnou opakovanou šablonu. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        recurringItems: "Tato opakovaná šablona zatím neobsahuje žádné položky v read-only detailu.",
-        recurringGenerations: "K této opakované šabloně zatím backend nevrátil žádnou read-only historii generování.",
-        attachments: "Backend zatím nevrátil žádné read-only přílohy. Nová paralelní sekce přesto zůstává bez upload, delete a link akcí.",
+        recurringItems: "Tato šablona zatím nemá žádné položky.",
+        recurringGenerations: "Tato šablona zatím nemá historii generování.",
+        attachments: "Zatím tu nejsou žádné přílohy.",
         attachmentsFiltered: "Aktuální filtry nevrátily žádnou přílohu. Zkuste upravit hledání nebo vrátit filtry na `Všechny`.",
-        attachmentInbox: "Inbox zatím neobsahuje žádné nezařazené přílohy vrácené bezpečným GET endpointem.",
+        attachmentInbox: "Inbox zatím neobsahuje žádné nezařazené přílohy.",
         attachmentInboxFiltered: "Aktuální filtry nevrátily žádnou nezařazenou přílohu. Zkuste upravit hledání.",
-        dashboardAudit: "Žádné auditní události se zatím nepodařilo načíst nebo backend vrátil prázdný seznam.",
-        subjects: "Zatím nejsou uloženi žádní odběratelé. Spusťte backfill ze starých faktur nebo vytvořte nového odběratele.",
+        dashboardAudit: "Zatím nejsou žádné auditní události.",
+        subjects: "Zatím nejsou uloženi žádní odběratelé. Vytvořte nového nebo načtěte firmu z ARES."
       },
       dashboard: {
         badges: {
-          parallelSection: "Paralelní sekce",
-          readOnly: "Read-only dashboard",
-          noMigration: "Bez migrace",
-          nextStep: "Další krok",
+          parallelSection: "Účetnictví",
+          readOnly: "Přehled",
+          noMigration: "",
+          nextStep: ""
         },
         title: "Účetnictví",
-        description: "Nová paralelní účetní sekce načítá pouze bezpečná read-only data nad existujícím accounting backendem.",
-        preservationNotice: "Stávající vydané faktury a původní invoicing UI zůstávají zachované beze změny v sekci `/admin/invoices`. Tato nová část nic nemigruje, nepřepisuje a nepouští žádné write akce.",
-        progressNotice: "Aktuální fáze rozšiřuje bezpečný shell o samostatný read-only API client, oddělené typy, modulový registr, lokalizaci a RAG-ready metadata pro budoucí vyhledávání.",
-        summaryTitle: "Read-only přehled",
-        summaryDescription: "Metriky níže vycházejí pouze z bezpečně načtených GET endpointů. Pokud některý zdroj chybí, dashboard raději nic nedopočítává agresivně.",
+        description: "Tady najdete doklady, odběratele, výdaje, platby a přílohy.",
+        preservationNotice: "Můžete zde vystavit doklad, evidovat platbu a spravovat údaje pro účetnictví.",
+        progressNotice: "Až zde něco přidáte, zobrazí se to v tomto přehledu.",
+        summaryTitle: "Přehled",
+        summaryDescription: "Souhrn dokladů, výdajů, plateb a dalších údajů.",
         documentsTitle: "Doklady",
         documentsDescription: "{count} s otevřeným zůstatkem",
         expensesTitle: "Výdaje",
@@ -252,24 +252,24 @@ export const translations = {
         todosTitle: "Úkoly",
         todosDescription: "{overdue} po splatnosti z {total}",
         bankTitle: "Banka",
-        bankDescription: "Pouze read-only načtené transakce",
+        bankDescription: "Přehled plateb z banky",
         attachmentsTitle: "Přílohy",
         attachmentsDescription: "Inbox a vazby bez archivace",
         auditTitle: "Audit",
         auditDescription: "Poslední účetní události",
-        subjectsTitle: "Subjekty",
-        subjectsDescription: "{count} dodavatelů v paralelní vrstvě",
+        subjectsTitle: "Odběratelé",
+        subjectsDescription: "{count} uložených odběratelů",
         recurringTitle: "Opakované",
-        recurringDescription: "Šablony bez generování dokladů",
-        recentAuditTitle: "Nedávné auditní události",
-        recentAuditDescription: "Posledních pět read-only událostí vrácených z auditních endpointů.",
-        loadStateTitle: "Stav načtení",
-        loadStateDescription: "Dashboard je záměrně konzervativní a používá pouze read-only zdroje.",
-        loadStateSafeGet: "Nový klient používá pouze `GET` endpointy pod `/api/admin/invoices/*`, sdílí admin cookie session a neobsahuje žádné create, update ani delete akce.",
-        loadStateAuth: "Pokud backend vrátí `401`, stránka zobrazí bezpečný login-required stav místo pádu, automatického loginu nebo zásahu do legacy rout.",
+        recurringDescription: "Šablony pro pravidelně vystavované doklady",
+        recentAuditTitle: "Nedávné události",
+        recentAuditDescription: "Posledních pět změn v účetnictví.",
+        loadStateTitle: "Stav přehledu",
+        loadStateDescription: "Informace o poslední aktualizaci dat.",
+        loadStateSafeGet: "Až zde něco přidáte, zobrazí se to v tomto přehledu.",
+        loadStateAuth: "Pro zobrazení účetnictví se prosím přihlaste.",
         lastRefresh: "Poslední úspěšný refresh dashboardu: {value}.",
-        modulesTitle: "Moduly paralelního účetnictví",
-        modulesDescription: "Níže jsou moduly nové paralelní sekce. Tato fáze přidává pouze read-only načítání, modulový registr a vyhledávací metadata.",
+        modulesTitle: "Moduly účetnictví",
+        modulesDescription: "Rychlý přístup k jednotlivým částem účetnictví.",
         moduleStats: {
           dashboard: "{documents} dokladů, {todos} otevřených úkolů",
           documents: "{count} načtených dokladů",
@@ -281,13 +281,13 @@ export const translations = {
           attachments: "{count} příloh",
           recurring: "{count} šablon",
           exports: "Exporty zůstávají připravené pro další fázi.",
-          audit: "{count} auditních událostí",
-        },
+          audit: "{count} auditních událostí"
+        }
       },
       documents: {
         badge: "Doklady",
-        title: "Read-only seznam účetních dokladů",
-        description: "Tento přehled používá pouze nové paralelní GET endpointy. Neobsahuje žádné create, edit, delete ani migrační akce.",
+        title: "Doklady",
+        description: "Vytváření a správa faktur, proforem a dalších dokladů.",
         searchPlaceholder: "Hledat podle čísla dokladu, VS, odběratele nebo druhu",
         searchLabel: "Hledat doklady",
         kindFilterLabel: "Filtrovat podle druhu dokladu",
@@ -299,7 +299,7 @@ export const translations = {
         hideDocuments: "Skrýt doklady",
         listCollapsed: "V seznamu je {count} dokladů — přehled je sbalený.",
         tooManyUseSearch: "Pro vyhledání použijte filtr — zobrazen je jen omezený výběr.",
-        detailRouteHint: "detail vede pouze do nové paralelní route `{route}`",
+        detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           document: "Doklad",
           kind: "Druh",
@@ -308,28 +308,28 @@ export const translations = {
           dueDate: "Splatnost",
           total: "Celkem",
           statuses: "Stavy",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       documentDetail: {
         notFoundTitle: "Doklad nebyl nalezen",
-        notFoundDescription: "Požadovaný accounting doklad nebyl na read-only endpointu nalezen. Stávající faktury v `/admin/invoices` zůstávají nedotčené.",
-        description: "Read-only accounting detail v nové paralelní sekci. Původní issued invoices v `/admin/invoices` zůstávají zachované beze změny.",
-        customerTitle: "Snapshot odběratele",
-        customerDescription: "Pouze read-only zobrazení uložených údajů dokladu.",
-        issuerTitle: "Snapshot vystavitele a platby",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen.",
+        description: "Detail dokladu včetně položek, plateb a souvisejících údajů.",
+        customerTitle: "Údaje odběratele",
+        customerDescription: "Údaje odběratele uložené u dokladu.",
+        issuerTitle: "Vystavitel a platba",
         issuerDescription: "Zobrazené údaje jsou převzaté z dokladu, bez editace.",
         noteTitle: "Poznámka",
         itemsTitle: "Položky dokladu",
-        itemsDescription: "Read-only přehled položek vrácených detail endpointem.",
+        itemsDescription: "Položky dokladu.",
         amountsTitle: "Souhrn částek",
-        amountsDescription: "Žádné write akce, pouze stav uložený na backendu.",
+        amountsDescription: "Souhrn částek dokladu.",
         paymentsTitle: "Platby",
-        paymentsDescription: "Read-only seznam plateb vrácených detail endpointem.",
+        paymentsDescription: "Evidence plateb k dokladu.",
         relationsTitle: "Relace dokladu",
-        relationsDescription: "Volitelná read-only sekce nad relation endpointem.",
+        relationsDescription: "Související doklady a vazby.",
         auditTitle: "Nedávné auditní události",
-        auditDescription: "Volitelná read-only sekce nad audit endpointem.",
+        auditDescription: "Historie změn tohoto dokladu.",
         sourceLabel: "Zdroj",
         targetLabel: "Cíl",
         relationDocument: "{number} · {kind}",
@@ -338,8 +338,8 @@ export const translations = {
           variableSymbol: "Variabilní symbol",
           issueDate: "Datum vystavení",
           dueDate: "Datum splatnosti",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Obchodní režim",
+          taxMode: "Daňový režim",
           status: "Stav",
           createdAt: "Vytvořeno",
           customerName: "Jméno / firma",
@@ -359,14 +359,14 @@ export const translations = {
           total: "Celkem",
           totalPaid: "Uhrazeno",
           remainingAmount: "Zbývá uhradit",
-          vatRate: "Sazba DPH",
-        },
+          vatRate: "Sazba DPH"
+        }
       },
       documentWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Aktivní",
         loading: "Načítání formuláře dokladu…",
-        createTitle: "Nový accounting doklad",
-        createDescription: "Vytvoření konceptu nebo vystavení nového dokladu v paralelní sekci. Legacy faktury v `/admin/invoices` zůstávají nedotčené.",
+        createTitle: "Nový doklad",
+        createDescription: "Vytvořte koncept nebo rovnou vystavte nový doklad.",
         editTitle: "Upravit koncept dokladu",
         editDescription: "Úpravy jsou povoleny pouze pro koncepty. Vystavené doklady se zde neupravují.",
         backToDetail: "Zpět na detail dokladu",
@@ -375,25 +375,25 @@ export const translations = {
         saveAndIssue: "Uložit a vystavit",
         addItem: "Přidat položku",
         notEditableTitle: "Doklad nelze upravit",
-        notEditableDescription: "Tento doklad už není v konceptu. Pro legacy vydané faktury použijte `/admin/invoices`.",
-        legacyNoticeTitle: "Zachování legacy faktur",
-        legacyNoticeDescription: "Tato write vrstva pracuje pouze s novými accounting doklady. Původní issued invoices zůstávají v `/admin/invoices` beze změny.",
+        notEditableDescription: "Tento doklad už není v konceptu a nelze ho zde upravit.",
+        legacyNoticeTitle: "",
+        legacyNoticeDescription: "",
         emailDeferred: "Odeslání e-mailu zůstává odložené do pozdější bezpečné fáze.",
         customerSectionTitle: "Odběratel",
         customerSectionDescription: "Vyberte existující subjekt nebo vyplňte snapshot odběratele ručně.",
         itemsSectionTitle: "Položky",
-        itemsSectionDescription: "Položky dokladu odeslané na backend.",
+        itemsSectionDescription: "Položky dokladu.",
         subjectSelectedHint: "Použit subjekt: {name}",
         businessModes: {
           autoservice: "Autoservis",
-          construction: "Stavební práce",
+          construction: "Stavební práce"
         },
         taxModes: {
           standard: "Běžný režim DPH",
-          reverse_charge: "Přenesená daňová povinnost",
+          reverse_charge: "Přenesená daňová povinnost"
         },
         confirm: {
-          cancel: "Zrušit",
+          cancel: "Zrušit"
         },
         actions: {
           createDocument: "Nový doklad",
@@ -401,17 +401,17 @@ export const translations = {
           editDisabledHint: "Upravit lze pouze koncept dokladu.",
           issueDocument: "Vystavit doklad",
           issueDisabledHint: "Vystavit lze pouze koncept dokladu.",
-          downloadPdf: "Stáhnout PDF",
+          downloadPdf: "Stáhnout PDF"
         },
         issue: {
           confirmTitle: "Potvrdit vystavení dokladu",
           confirmDescription: "Tato akce změní stav dokladu na vystavený. Pokračujte pouze pokud jsou údaje správné.",
           confirmAction: "Vystavit",
-          success: "Doklad byl vystaven.",
+          success: "Doklad byl vystaven."
         },
         payment: {
           title: "Přidat platbu",
-          description: "Platba se zapíše na backend a přepočítá stav úhrady dokladu.",
+          description: "Platba se zapíše a přepočítá stav úhrady dokladu.",
           submit: "Přidat platbu",
           confirmTitle: "Potvrdit přidání platby",
           confirmDescription: "Tato akce změní stav úhrady dokladu. Zkontrolujte částku a datum platby.",
@@ -422,14 +422,14 @@ export const translations = {
             amount: "Částka",
             paidAt: "Datum úhrady",
             method: "Způsob platby",
-            note: "Poznámka",
-          },
+            note: "Poznámka"
+          }
         },
         mutation: {
           successTitle: "Akce dokončena",
           errorTitle: "Akce se nezdařila",
           createSuccess: "Doklad byl vytvořen.",
-          updateSuccess: "Doklad byl uložen.",
+          updateSuccess: "Doklad byl uložen."
         },
         validation: {
           title: "Formulář obsahuje chyby",
@@ -438,15 +438,15 @@ export const translations = {
           customerRequired: "Vyberte subjekt nebo vyplňte jméno, e-mail a adresu odběratele.",
           vatRequired: "Pro běžný režim DPH vyplňte sazbu DPH.",
           itemsRequired: "Doklad musí obsahovat alespoň jednu položku s popisem.",
-          itemNumbers: "Množství musí být větší než nula a cena nesmí být záporná.",
+          itemNumbers: "Množství musí být větší než nula a cena nesmí být záporná."
         },
         fields: {
           documentKind: "Druh dokladu",
           invoiceNumber: "Číslo dokladu",
           issueDate: "Datum vystavení",
           dueDate: "Datum splatnosti",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Obchodní režim",
+          taxMode: "Daňový režim",
           currency: "Měna",
           vatRate: "Sazba DPH",
           subject: "Subjekt / odběratel",
@@ -460,15 +460,14 @@ export const translations = {
           note: "Poznámka",
           itemDescription: "Popis",
           itemQuantity: "Množství",
-          itemUnitPrice: "Cena za jednotku",
-        },
+          itemUnitPrice: "Cena za jednotku"
+        }
       },
-
       aresWrite: {
         badge: "ARES",
-        legacyParityBadge: "Stejně jako staré faktury",
+        legacyParityBadge: "Stejně jako u faktur",
         sectionTitle: "Vyhledání firmy v ARES",
-        sectionDescription: "Podle názvu firmy nebo IČO — stejná logika jako ve starém účetnictví (/admin/invoices).",
+        sectionDescription: "Podle názvu firmy nebo IČO.",
         panelHint: "Firma nalezena — uložte ji do registru nebo rovnou vytvořte doklad.",
         panelCreateSubject: "Uložit jako odběratele",
         panelCreateSupplier: "Uložit jako dodavatele",
@@ -502,7 +501,7 @@ export const translations = {
         phonePlaceholder: "+420 123 456 789",
         address: "Adresa",
         addressPlaceholder: "Ulice, PSČ, město, stát",
-        sourceLabel: "Zdroj",
+        sourceLabel: "Zdroj"
       },
       customerPersistence: {
         customerSaved: "Odběratel byl uložen do registru.",
@@ -528,18 +527,18 @@ export const translations = {
         limitedResultsShown: "Zobrazeno jen prvních 20 výsledků — upřesněte hledání.",
         pickerDescription: "Vyberte existujícího odběratele nebo vyplňte údaje ručně / z ARES.",
         validationMissingCompanyName: "Vyplňte název firmy odběratele.",
-        validationMissingIco: "Pro jednoznačné párování doporučujeme vyplnit IČO.",
+        validationMissingIco: "Pro jednoznačné párování doporučujeme vyplnit IČO."
       },
       money: {
-        invalidFormat: "Zadejte částku ve formátu 925,55 nebo 925.55",
+        invalidFormat: "Zadejte částku například ve formátu 925,55."
       },
       paymentMethods: {
-        bank_transfer: "Bankovní převod",
+        bank_transfer: "Převodem",
         cash: "Hotově",
-        card: "Platební kartou",
+        card: "Kartou"
       },
       subjectWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Aktivní",
         loading: "Načítání formuláře odběratele…",
         loadFailed: "Formulář odběratele se nepodařilo načíst.",
         createTitle: "Nový odběratel",
@@ -548,22 +547,32 @@ export const translations = {
         backToDetail: "Zpět na detail odběratele",
         save: "Uložit odběratele",
         update: "Uložit změny",
-        actions: { createSubject: "Nový odběratel", editSubject: "Upravit odběratele" },
+        actions: {
+          createSubject: "Nový odběratel",
+          editSubject: "Upravit odběratele"
+        },
         duplicate: {
           title: "Odběratel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího odběratele",
+          useExisting: "Použít existujícího odběratele"
         },
-        mutation: { createSuccess: "Odběratel byl uložen.", updateSuccess: "Odběratel byl aktualizován." },
+        mutation: {
+          createSuccess: "Odběratel byl uložen.",
+          updateSuccess: "Odběratel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam.",
+          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       supplierWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Aktivní",
         loading: "Načítání formuláře dodavatele…",
         createTitle: "Nový dodavatel",
         editTitle: "Upravit dodavatele",
@@ -571,22 +580,32 @@ export const translations = {
         backToDetail: "Zpět na detail dodavatele",
         save: "Uložit dodavatele",
         update: "Uložit změny",
-        actions: { createSupplier: "Nový dodavatel", editSupplier: "Upravit dodavatele" },
+        actions: {
+          createSupplier: "Nový dodavatel",
+          editSupplier: "Upravit dodavatele"
+        },
         duplicate: {
           title: "Dodavatel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího dodavatele",
+          useExisting: "Použít existujícího dodavatele"
         },
-        mutation: { createSuccess: "Dodavatel byl uložen.", updateSuccess: "Dodavatel byl aktualizován." },
+        mutation: {
+          createSuccess: "Dodavatel byl uložen.",
+          updateSuccess: "Dodavatel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Dodavatel s tímto IČO už existuje.",
+          duplicateIco: "Dodavatel s tímto IČO už existuje."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       expenseWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Aktivní",
         loading: "Načítání formuláře výdaje…",
         createTitle: "Nový výdaj",
         editTitle: "Upravit výdaj",
@@ -595,8 +614,14 @@ export const translations = {
         save: "Uložit výdaj",
         update: "Uložit změny",
         addItem: "Přidat položku",
-        actions: { createExpense: "Nový výdaj", editExpense: "Upravit výdaj" },
-        mutation: { createSuccess: "Výdaj byl uložen.", updateSuccess: "Výdaj byl aktualizován." },
+        actions: {
+          createExpense: "Nový výdaj",
+          editExpense: "Upravit výdaj"
+        },
+        mutation: {
+          createSuccess: "Výdaj byl uložen.",
+          updateSuccess: "Výdaj byl aktualizován."
+        },
         payment: {
           title: "Přidat platbu výdaje",
           description: "Platba přepočítá stav úhrady výdaje.",
@@ -606,14 +631,19 @@ export const translations = {
           confirmAction: "Potvrdit platbu",
           success: "Platba byla přidána.",
           disabledHint: "Platbu nelze přidat pro tento stav výdaje.",
-          fields: { amount: "Částka", paidAt: "Datum úhrady", method: "Způsob platby", note: "Poznámka" },
+          fields: {
+            amount: "Částka",
+            paidAt: "Datum úhrady",
+            method: "Způsob platby",
+            note: "Poznámka"
+          }
         },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula.",
+          itemNumbers: "Množství musí být větší než nula."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -634,8 +664,8 @@ export const translations = {
           supplierNone: "Bez dodavatele — ruční snapshot",
           itemDescription: "Popis",
           itemQuantity: "Množství",
-          itemUnitPrice: "Cena za jednotku",
-        },
+          itemUnitPrice: "Cena za jednotku"
+        }
       },
       subjects: {
         badge: "Odběratelé",
@@ -650,18 +680,18 @@ export const translations = {
           dic: "DIČ",
           contact: "Kontakt",
           country: "Země",
-          detail: "Detail odběratele",
-        },
+          detail: "Detail odběratele"
+        }
       },
       subjectDetail: {
         notFoundTitle: "Odběratel nebyl nalezen",
         notFoundDescription: "Požadovaný odběratel nebyl nalezen.",
-        description: "Detail uloženého odběratele pro opakované použití v dokladech.",
+        description: "Detail uloženého odběratele pro opakované použití v dokladech."
       },
       expenses: {
         badge: "Výdaje",
-        title: "Read-only přijaté doklady a výdaje",
-        description: "Přehled používá pouze bezpečné GET endpointy. Neobsahuje create, edit, delete, apply payment ani importní akce.",
+        title: "Výdaje",
+        description: "Evidence přijatých dokladů a firemních výdajů.",
         searchPlaceholder: "Hledat podle čísla, VS, dodavatele, IČO nebo DIČ",
         searchLabel: "Hledat výdaje",
         expenseStatusLabel: "Filtrovat podle stavu výdaje",
@@ -669,7 +699,7 @@ export const translations = {
         paymentStatusLabel: "Filtrovat podle stavu platby výdaje",
         paymentStatusAll: "Všechny stavy platby",
         shownCount: "{count} zobrazených výdajů",
-        detailRouteHint: "detail vede pouze do nové paralelní route `{route}`",
+        detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           expense: "Výdaj",
           supplier: "Dodavatel",
@@ -678,31 +708,31 @@ export const translations = {
           dueDate: "Splatnost",
           total: "Celkem",
           statuses: "Stavy",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       expenseDetail: {
         notFoundTitle: "Výdaj nebyl nalezen",
-        notFoundDescription: "Požadovaný read-only výdaj nebyl na backendu nalezen. Původní sekce `/admin/invoices` zůstává nedotčená.",
-        description: "Read-only detail přijatého dokladu v nové paralelní sekci. Staré vydané faktury zůstávají v `/admin/invoices`.",
-        supplierTitle: "Snapshot dodavatele",
-        supplierDescription: "Pouze read-only zobrazení uložených údajů přijatého dokladu.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen.",
+        description: "Detail přijatého dokladu nebo výdaje.",
+        supplierTitle: "Údaje dodavatele",
+        supplierDescription: "Údaje dodavatele uložené u výdaje.",
         paymentTitle: "Platba a částky",
-        paymentDescription: "Žádné editace, žádné apply payment, pouze uložený stav backendu.",
+        paymentDescription: "Platební údaje a stav úhrady.",
         noteTitle: "Poznámka",
         itemsTitle: "Položky výdaje",
-        itemsDescription: "Read-only přehled položek vrácených detail endpointem.",
+        itemsDescription: "Položky výdaje.",
         amountsTitle: "Souhrn částek",
-        amountsDescription: "Bez editace, bez mazání, bez párování plateb.",
+        amountsDescription: "Souhrn částek výdaje.",
         paymentsTitle: "Platby výdaje",
-        paymentsDescription: "Read-only seznam plateb vrácený detail nebo payment endpointem.",
-        operationsTitle: "Read-only provozní poznámka",
-        operationsDescription: "Tato detailní route je záměrně pouze pro bezpečné čtení.",
-        operationsItemOne: "Nejsou zde žádná tlačítka pro editaci, smazání, apply payment, upload ani archivaci.",
-        operationsItemTwo: "Staré vydané faktury zůstávají dostupné pouze v legacy sekci `/admin/invoices`.",
-        operationsItemThree: "Pokud backend vrátí `401` nebo `404`, route zobrazí bezpečný stav místo pádu nebo přesměrování.",
+        paymentsDescription: "Evidence plateb k výdaji.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         auditTitle: "Nedávné auditní události",
-        auditDescription: "Volitelná read-only sekce nad audit endpointem výdajů.",
+        auditDescription: "Historie změn tohoto výdaje.",
         fields: {
           variableSymbol: "Variabilní symbol",
           issueDate: "Datum vystavení",
@@ -730,39 +760,39 @@ export const translations = {
           subtotal: "Mezisoučet",
           vat: "DPH",
           total: "Celkem",
-          vatRate: "Sazba DPH",
-        },
+          vatRate: "Sazba DPH"
+        }
       },
       suppliers: {
         badge: "Dodavatelé",
-        title: "Read-only registr dodavatelů",
-        description: "Přehled používá pouze GET endpointy. Neobsahuje žádné create, edit ani delete akce.",
+        title: "Dodavatelé",
+        description: "Adresář dodavatelů pro výdaje a přijaté faktury.",
         searchPlaceholder: "Hledat podle názvu, e-mailu, telefonu, IČO nebo DIČ",
         searchLabel: "Hledat dodavatele",
         countryLabel: "Filtrovat podle země dodavatele",
         countryAll: "Všechny země",
         shownCount: "{count} zobrazených dodavatelů",
-        detailRouteHint: "detail vede pouze do nové paralelní route `{route}`",
+        detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           supplier: "Dodavatel",
           ico: "IČO",
           dic: "DIČ",
           contact: "Kontakt",
           country: "Země",
-          detail: "Read-only detail",
-        },
+          detail: "Detail"
+        }
       },
       supplierDetail: {
         notFoundTitle: "Dodavatel nebyl nalezen",
-        notFoundDescription: "Požadovaný dodavatel nebyl na read-only endpointu nalezen.",
-        description: "Read-only detail dodavatele v nové paralelní sekci. Staré issued invoices zůstávají v `/admin/invoices`.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen.",
+        description: "Detail uloženého dodavatele.",
         identityTitle: "Identita a kontakt",
-        identityDescription: "Pouze údaje vrácené bezpečným GET endpointem.",
-        scopeTitle: "Rozsah read-only detailu",
-        scopeDescription: "Tato route záměrně neotevírá žádnou write nebo destruktivní akci.",
-        scopeItemOne: "Bez editace, bez mazání a bez změny bankovních dat na backendu.",
-        scopeItemTwo: "Bankovní údaje nejsou v aktuálním safe GET response pro dodavatele vracené, proto je detail nezobrazuje.",
-        scopeItemThree: "Navázané výdaje zůstávají pro tuto fázi odložené, aby integrace zůstala konzervativní a nízkoriziková.",
+        identityDescription: "Kontaktní a identifikační údaje dodavatele.",
+        scopeTitle: "",
+        scopeDescription: "",
+        scopeItemOne: "",
+        scopeItemTwo: "",
+        scopeItemThree: "",
         noteTitle: "Poznámka",
         fields: {
           ico: "IČO",
@@ -774,13 +804,13 @@ export const translations = {
           name: "Název",
           email: "E-mail",
           phone: "Telefon",
-          address: "Adresa",
-        },
+          address: "Adresa"
+        }
       },
       bankTransactions: {
         badge: "Bankovní transakce",
-        title: "Read-only bankovní transakce",
-        description: "Přehled používá pouze bezpečné GET endpointy. Neobsahuje import, upload, apply matching ani jiné write akce.",
+        title: "Bankovní transakce",
+        description: "Přehled plateb z banky a jejich přiřazení k dokladům.",
         searchPlaceholder: "Hledat podle protistrany, účtu, VS, zprávy nebo stavu",
         searchLabel: "Hledat bankovní transakce",
         directionLabel: "Filtrovat podle směru transakce",
@@ -788,7 +818,7 @@ export const translations = {
         statusLabel: "Filtrovat podle stavu transakce",
         statusAll: "Všechny stavy",
         shownCount: "{count} zobrazených bankovních transakcí",
-        detailRouteHint: "detail vede pouze do nové paralelní route `{route}`",
+        detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           date: "Datum",
           amount: "Částka",
@@ -797,24 +827,24 @@ export const translations = {
           accountAndSymbols: "Účet / VS",
           message: "Zpráva",
           status: "Stav",
-          bookedDate: "Zaúčtováno {value}",
-        },
+          bookedDate: "Zaúčtováno {value}"
+        }
       },
       bankTransactionDetail: {
         notFoundTitle: "Bankovní transakce nebyla nalezena",
-        notFoundDescription: "Požadovaná read-only bankovní transakce nebyla na backendu nalezena.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen.",
         title: "Transakce #{id}",
-        description: "Read-only detail bankovní transakce v nové paralelní sekci. Staré issued invoices zůstávají v `/admin/invoices`.",
-        importBadge: "Bez importu a bez apply matching",
-        counterpartyTitle: "Snapshot protistrany",
-        counterpartyDescription: "Pouze read-only údaje vrácené detail endpointem.",
+        description: "Detail bankovní transakce a souvisejících plateb.",
+        importBadge: "",
+        counterpartyTitle: "Protistrana",
+        counterpartyDescription: "Údaje protistrany u transakce.",
         accountTitle: "Účet a symboly",
-        accountDescription: "Žádné úpravy, žádné importy, žádné párovací akce.",
-        rawPayloadTitle: "Raw payload",
-        matchesTitle: "Existující payment matches",
-        matchesDescription: "Read-only seznam vrácený z matches endpointu.",
-        candidatesTitle: "Matching candidates",
-        candidatesDescription: "Kandidáti se zobrazují pouze pokud existuje bezpečný GET endpoint.",
+        accountDescription: "Účet a platební symboly.",
+        rawPayloadTitle: "Technická data",
+        matchesTitle: "Přiřazené platby",
+        matchesDescription: "Platby spárované s touto transakcí.",
+        candidatesTitle: "Navrhované párování",
+        candidatesDescription: "Možné přiřazení platby k dokladu.",
         fields: {
           transactionDate: "Datum transakce",
           bookedDate: "Datum zaúčtování",
@@ -833,36 +863,36 @@ export const translations = {
           variableSymbol: "Variabilní symbol",
           constantSymbol: "Konstantní symbol",
           specificSymbol: "Specifický symbol",
-          updatedAt: "Aktualizováno",
-        },
+          updatedAt: "Aktualizováno"
+        }
       },
       paymentMatching: {
         badge: "Párování plateb",
-        title: "Read-only přehled párování",
-        description: "Tato sekce používá pouze bezpečné GET endpointy. Neobsahuje apply matching, reject, create payment ani import.",
+        title: "Párování plateb",
+        description: "Kontrola, které platby patří ke kterým dokladům.",
         matchedTitle: "Spárované",
         ignoredTitle: "Ignorované",
         openTitle: "Otevřené / nespárované",
-        apiNote: "Existující match záznamy jsou dostupné read-only po jednotlivých bankovních transakcích.",
-        deferredTitle: "Matching candidates odloženy",
-        deferredDescription: "Matching candidates nejsou zatím dostupní přes bezpečný read-only endpoint.",
+        apiNote: "",
+        deferredTitle: "Návrhy párování",
+        deferredDescription: "Návrhy párování zatím nejsou k dispozici.",
         table: {
           type: "Typ",
           link: "Vazba",
-          confidence: "Confidence",
+          confidence: "Spolehlivost",
           status: "Stav",
           reason: "Důvod",
           createdAt: "Vytvořeno",
           invoiceLinked: "Faktura #{id}",
           invoiceMissing: "Faktura nenavázána",
           expenseLinked: "Výdaj #{id}",
-          expenseMissing: "Výdaj nenavázán",
-        },
+          expenseMissing: "Výdaj nenavázán"
+        }
       },
       todos: {
         badge: "Úkoly a upomínky",
-        title: "Read-only seznam úkolů a upomínek",
-        description: "Tento přehled používá pouze bezpečné GET endpointy. Neobsahuje žádné vytváření, uzavírání ani generování úkolů.",
+        title: "Úkoly a upomínky",
+        description: "Připomínky splatnosti a práce s neuhrazenými doklady.",
         searchPlaceholder: "Hledat podle názvu, zprávy, typu nebo stavu",
         searchLabel: "Hledat úkoly",
         statusFilterLabel: "Filtrovat podle stavu",
@@ -870,7 +900,7 @@ export const translations = {
         typeFilterLabel: "Filtrovat podle typu",
         typeAll: "Všechny typy",
         shownCount: "{count} zobrazených úkolů",
-        readOnlyNote: "Pouze read-only náhled. Vytváření, úpravy, uzavírání a generování úkolů zůstávají odložené.",
+        readOnlyNote: "",
         table: {
           title: "Název",
           status: "Stav",
@@ -882,19 +912,19 @@ export const translations = {
           completedAt: "Dokončeno",
           invoiceLinked: "Faktura #{id}",
           expenseLinked: "Výdaj #{id}",
-          noLink: "Bez vazby",
-        },
+          noLink: "Bez vazby"
+        }
       },
       todoDetail: {
         badge: "Detail úkolu",
-        title: "Read-only detail úkolu",
-        description: "Detail úkolu nebo upomínky bez write akcí.",
-        backLabel: "Zpět na ÚčetnictvíNew",
+        title: "Detail úkolu",
+        description: "Detail úkolu nebo upomínky.",
+        backLabel: "Zpět do Účetnictví",
         sections: {
           summary: "Přehled",
           message: "Zpráva",
           links: "Vazby",
-          timeline: "Časová osa",
+          timeline: "Časová osa"
         },
         fields: {
           title: "Název",
@@ -905,15 +935,15 @@ export const translations = {
           expense: "Výdaj",
           createdAt: "Vytvořeno",
           updatedAt: "Aktualizováno",
-          completedAt: "Dokončeno",
+          completedAt: "Dokončeno"
         },
         notFoundTitle: "Úkol nebyl nalezen",
-        notFoundDescription: "Požadovaný úkol nebyl na read-only endpointu nalezen.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen."
       },
       reminderEmails: {
         badge: "Upomínkové e-maily",
-        title: "Read-only historie upomínkových e-mailů",
-        description: "Historie e-mailů se načítá per faktura přes bezpečné GET endpointy. Neobsahuje odesílání ani generování.",
+        title: "Upomínkové e-maily",
+        description: "Historie e-mailů k neuhrazeným dokladům.",
         searchPlaceholder: "Hledat podle příjemce, předmětu, dokladu nebo stavu",
         searchLabel: "Hledat upomínkové e-maily",
         statusFilterLabel: "Filtrovat podle stavu",
@@ -921,8 +951,8 @@ export const translations = {
         typeFilterLabel: "Filtrovat podle typu upomínky",
         typeAll: "Všechny typy",
         shownCount: "{count} zobrazených e-mailů",
-        readOnlyNote: "Pouze read-only náhled. Odesílání, přeposílání a generování upomínek zůstávají odložené.",
-        aggregationNote: "Globální seznam se skládá z per-faktura GET endpointů. U velkého počtu dokladů může načítání trvat déle.",
+        readOnlyNote: "",
+        aggregationNote: "Seznam se načítá z historie u jednotlivých dokladů.",
         table: {
           recipient: "Příjemce",
           subject: "Předmět",
@@ -932,18 +962,18 @@ export const translations = {
           sentAt: "Odesláno",
           createdAt: "Vytvořeno",
           invoiceLinked: "Faktura #{number}",
-          invoiceMissing: "Faktura #{id}",
-        },
+          invoiceMissing: "Faktura #{id}"
+        }
       },
       reminderEmailDetail: {
         badge: "Detail upomínkového e-mailu",
-        title: "Read-only náhled upomínkového e-mailu",
-        description: "Náhled historického upomínkového e-mailu bez možnosti odeslání.",
-        backLabel: "Zpět na ÚčetnictvíNew",
+        title: "Upomínkový e-mail",
+        description: "Náhled odeslaného upomínkového e-mailu.",
+        backLabel: "Zpět do Účetnictví",
         sections: {
           summary: "Přehled",
           message: "Tělo e-mailu",
-          delivery: "Doručení",
+          delivery: "Doručení"
         },
         fields: {
           recipient: "Příjemce",
@@ -954,17 +984,17 @@ export const translations = {
           todo: "Úkol",
           sentAt: "Odesláno",
           createdAt: "Vytvořeno",
-          errorMessage: "Chyba doručení",
+          errorMessage: "Chyba doručení"
         },
         notFoundTitle: "Upomínkový e-mail nebyl nalezen",
-        notFoundDescription: "Požadovaný upomínkový e-mail nebyl na read-only endpointu nalezen.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen."
       },
       recurring: {
         badge: "Opakované",
-        title: "Read-only seznam opakovaných šablon",
-        description: "Tento přehled používá pouze bezpečné GET endpointy pro recurring šablony. Neobsahuje create, edit, delete, enable, disable ani generate akce.",
-        readOnlyNote: "Pouze read-only přehled. Vytváření, úpravy, mazání, aktivace, pozastavení a generování dokladů zůstávají odložené.",
-        deferredFieldsNote: "Safe GET endpoint zatím nevrací samostatné číslo šablony ani start/end datum opakování, proto UI zobrazuje pouze konzervativní read-only snapshot dostupných dat.",
+        title: "Opakované šablony",
+        description: "Šablony pro pravidelně vystavované doklady.",
+        readOnlyNote: "",
+        deferredFieldsNote: "",
         searchPlaceholder: "Hledat podle názvu, typu, stavu, poznámky nebo navázaného subjektu",
         searchLabel: "Hledat opakované šablony",
         typeFilterLabel: "Filtrovat podle typu šablony",
@@ -972,7 +1002,7 @@ export const translations = {
         statusFilterLabel: "Filtrovat podle stavu šablony",
         statusAll: "Všechny stavy",
         shownCount: "{count} zobrazených šablon",
-        detailRouteHint: "detail vede pouze do nové paralelní route `{route}`",
+        detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         relatedSubject: "Odběratel #{id}",
         relatedSupplier: "Dodavatel #{id}",
         frequencyWithCount: "{frequency} × {count}",
@@ -985,51 +1015,51 @@ export const translations = {
           relatedParty: "Odběratel / dodavatel",
           amount: "Částka",
           nextRun: "Další běh",
-          lastRun: "Poslední běh",
+          lastRun: "Poslední běh"
         },
         templateKinds: {
           invoice: "Opakovaná faktura",
-          expense: "Opakovaný výdaj",
+          expense: "Opakovaný výdaj"
         },
         frequencies: {
           daily: "Denně",
           weekly: "Týdně",
           monthly: "Měsíčně",
           quarterly: "Čtvrtletně",
-          yearly: "Ročně",
-        },
+          yearly: "Ročně"
+        }
       },
       recurringDetail: {
         badge: "Detail opakované šablony",
-        title: "Read-only detail opakované šablony",
-        description: "Read-only detail recurring šablony v nové paralelní sekci. Původní issued invoices zůstávají v `/admin/invoices`.",
-        backLabel: "Zpět na ÚčetnictvíNew",
+        title: "Detail opakované šablony",
+        description: "Detail šablony pro pravidelné doklady.",
+        backLabel: "Zpět do Účetnictví",
         recurrenceTitle: "Nastavení opakování",
-        recurrenceDescription: "Pouze bezpečně načtené údaje o intervalu a stavu šablony.",
+        recurrenceDescription: "Nastavení intervalu a stavu šablony.",
         relatedTitle: "Navázané subjekty a částky",
-        relatedDescription: "UI zobrazuje pouze data vrácená GET endpointem a bezpečně dopočtený součet položek.",
-        paymentTitle: "Platba a zachování legacy UI",
-        paymentDescription: "Platební údaje jsou pouze read-only snapshot. Žádné generování ani zásah do starého invoicing UI.",
-        operationsTitle: "Read-only provozní poznámka",
-        operationsDescription: "Tato route je záměrně omezená pouze na bezpečné čtení.",
-        operationsItemOne: "Nejsou zde žádná tlačítka pro create, edit, delete, activate, pause, cancel ani generate.",
-        operationsItemTwo: "Bezpečné GET endpointy zatím nevystavují start/end datum opakování ani samostatné číslo šablony, proto je UI nevymýšlí.",
-        operationsItemThree: "Staré vydané faktury zůstávají dostupné pouze v legacy sekci `/admin/invoices`.",
-        itemsTitle: "Snapshot položek šablony",
-        itemsDescription: "Read-only přehled položek vrácených detail endpointem.",
+        relatedDescription: "Navázané subjekty a částky.",
+        paymentTitle: "Platba",
+        paymentDescription: "Platební údaje šablony.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
+        itemsTitle: "Položky šablony",
+        itemsDescription: "Položky šablony.",
         amountsTitle: "Souhrn částek",
-        amountsDescription: "Součty jsou dopočtené pouze z položek vrácených backendem.",
+        amountsDescription: "Souhrn částek šablony.",
         noteTitle: "Poznámka",
         generationsTitle: "Historie generování",
-        generationsDescription: "Read-only historie běhů vrácená bezpečným GET endpointem pro tuto šablonu.",
-        scheduleWindowDeferred: "Safe GET endpoint zatím nevystavuje start/end datum opakování ani samostatné číslo šablony.",
+        generationsDescription: "Historie vygenerovaných dokladů z této šablony.",
+        scheduleWindowDeferred: "",
         generatedInvoiceLinked: "Doklad #{id}",
         generatedExpenseLinked: "Výdaj #{id}",
         generatedDocumentMissing: "Nevygenerováno",
         generatedExpenseMissing: "Nevygenerováno",
-        oldInvoicesDescription: "Původní issued invoices a staré invoicing UI zůstávají beze změny v `/admin/invoices`.",
+        oldInvoicesDescription: "",
         notFoundTitle: "Opakovaná šablona nebyla nalezena",
-        notFoundDescription: "Požadovaná recurring šablona nebyla na read-only endpointu nalezena.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen.",
         fields: {
           templateType: "Typ šablony",
           templateNumber: "Identifikátor šablony",
@@ -1039,8 +1069,8 @@ export const translations = {
           lastRunDate: "Poslední běh",
           recurrenceInterval: "Interval",
           recurrenceCount: "Počet intervalů",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Obchodní režim",
+          taxMode: "Daňový režim",
           subject: "Odběratel",
           supplier: "Dodavatel",
           currency: "Měna",
@@ -1060,15 +1090,15 @@ export const translations = {
           generationStatus: "Stav běhu",
           generatedDocument: "Vygenerovaný doklad",
           generatedExpense: "Vygenerovaný výdaj",
-          oldInvoicesNote: "Legacy faktury",
-        },
+          oldInvoicesNote: "Poznámka"
+        }
       },
       attachments: {
         badge: "Přílohy",
-        title: "Read-only seznam příloh",
-        description: "Tento přehled používá pouze bezpečné GET endpointy pro accounting přílohy. Neobsahuje upload, delete, archive ani link/unlink akce.",
-        readOnlyNote: "Pouze read-only přehled. Nahrávání, mazání, archivace a vazby zůstávají odložené.",
-        safetyNote: "Bezpečnostní pravidlo: v této fázi nejsou dostupná žádná tlačítka pro upload, delete, archive, link ani unlink.",
+        title: "Přílohy",
+        description: "Soubory připojené k dokladům a výdajům.",
+        readOnlyNote: "",
+        safetyNote: "",
         searchPlaceholder: "Hledat podle názvu souboru, typu, MIME, stavu nebo vazby",
         searchLabel: "Hledat přílohy",
         statusFilterLabel: "Filtrovat podle stavu přílohy",
@@ -1087,22 +1117,22 @@ export const translations = {
           expenseLinked: "Výdaj #{id}",
           todoLinked: "Úkol #{id}",
           bankTransactionLinked: "Bankovní transakce #{id}",
-          noLink: "Bez vazby",
-        },
+          noLink: "Bez vazby"
+        }
       },
       attachmentDetail: {
         badge: "Detail přílohy",
-        title: "Read-only detail přílohy",
-        description: "Read-only metadata přílohy v nové paralelní sekci. Původní issued invoices zůstávají v `/admin/invoices`.",
-        backLabel: "Zpět na ÚčetnictvíNew",
+        title: "Detail přílohy",
+        description: "Informace o souboru a jeho vazbách.",
+        backLabel: "Zpět do Účetnictví",
         notFoundTitle: "Příloha nebyla nalezena",
-        notFoundDescription: "Požadovaná příloha nebyla na read-only endpointu nalezena. Staré faktury v `/admin/invoices` zůstávají nedotčené.",
+        notFoundDescription: "Požadovaný záznam nebyl nalezen.",
         sections: {
-          summary: "Metadata souboru",
+          summary: "Soubor",
           relations: "Vazby na doklady a entity",
           note: "Poznámka",
-          operations: "Read-only provozní poznámka",
-          audit: "Auditní události",
+          operations: "",
+          audit: "Auditní události"
         },
         fields: {
           attachmentType: "Typ přílohy",
@@ -1114,20 +1144,20 @@ export const translations = {
           invoice: "Doklad",
           expense: "Výdaj",
           todo: "Úkol",
-          bankTransaction: "Bankovní transakce",
+          bankTransaction: "Bankovní transakce"
         },
-        operationsDescription: "Tato route je záměrně omezená pouze na bezpečné čtení.",
-        operationsItemOne: "Nejsou zde žádná tlačítka pro upload, delete, archive, link ani unlink.",
-        operationsItemTwo: "Download není zobrazen, pokud endpoint není čistě bezpečný GET bez nejistých side-effectů.",
-        operationsItemThree: "Staré vydané faktury zůstávají dostupné pouze v legacy sekci `/admin/invoices`.",
-        oldInvoicesDescription: "Původní issued invoices a staré invoicing UI zůstávají beze změny v `/admin/invoices`.",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
+        oldInvoicesDescription: ""
       },
       attachmentInbox: {
         badge: "Inbox příloh",
-        title: "Nezařazené přílohy (inbox)",
-        description: "Read-only přehled nezařazených příloh načtených bezpečným GET filtrem `unlinked_only`. Bez uploadu a bez vazebních akcí.",
-        readOnlyNote: "Pouze read-only inbox. Upload a propojení s doklady zůstávají odložené.",
-        apiNote: "Seznam vychází z bezpečného GET endpointu `/api/admin/invoices/attachments?unlinked_only=true`.",
+        title: "Inbox příloh",
+        description: "Nově nahrané soubory čekající na přiřazení.",
+        readOnlyNote: "",
+        apiNote: "",
         searchPlaceholder: "Hledat podle názvu souboru, typu nebo stavu",
         searchLabel: "Hledat v inboxu",
         shownCount: "{count} zobrazených nezařazených příloh",
@@ -1136,109 +1166,109 @@ export const translations = {
           type: "Typ",
           size: "Velikost",
           status: "Stav",
-          createdAt: "Přijato / vytvořeno",
-        },
+          createdAt: "Přijato / vytvořeno"
+        }
       },
       moduleRegistry: {
         dashboard: {
-          label: "Dashboard",
-          description: "Bezpečný přehled načtených dokladů, výdajů, banky a auditních stop.",
+          label: "Přehled",
+          description: "Souhrnný přehled dokladů, výdajů a plateb."
         },
         documents: {
           label: "Doklady",
-          description: "Read-only seznam faktur, proforem, daňových dokladů, konečných faktur, oprav a nabídek.",
+          description: "Vytváření a správa faktur, proforem a dalších dokladů."
         },
         documentDetail: {
           label: "Detail dokladu",
-          description: "Read-only detail dokladu s položkami, platbami, relacemi a auditní stopou.",
+          description: "Detail dokladu s položkami, platbami a historií."
         },
         subjects: {
           label: "Odběratelé",
-          description: "Registr klientů pro opakované použití v dokladech včetně ARES lookup.",
+          description: "Adresář klientů pro opakované použití ve fakturách."
         },
         subjectDetail: {
           label: "Detail odběratele",
-          description: "Detail uloženého odběratele pro opakované použití v dokladech.",
+          description: "Detail uloženého odběratele pro opakované použití v dokladech."
         },
         expenses: {
           label: "Výdaje",
-          description: "Read-only přehled přijatých dokladů a jejich aktuálních stavů úhrad.",
+          description: "Evidence přijatých dokladů a firemních výdajů."
         },
         expenseDetail: {
           label: "Detail výdaje",
-          description: "Read-only detail přijatého dokladu s položkami, platbami a auditní stopou.",
+          description: "Detail výdaje s položkami, platbami a historií."
         },
         suppliers: {
           label: "Dodavatelé",
-          description: "Read-only registr dodavatelů připravený pro další paralelní accounting workflow.",
+          description: "Adresář dodavatelů pro výdaje a přijaté faktury."
         },
         supplierDetail: {
           label: "Detail dodavatele",
-          description: "Read-only snapshot identity a kontaktu dodavatele bez write akcí.",
+          description: "Detail dodavatele s kontaktními údaji."
         },
         bankTransactions: {
           label: "Bankovní transakce",
-          description: "Read-only načtení bankovních transakcí bez importu a bez potvrzovacích kroků.",
+          description: "Přehled plateb z banky a jejich přiřazení k dokladům."
         },
         bankTransactionDetail: {
           label: "Detail bankovní transakce",
-          description: "Read-only detail transakce s existujícími match záznamy a raw payloadem.",
+          description: "Detail bankovní transakce a spárovaných plateb."
         },
         paymentMatching: {
           label: "Párování plateb",
-          description: "Read-only overview existujících stavů párování bez apply matching nebo reject akcí.",
+          description: "Kontrola, které platby patří ke kterým dokladům."
         },
         reminders: {
           label: "Úkoly a upomínky",
-          description: "Read-only přehled úkolů a upomínek bez vytváření, uzavírání a generování.",
+          description: "Připomínky splatnosti a práce s neuhrazenými doklady."
         },
         todoDetail: {
           label: "Detail úkolu",
-          description: "Read-only detail úkolu nebo upomínky bez write akcí.",
+          description: "Detail úkolu nebo upomínky."
         },
         reminderEmails: {
           label: "Upomínkové e-maily",
-          description: "Read-only historie upomínkových e-mailů načtená per faktura bez odesílání.",
+          description: "Historie e-mailů k neuhrazeným dokladům."
         },
         reminderEmailDetail: {
           label: "Detail upomínkového e-mailu",
-          description: "Read-only náhled historického upomínkového e-mailu bez send akcí.",
+          description: "Náhled odeslaného upomínkového e-mailu."
         },
         attachments: {
           label: "Přílohy",
-          description: "Read-only seznam accounting příloh a metadata bez upload, delete, archive a link akcí.",
+          description: "Soubory připojené k dokladům a výdajům."
         },
         attachmentDetail: {
           label: "Detail přílohy",
-          description: "Read-only detail přílohy s vazbami, checksumem a auditní stopou z bezpečných GET endpointů.",
+          description: "Detail přílohy s vazbami a historií."
         },
         attachmentInbox: {
           label: "Inbox příloh",
-          description: "Read-only nezařazené přílohy z inboxu bez uploadu a vazebních akcí.",
+          description: "Nově nahrané soubory čekající na přiřazení."
         },
         recurring: {
           label: "Opakované šablony",
-          description: "Read-only seznam recurring šablon bez generování, aktivace a dalších write akcí.",
+          description: "Šablony pro pravidelně vystavované doklady."
         },
         recurringDetail: {
           label: "Detail opakované šablony",
-          description: "Read-only detail recurring šablony s položkami a historií generování z bezpečných GET endpointů.",
+          description: "Detail opakované šablony s položkami a historií."
         },
         exports: {
           label: "Exporty",
-          description: "Metadata pro dávkové exporty a vyhledávací workflow jsou připravená pro další fázi.",
+          description: "Exporty budou dostupné v další verzi."
         },
         audit: {
           label: "Audit",
-          description: "Metadata pro samostatný audit modul a cross-module dohled zůstávají připravená.",
-        },
+          description: "Historie změn v účetnictví."
+        }
       },
       rag: {
         labels: {
           module: "Modul",
           entityType: "Typ entity",
           searchableField: "Prohledávatelné pole",
-          voiceAlias: "Hlasový alias",
+          voiceAlias: "Hlasový alias"
         },
         entityTypes: {
           dashboard: "Dashboard",
@@ -1256,6 +1286,18 @@ export const translations = {
           recurring_generation: "Běh opakované šablony",
           export: "Export",
           audit_event: "Auditní událost",
+          invoice: "Doklad",
+          subject: "Odběratel",
+          invoice_payment: "Platba dokladu",
+          expense_payment: "Platba výdaje",
+          created: "Vytvořeno",
+          updated: "Upraveno",
+          deleted: "Smazáno",
+          issued: "Vystaveno",
+          payment_added: "Přidána platba",
+          payment_removed: "Odebrána platba",
+          cancelled: "Zrušeno",
+          admin_api: "Administrace"
         },
         searchableFields: {
           invoiceNumber: "Číslo dokladu",
@@ -1267,7 +1309,7 @@ export const translations = {
           counterpartyName: "Protistrana",
           status: "Stav",
           reason: "Důvod",
-          confidence: "Confidence",
+          confidence: "Spolehlivost",
           note: "Poznámka",
           country: "Země",
           ico: "IČO",
@@ -1301,12 +1343,12 @@ export const translations = {
           checksum: "Kontrolní součet",
           uploadedAt: "Nahráno",
           archivedAt: "Archivováno",
-          rawPayload: "Raw payload",
+          rawPayload: "Technická data",
           attachmentType: "Typ přílohy",
           name: "Název",
           entityType: "Typ entity",
-          eventType: "Typ události",
-        },
+          eventType: "Typ události"
+        }
       },
       voice: {
         labels: {
@@ -1332,52 +1374,162 @@ export const translations = {
           recurring: "Opakované šablony",
           recurringDetail: "Detail opakované šablony",
           exports: "Exporty",
-          audit: "Audit",
+          audit: "Audit"
         },
         aliases: {
-          dashboard: ["účetnictví", "účto dashboard", "accounting dashboard"],
-          documents: ["doklady", "faktury", "vydané doklady"],
-          documentDetail: ["detail dokladu", "detail faktury"],
-          subjects: ["odběratelé", "klienti", "subjects registry"],
-          subjectDetail: ["detail odběratele", "subject detail"],
-          expenses: ["výdaje", "přijaté doklady", "náklady"],
-          expenseDetail: ["detail výdaje", "detail přijatého dokladu"],
-          suppliers: ["dodavatelé", "supplier registry"],
-          supplierDetail: ["detail dodavatele", "supplier detail"],
-          bankTransactions: ["banka", "bankovní transakce", "výpisy"],
-          bankTransactionDetail: ["detail bankovní transakce", "bankovní detail"],
-          paymentMatching: ["párování plateb", "matching", "platební párování"],
-          reminders: ["upomínky", "úkoly", "upomínka"],
-          todoDetail: ["detail úkolu", "detail upomínky", "úkol detail"],
-          reminderEmails: ["upomínkové e-maily", "reminder emaily", "emailové upomínky", "email reminder"],
-          reminderEmailDetail: ["detail upomínkového e-mailu", "náhled upomínky", "reminder history"],
-          attachments: ["přílohy", "příloha", "soubor", "file", "invoice attachment", "expense attachment", "attachment inbox"],
-          attachmentDetail: ["detail přílohy", "attachment detail", "příloha faktury", "příloha výdaje"],
-          attachmentInbox: ["inbox příloh", "nezařazené přílohy", "nezařazená příloha", "unassigned file", "inbox"],
-          recurring: ["opakované šablony", "opakované doklady", "recurring"],
-          recurringDetail: ["detail opakované šablony", "detail recurring", "detail šablony"],
-          recurringTemplate: ["opakovaná šablona", "šablona recurring"],
-          recurringInvoice: ["opakovaná faktura", "faktura šablona"],
-          recurringExpense: ["opakovaný výdaj", "výdaj šablona"],
-          repeatInvoice: ["opakovat fakturu", "opakovaná faktura"],
-          scheduledInvoice: ["plánovaná faktura", "scheduled invoice"],
-          scheduledExpense: ["plánovaný výdaj", "scheduled expense"],
-          exports: ["exporty", "dávkové exporty"],
-          audit: ["audit", "auditní log"],
-        },
+          dashboard: [
+            "účetnictví",
+            "účto dashboard",
+            "accounting dashboard"
+          ],
+          documents: [
+            "doklady",
+            "faktury",
+            "vydané doklady"
+          ],
+          documentDetail: [
+            "detail dokladu",
+            "detail faktury"
+          ],
+          subjects: [
+            "odběratelé",
+            "klienti",
+            "subjects registry"
+          ],
+          subjectDetail: [
+            "detail odběratele",
+            "subject detail"
+          ],
+          expenses: [
+            "výdaje",
+            "přijaté doklady",
+            "náklady"
+          ],
+          expenseDetail: [
+            "detail výdaje",
+            "detail přijatého dokladu"
+          ],
+          suppliers: [
+            "dodavatelé",
+            "supplier registry"
+          ],
+          supplierDetail: [
+            "detail dodavatele",
+            "supplier detail"
+          ],
+          bankTransactions: [
+            "banka",
+            "bankovní transakce",
+            "výpisy"
+          ],
+          bankTransactionDetail: [
+            "detail bankovní transakce",
+            "bankovní detail"
+          ],
+          paymentMatching: [
+            "párování plateb",
+            "matching",
+            "platební párování"
+          ],
+          reminders: [
+            "upomínky",
+            "úkoly",
+            "upomínka"
+          ],
+          todoDetail: [
+            "detail úkolu",
+            "detail upomínky",
+            "úkol detail"
+          ],
+          reminderEmails: [
+            "upomínkové e-maily",
+            "reminder emaily",
+            "emailové upomínky",
+            "email reminder"
+          ],
+          reminderEmailDetail: [
+            "detail upomínkového e-mailu",
+            "náhled upomínky",
+            "reminder history"
+          ],
+          attachments: [
+            "přílohy",
+            "příloha",
+            "soubor",
+            "file",
+            "invoice attachment",
+            "expense attachment",
+            "attachment inbox"
+          ],
+          attachmentDetail: [
+            "detail přílohy",
+            "attachment detail",
+            "příloha faktury",
+            "příloha výdaje"
+          ],
+          attachmentInbox: [
+            "inbox příloh",
+            "nezařazené přílohy",
+            "nezařazená příloha",
+            "unassigned file",
+            "inbox"
+          ],
+          recurring: [
+            "opakované šablony",
+            "opakované doklady",
+            "recurring"
+          ],
+          recurringDetail: [
+            "detail opakované šablony",
+            "detail recurring",
+            "detail šablony"
+          ],
+          recurringTemplate: [
+            "opakovaná šablona",
+            "šablona recurring"
+          ],
+          recurringInvoice: [
+            "opakovaná faktura",
+            "faktura šablona"
+          ],
+          recurringExpense: [
+            "opakovaný výdaj",
+            "výdaj šablona"
+          ],
+          repeatInvoice: [
+            "opakovat fakturu",
+            "opakovaná faktura"
+          ],
+          scheduledInvoice: [
+            "plánovaná faktura",
+            "scheduled invoice"
+          ],
+          scheduledExpense: [
+            "plánovaný výdaj",
+            "scheduled expense"
+          ],
+          exports: [
+            "exporty",
+            "dávkové exporty"
+          ],
+          audit: [
+            "audit",
+            "auditní log"
+          ]
+        }
       },
       statusLabels: {
-        paid: "Uhrazeno",
+        paid: "Zaplacený",
         unpaid: "Neuhrazeno",
         partially_paid: "Částečně uhrazeno",
         partial: "Částečně uhrazeno",
         overdue: "Po splatnosti",
-        issued: "Vystaveno",
+        issued: "Vystavený",
         draft: "Koncept",
         sent: "Odesláno",
         active: "Aktivní",
         paused: "Pozastaveno",
-        cancelled: "Zrušeno",
+        cancelled: "Zrušený",
         matched: "Spárováno",
         ignored: "Ignorováno",
         open: "Otevřený",
@@ -1391,6 +1543,10 @@ export const translations = {
         uploaded: "Nahráno",
         linked: "Propojeno",
         archived: "Archivováno",
+        closed: "Uzavřený",
+        bank_transfer: "Převodem",
+        cash: "Hotově",
+        card: "Kartou"
       },
       attachmentTypes: {
         invoice_document: "Doklad faktury",
@@ -1398,7 +1554,7 @@ export const translations = {
         todo_note: "Poznámka k úkolu",
         bank_transaction: "Bankovní transakce",
         payment_proof: "Doklad o platbě",
-        other: "Jiné",
+        other: "Jiné"
       },
       documentKinds: {
         invoice: "Faktura",
@@ -1406,14 +1562,31 @@ export const translations = {
         tax_document: "Daňový doklad",
         correction: "Opravný doklad",
         final_invoice: "Konečná faktura",
-        quote: "Nabídka",
+        quote: "Nabídka"
       },
       transactionDirections: {
         incoming: "Příchozí",
         outgoing: "Odchozí",
         credit: "Přípis",
-        debit: "Odepsání",
+        debit: "Odepsání"
       },
+      auditEventTypes: {
+        invoice: "Doklad",
+        subject: "Odběratel",
+        supplier: "Dodavatel",
+        expense: "Výdaj",
+        invoice_payment: "Platba dokladu",
+        expense_payment: "Platba výdaje",
+        attachment: "Příloha",
+        created: "Vytvořeno",
+        updated: "Upraveno",
+        deleted: "Smazáno",
+        issued: "Vystaveno",
+        payment_added: "Přidána platba",
+        payment_removed: "Odebrána platba",
+        cancelled: "Zrušeno",
+        admin_api: "Administrace"
+      }
     },
   },
   ua: {
@@ -1515,11 +1688,11 @@ export const translations = {
         bankTransactions: "Банківські транзакції",
         paymentMatching: "Зіставлення платежів",
         backToDashboard: "Назад до бухгалтерії",
-        legacyInvoices: "Старі рахунки",
+        legacyInvoices: "Старі рахунки"
       },
       common: {
-        readOnly: "Лише читання",
-        readOnlyDetail: "Деталі лише для читання",
+        readOnly: "Огляд",
+        readOnlyDetail: "Деталі запису",
         noValue: "Не вказано",
         noMessage: "Без повідомлення",
         noReason: "Без деталей",
@@ -1528,140 +1701,140 @@ export const translations = {
         noVariableSymbol: "VS не вказано",
         noConstantSymbol: "KS -",
         noSpecificSymbol: "SS -",
-        readOnlyBadge: "Лише читання",
-        readyBadge: "Підготовлено",
-        noMetrics: "На цьому етапі немає активних метрик лише для читання.",
-        withoutWriteActions: "Без write-дій",
+        readOnlyBadge: "Огляд",
+        readyBadge: "Готово",
+        noMetrics: "Поки без статистики.",
+        withoutWriteActions: "",
         paidAt: "Оплачено {value}",
         appliedAt: "Застосовано {value}",
-        sourcePrefix: "джерело {value}",
-        detailRouteOnly: "деталі ведуть лише до нового паралельного маршруту `{route}`",
-        noAuditMessage: "Бекенд не надіслав текстове повідомлення, тому UI показує лише тип події.",
-        noRefresh: "Для дашборда ще немає збереженого успішного оновлення.",
+        sourcePrefix: "джерело: {value}",
+        detailRouteOnly: "Натисніть рядок, щоб відкрити деталі запису.",
+        noAuditMessage: "Подію зафіксовано.",
+        noRefresh: "Останнє оновлення поки недоступне."
       },
       auth: {
-        dashboardTitle: "Для read-only бухгалтерського дашборда потрібен вхід",
-        dashboardDescription: "Без активної admin-сесії нові бухгалтерські огляди не завантажаться. Поточний `/admin/invoices` не змінюється.",
-        documentsTitle: "Для завантаження документів потрібен вхід",
-        documentsDescription: "Без активної admin-сесії список документів лише для читання не відобразиться. Legacy invoicing UI залишається недоторканим.",
-        documentDetailTitle: "Для read-only деталей документа потрібен вхід",
-        documentDetailDescription: "Без активної admin-сесії деталі нового документа не завантажаться. Початковий `/admin/invoices` залишається доступним.",
-        expensesTitle: "Для завантаження витрат потрібен вхід",
-        expensesDescription: "Без активної admin-сесії список витрат лише для читання не завантажиться. Старі issued invoices не змінюються.",
-        expenseDetailTitle: "Для read-only деталей витрати потрібен вхід",
-        expenseDetailDescription: "Без активної admin-сесії деталі вхідного документа не завантажаться. Legacy рахунки залишаються в `/admin/invoices`.",
-        suppliersTitle: "Для завантаження постачальників потрібен вхід",
-        suppliersDescription: "Без активної admin-сесії список постачальників лише для читання не завантажиться. Legacy invoicing UI не змінюється.",
-        supplierDetailTitle: "Для read-only деталей постачальника потрібен вхід",
-        supplierDetailDescription: "Без активної admin-сесії деталі постачальника не завантажаться. Початковий `/admin/invoices` залишається доступним.",
-        bankTransactionsTitle: "Для завантаження банківських транзакцій потрібен вхід",
-        bankTransactionsDescription: "Без активної admin-сесії банківські транзакції лише для читання не завантажаться.",
-        bankTransactionDetailTitle: "Для read-only деталей банківської транзакції потрібен вхід",
-        bankTransactionDetailDescription: "Без активної admin-сесії деталі банківської транзакції не завантажаться.",
-        paymentMatchingTitle: "Для завантаження огляду зіставлення потрібен вхід",
-        paymentMatchingDescription: "Без активної admin-сесії read-only дані зіставлення не завантажаться.",
-        todosTitle: "Для завантаження завдань потрібен вхід",
-        todosDescription: "Без активної admin-сесії read-only список завдань і нагадувань не завантажиться.",
-        todoDetailTitle: "Для read-only деталей завдання потрібен вхід",
-        todoDetailDescription: "Без активної admin-сесії деталі завдання не завантажаться. Початковий `/admin/invoices` залишається доступним.",
-        reminderEmailsTitle: "Для завантаження e-mail нагадувань потрібен вхід",
-        reminderEmailsDescription: "Без активної admin-сесії історія e-mail нагадувань не завантажиться.",
-        reminderEmailDetailTitle: "Для read-only деталей e-mail нагадування потрібен вхід",
-        reminderEmailDetailDescription: "Без активної admin-сесії попередній перегляд e-mail нагадування не завантажиться.",
-        recurringTitle: "Для завантаження повторюваних шаблонів потрібен вхід",
-        recurringDescription: "Без активної admin-сесії read-only список повторюваних шаблонів не завантажиться.",
-        recurringDetailTitle: "Для read-only деталей повторюваного шаблону потрібен вхід",
-        recurringDetailDescription: "Без активної admin-сесії деталі повторюваного шаблону не завантажаться. Початковий `/admin/invoices` залишається доступним.",
-        attachmentsTitle: "Для завантаження вкладень потрібен вхід",
-        attachmentsDescription: "Без активної admin-сесії read-only список вкладень не завантажиться.",
-        attachmentDetailTitle: "Для read-only деталей вкладення потрібен вхід",
-        attachmentDetailDescription: "Без активної admin-сесії деталі вкладення не завантажаться. Початковий `/admin/invoices` залишається доступним.",
-        attachmentInboxTitle: "Для завантаження inbox вкладень потрібен вхід",
-        attachmentInboxDescription: "Без активної admin-сесії незв'язані вкладення не завантажаться.",
-        subjectsTitle: "Для завантаження одержувачів потрібен вхід",
-        subjectsDescription: "Без активної admin-сесії список одержувачів не завантажиться.",
-        subjectDetailTitle: "Для деталей одержувача потрібен вхід",
-        subjectDetailDescription: "Без активної admin-сесії деталі одержувача не завантажаться.",
+        dashboardTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        dashboardDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        documentsTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        documentsDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        documentDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        documentDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        expensesTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        expensesDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        expenseDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        expenseDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        suppliersTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        suppliersDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        supplierDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        supplierDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        bankTransactionsTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        bankTransactionsDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        bankTransactionDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        bankTransactionDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        paymentMatchingTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        paymentMatchingDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        todosTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        todosDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        todoDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        todoDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        reminderEmailsTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        reminderEmailsDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        reminderEmailDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        reminderEmailDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        recurringTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        recurringDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        recurringDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        recurringDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        attachmentsTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        attachmentsDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        attachmentDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        attachmentDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        attachmentInboxTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        attachmentInboxDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        subjectsTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        subjectsDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        subjectDetailTitle: "Увійдіть, щоб переглянути бухгалтерію.",
+        subjectDetailDescription: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними."
       },
       errors: {
-        dashboardTitle: "Не вдалося завантажити read-only бухгалтерський дашборд",
-        partialDataTitle: "Частину read-only даних не вдалося завантажити",
-        partialDataDescription: "Тому дашборд показує лише безпечні дані, які бекенд реально повернув.",
-        documentsTitle: "Не вдалося завантажити read-only список документів",
-        documentDetailTitle: "Не вдалося завантажити read-only деталі документа",
-        expensesTitle: "Не вдалося завантажити read-only список витрат",
-        expenseDetailTitle: "Не вдалося завантажити read-only деталі витрати",
-        suppliersTitle: "Не вдалося завантажити read-only список постачальників",
-        supplierDetailTitle: "Не вдалося завантажити read-only деталі постачальника",
-        bankTransactionsTitle: "Не вдалося завантажити read-only список банківських транзакцій",
-        bankTransactionDetailTitle: "Не вдалося завантажити read-only деталі банківської транзакції",
-        paymentMatchingTitle: "Не вдалося завантажити read-only огляд зіставлення",
-        todosTitle: "Не вдалося завантажити read-only список завдань",
-        todoDetailTitle: "Не вдалося завантажити read-only деталі завдання",
-        reminderEmailsTitle: "Не вдалося завантажити read-only історію e-mail нагадувань",
-        reminderEmailDetailTitle: "Не вдалося завантажити read-only деталі e-mail нагадування",
-        recurringTitle: "Не вдалося завантажити read-only список повторюваних шаблонів",
-        recurringDetailTitle: "Не вдалося завантажити read-only деталі повторюваного шаблону",
-        attachmentsTitle: "Не вдалося завантажити read-only список вкладень",
-        attachmentDetailTitle: "Не вдалося завантажити read-only деталі вкладення",
-        attachmentInboxTitle: "Не вдалося завантажити read-only inbox вкладень",
-        subjectsTitle: "Не вдалося завантажити список одержувачів",
-        subjectDetailTitle: "Не вдалося завантажити деталі одержувача",
-        supplementalTitle: "Частину додаткових read-only секцій не вдалося завантажити",
-        invalidIdentifier: "Запитаний ідентифікатор бухгалтерської сутності не є коректним додатним числом.",
-        loginRequiredGeneric: "Для завантаження read-only бухгалтерської частини потрібен вхід в адмінку.",
-        notFoundGeneric: "Запитаний бухгалтерський запис не знайдено на read-only endpoint.",
-        requestAborted: "Завантаження read-only бухгалтерських даних було перервано.",
-        networkGeneric: "Read-only завантаження бухгалтерських даних не вдалося через мережеву помилку.",
-        httpGeneric: "Read-only завантаження бухгалтерських даних не вдалося ({status}).",
-        validationFailed: "Введені дані недійсні. Перевірте форму та спробуйте ще раз.",
-        actionFailed: "Не вдалося виконати дію. Спробуйте ще раз.",
+        dashboardTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        partialDataTitle: "Частину даних не вдалося завантажити. Показано доступний огляд.",
+        partialDataDescription: "",
+        documentsTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        documentDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        expensesTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        expenseDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        suppliersTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        supplierDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        bankTransactionsTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        bankTransactionDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        paymentMatchingTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        todosTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        todoDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        reminderEmailsTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        reminderEmailDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        recurringTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        recurringDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        attachmentsTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        attachmentDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        attachmentInboxTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        subjectsTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        subjectDetailTitle: "Не вдалося завантажити дані. Спробуйте ще раз.",
+        supplementalTitle: "Частину даних не вдалося завантажити. Показано доступний огляд.",
+        invalidIdentifier: "Недійсний ідентифікатор запису.",
+        loginRequiredGeneric: "Увійдіть, щоб переглянути бухгалтерію.",
+        notFoundGeneric: "Запис не знайдено.",
+        requestAborted: "Завантаження перервано.",
+        networkGeneric: "Не вдалося завантажити дані через мережеву помилку.",
+        httpGeneric: "Не вдалося завантажити дані (помилка {status}).",
+        validationFailed: "Перевірте введені дані.",
+        actionFailed: "Дію не вдалося виконати. Спробуйте ще раз."
       },
       empty: {
-        documents: "Бекенд ще не повернув жодних read-only документів. Нова паралельна секція все одно готова, а початкові рахунки в `/admin/invoices` не змінюються.",
+        documents: "Поки немає документів.",
         documentsFiltered: "Поточні фільтри не повернули жодного документа. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        expenses: "Бекенд ще не повернув жодних read-only витрат. Нова паралельна секція все одно залишається безпечною, а початкові рахунки не змінюються.",
+        expenses: "Поки немає витрат.",
         expensesFiltered: "Поточні фільтри не повернули жодної витрати. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        suppliers: "Бекенд ще не повернув жодних read-only постачальників. Нова паралельна секція все одно готова без втручання у старий invoicing UI.",
+        suppliers: "Поки немає постачальників.",
         suppliersFiltered: "Поточні фільтри не повернули жодного постачальника. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        bankTransactions: "Бекенд ще не повернув жодних read-only банківських транзакцій. Нова паралельна секція все одно безпечна і без імпортних дій.",
+        bankTransactions: "Поки немає банківських транзакцій.",
         bankTransactionsFiltered: "Поточні фільтри не повернули жодної банківської транзакції. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        documentItems: "Цей документ поки не містить жодних позицій у read-only деталях.",
-        expenseItems: "Ця витрата поки не містить жодних позицій у read-only деталях.",
-        documentPayments: "Для цього документа бекенд поки не повернув жодних платежів.",
-        expensePayments: "Для цієї витрати бекенд поки не повернув жодних платежів.",
-        documentRelations: "Для цього документа поки не завантажено жодних read-only зв'язків.",
-        documentAudit: "Для цього документа поки не вдалося завантажити жодних audit-подій.",
-        expenseAudit: "Для цієї витрати поки не вдалося завантажити жодних audit-подій.",
-        bankTransactionMatches: "Для цієї банківської транзакції бекенд поки не повернув жодних read-only match-записів.",
-        todos: "Бекенд ще не повернув жодних read-only завдань чи нагадувань.",
+        documentItems: "У цього документа поки немає позицій.",
+        expenseItems: "У цієї витрати поки немає позицій.",
+        documentPayments: "До цього документа поки не зафіксовано платежів.",
+        expensePayments: "До цієї витрати поки не зафіксовано платежів.",
+        documentRelations: "До цього документа поки не прив’язано пов’язаних записів.",
+        documentAudit: "Для цього документа поки немає аудитних подій.",
+        expenseAudit: "Для цієї витрати поки немає аудитних подій.",
+        bankTransactionMatches: "До цієї транзакції поки не призначено платежів.",
+        todos: "Поки немає завдань чи нагадувань.",
         todosFiltered: "Поточні фільтри не повернули жодного завдання. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        reminderEmails: "Бекенд ще не повернув жодних read-only e-mail нагадувань.",
+        reminderEmails: "Поки немає e-mail нагадувань.",
         reminderEmailsFiltered: "Поточні фільтри не повернули жодного e-mail нагадування. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        recurring: "Бекенд ще не повернув жодних read-only повторюваних шаблонів. Нова паралельна секція при цьому залишається безпечною і не генерує документи.",
+        recurring: "Поки немає повторюваних шаблонів.",
         recurringFiltered: "Поточні фільтри не повернули жодного повторюваного шаблону. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        recurringItems: "Цей повторюваний шаблон поки не містить жодних позицій у read-only деталях.",
-        recurringGenerations: "Для цього повторюваного шаблону бекенд ще не повернув жодної read-only історії генерації.",
-        attachments: "Бекенд ще не повернув жодних read-only вкладень. Нова паралельна секція при цьому залишається без upload, delete і link дій.",
+        recurringItems: "У цього шаблону поки немає позицій.",
+        recurringGenerations: "У цього шаблону поки немає історії генерації.",
+        attachments: "Поки немає додатків.",
         attachmentsFiltered: "Поточні фільтри не повернули жодного вкладення. Спробуйте змінити пошук або повернути фільтри на `Усі`.",
-        attachmentInbox: "Inbox поки не містить незв'язаних вкладень, повернутих безпечним GET endpoint.",
+        attachmentInbox: "Inbox поки не містить непризначених додатків.",
         attachmentInboxFiltered: "Поточні фільтри не повернули жодного незв'язаного вкладення. Спробуйте змінити пошук.",
-        dashboardAudit: "Audit-події поки не вдалося завантажити або бекенд повернув порожній список.",
-        subjects: "Поки немає збережених одержувачів. Запустіть backfill зі старих рахунків або створіть нового одержувача.",
+        dashboardAudit: "Поки немає аудитних подій.",
+        subjects: "Поки немає збережених одержувачів. Створіть нового або завантажте компанію з ARES."
       },
       dashboard: {
         badges: {
-          parallelSection: "Паралельна секція",
-          readOnly: "Read-only дашборд",
-          noMigration: "Без міграції",
-          nextStep: "Наступний крок",
+          parallelSection: "Бухгалтерія",
+          readOnly: "Огляд",
+          noMigration: "",
+          nextStep: ""
         },
         title: "Бухгалтерія",
-        description: "Нова паралельна бухгалтерська секція завантажує лише безпечні дані тільки для читання поверх наявного accounting backend.",
-        preservationNotice: "Поточні видані рахунки та початковий invoicing UI залишаються без змін у секції `/admin/invoices`. Нова частина нічого не мігрує, не переписує і не запускає write-дії.",
-        progressNotice: "Поточна фаза розширює безпечний shell окремим read-only API-клієнтом, відокремленими типами, реєстром модулів, локалізацією та RAG-ready metadata для майбутнього пошуку.",
-        summaryTitle: "Read-only огляд",
-        summaryDescription: "Метрики нижче базуються лише на безпечно завантажених GET endpoint. Якщо якогось джерела бракує, дашборд свідомо нічого агресивно не дораховує.",
+        description: "Тут ви знайдете документи, одержувачів, витрати, платежі та додатки.",
+        preservationNotice: "Тут можна виставити документ, зафіксувати платіж і керувати обліковими даними.",
+        progressNotice: "Коли ви щось додасте, це з’явиться в цьому огляді.",
+        summaryTitle: "Огляд",
+        summaryDescription: "Підсумок документів, витрат, платежів та інших даних.",
         documentsTitle: "Документи",
         documentsDescription: "{count} з відкритим залишком",
         expensesTitle: "Витрати",
@@ -1669,24 +1842,24 @@ export const translations = {
         todosTitle: "Завдання",
         todosDescription: "{overdue} прострочених із {total}",
         bankTitle: "Банк",
-        bankDescription: "Лише read-only завантажені транзакції",
+        bankDescription: "Огляд банківських платежів",
         attachmentsTitle: "Вкладення",
         attachmentsDescription: "Inbox і зв'язки без архівації",
         auditTitle: "Аудит",
         auditDescription: "Останні бухгалтерські події",
-        subjectsTitle: "Суб'єкти",
-        subjectsDescription: "{count} постачальників у паралельному шарі",
+        subjectsTitle: "Одержувачі",
+        subjectsDescription: "{count} збережених одержувачів",
         recurringTitle: "Повторювані",
-        recurringDescription: "Шаблони без генерації документів",
-        recentAuditTitle: "Останні audit-події",
-        recentAuditDescription: "Останні п'ять read-only подій, повернених audit endpoint.",
-        loadStateTitle: "Стан завантаження",
-        loadStateDescription: "Дашборд навмисно консервативний і використовує лише read-only джерела.",
-        loadStateSafeGet: "Новий клієнт використовує лише `GET` endpoint під `/api/admin/invoices/*`, спільно використовує admin cookie session і не містить create, update або delete дій.",
-        loadStateAuth: "Якщо бекенд повертає `401`, сторінка показує безпечний login-required стан замість падіння, автоматичного входу чи втручання в legacy маршрути.",
+        recurringDescription: "Шаблони для регулярно виставлених документів",
+        recentAuditTitle: "Останні події",
+        recentAuditDescription: "П’ять останніх змін у бухгалтерії.",
+        loadStateTitle: "Стан огляду",
+        loadStateDescription: "Інформація про останнє оновлення даних.",
+        loadStateSafeGet: "Коли ви щось додасте, це з’явиться в цьому огляді.",
+        loadStateAuth: "Увійдіть, щоб переглянути бухгалтерію.",
         lastRefresh: "Останнє успішне оновлення дашборда: {value}.",
-        modulesTitle: "Модулі паралельної бухгалтерії",
-        modulesDescription: "Нижче наведені модулі нової паралельної секції. На цьому етапі додаються лише read-only завантаження, реєстр модулів і пошукові metadata.",
+        modulesTitle: "Модулі бухгалтерії",
+        modulesDescription: "Швидкий доступ до розділів бухгалтерії.",
         moduleStats: {
           dashboard: "{documents} документів, {todos} відкритих завдань",
           documents: "{count} завантажених документів",
@@ -1698,13 +1871,13 @@ export const translations = {
           attachments: "{count} вкладень",
           recurring: "{count} шаблонів",
           exports: "Експорти залишаються підготовленими для наступної фази.",
-          audit: "{count} audit-подій",
-        },
+          audit: "{count} audit-подій"
+        }
       },
       documents: {
         badge: "Документи",
-        title: "Read-only список бухгалтерських документів",
-        description: "Цей огляд використовує лише нові паралельні GET endpoint. Він не містить create, edit, delete або міграційних дій.",
+        title: "Документи",
+        description: "Створення та керування рахунками, проформами та іншими документами.",
         searchPlaceholder: "Шукати за номером документа, VS, клієнтом або типом",
         searchLabel: "Шукати документи",
         kindFilterLabel: "Фільтрувати за типом документа",
@@ -1716,7 +1889,7 @@ export const translations = {
         hideDocuments: "Сховати документи",
         listCollapsed: "У списку {count} документів — перегляд згорнуто.",
         tooManyUseSearch: "Для пошуку використовуйте фільтр — показано лише обмежений вибір.",
-        detailRouteHint: "деталі ведуть лише до нового паралельного маршруту `{route}`",
+        detailRouteHint: "Натисніть рядок, щоб відкрити деталі запису.",
         table: {
           document: "Документ",
           kind: "Тип",
@@ -1725,28 +1898,28 @@ export const translations = {
           dueDate: "Термін",
           total: "Разом",
           statuses: "Статуси",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       documentDetail: {
         notFoundTitle: "Документ не знайдено",
-        notFoundDescription: "Запитаний accounting документ не знайдено на read-only endpoint. Поточні рахунки в `/admin/invoices` залишаються недоторканими.",
-        description: "Read-only accounting деталі в новій паралельній секції. Поточні issued invoices у `/admin/invoices` залишаються без змін.",
+        notFoundDescription: "Запис не знайдено.",
+        description: "Деталі документа з позиціями, платежами та пов’язаними даними.",
         customerTitle: "Знімок клієнта",
-        customerDescription: "Лише read-only відображення збережених даних документа.",
+        customerDescription: "Дані одержувача, збережені в документі.",
         issuerTitle: "Знімок емітента та платежу",
         issuerDescription: "Показані дані взяті з документа без редагування.",
         noteTitle: "Примітка",
         itemsTitle: "Позиції документа",
-        itemsDescription: "Read-only огляд позицій, повернених detail endpoint.",
+        itemsDescription: "Позиції документа.",
         amountsTitle: "Підсумок сум",
-        amountsDescription: "Жодних write-дій, лише стан, збережений на бекенді.",
+        amountsDescription: "Підсумок сум документа.",
         paymentsTitle: "Платежі",
-        paymentsDescription: "Read-only список платежів, повернених detail endpoint.",
+        paymentsDescription: "Платежі, зафіксовані для документа.",
         relationsTitle: "Зв'язки документа",
-        relationsDescription: "Опційна read-only секція поверх relation endpoint.",
+        relationsDescription: "Пов’язані документи та зв’язки.",
         auditTitle: "Останні audit-події",
-        auditDescription: "Опційна read-only секція поверх audit endpoint.",
+        auditDescription: "Історія змін цього документа.",
         sourceLabel: "Джерело",
         targetLabel: "Ціль",
         relationDocument: "{number} · {kind}",
@@ -1755,8 +1928,8 @@ export const translations = {
           variableSymbol: "Змінний символ",
           issueDate: "Дата видачі",
           dueDate: "Дата оплати",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Бізнес-режим",
+          taxMode: "Податковий режим",
           status: "Стан",
           createdAt: "Створено",
           customerName: "Ім'я / компанія",
@@ -1776,14 +1949,14 @@ export const translations = {
           total: "Разом",
           totalPaid: "Оплачено",
           remainingAmount: "Залишок до оплати",
-          vatRate: "Ставка ПДВ",
-        },
+          vatRate: "Ставка ПДВ"
+        }
       },
       documentWrite: {
-        badgeFunctional: "Функціональний write шар",
+        badgeFunctional: "Активний",
         loading: "Завантаження форми документа…",
-        createTitle: "Новий accounting документ",
-        createDescription: "Створення чернетки або видача нового документа в паралельній секції. Legacy рахунки в `/admin/invoices` залишаються недоторканими.",
+        createTitle: "Новий документ",
+        createDescription: "Створіть чернетку або одразу виставте новий документ.",
         editTitle: "Редагувати чернетку документа",
         editDescription: "Редагування дозволене лише для чернеток. Видані документи тут не змінюються.",
         backToDetail: "Назад до деталей документа",
@@ -1792,25 +1965,25 @@ export const translations = {
         saveAndIssue: "Зберегти та видати",
         addItem: "Додати позицію",
         notEditableTitle: "Документ не можна редагувати",
-        notEditableDescription: "Цей документ уже не є чернеткою. Для legacy виданих рахунків використовуйте `/admin/invoices`.",
-        legacyNoticeTitle: "Збереження legacy рахунків",
-        legacyNoticeDescription: "Цей write шар працює лише з новими accounting документами. Початкові issued invoices залишаються в `/admin/invoices` без змін.",
+        notEditableDescription: "Цей документ уже не чернетка і тут не редагується.",
+        legacyNoticeTitle: "",
+        legacyNoticeDescription: "",
         emailDeferred: "Надсилання e-mail відкладено до пізнішої безпечної фази.",
         customerSectionTitle: "Одержувач",
         customerSectionDescription: "Виберіть існуючий суб'єкт або заповніть snapshot одержувача вручну.",
         itemsSectionTitle: "Позиції",
-        itemsSectionDescription: "Позиції документа, надіслані на backend.",
+        itemsSectionDescription: "Позиції документа.",
         subjectSelectedHint: "Використано суб'єкт: {name}",
         businessModes: {
           autoservice: "Автосервіс",
-          construction: "Будівельні роботи",
+          construction: "Будівельні роботи"
         },
         taxModes: {
           standard: "Звичайний режим ПДВ",
-          reverse_charge: "Зворотне оподаткування",
+          reverse_charge: "Зворотне оподаткування"
         },
         confirm: {
-          cancel: "Скасувати",
+          cancel: "Скасувати"
         },
         actions: {
           createDocument: "Новий документ",
@@ -1818,17 +1991,17 @@ export const translations = {
           editDisabledHint: "Редагувати можна лише чернетку документа.",
           issueDocument: "Видати документ",
           issueDisabledHint: "Видати можна лише чернетку документа.",
-          downloadPdf: "Завантажити PDF",
+          downloadPdf: "Завантажити PDF"
         },
         issue: {
           confirmTitle: "Підтвердити видачу документа",
           confirmDescription: "Ця дія змінить стан документа на виданий. Продовжуйте лише якщо дані правильні.",
           confirmAction: "Видати",
-          success: "Документ видано.",
+          success: "Документ видано."
         },
         payment: {
           title: "Додати платіж",
-          description: "Платіж буде записано на backend і перерахує стан оплати документа.",
+          description: "Платіж буде зафіксовано та оновлено стан оплати документа.",
           submit: "Додати платіж",
           confirmTitle: "Підтвердити додавання платежу",
           confirmDescription: "Ця дія змінить стан оплати документа. Перевірте суму та дату платежу.",
@@ -1839,14 +2012,14 @@ export const translations = {
             amount: "Сума",
             paidAt: "Дата оплати",
             method: "Спосіб оплати",
-            note: "Примітка",
-          },
+            note: "Примітка"
+          }
         },
         mutation: {
           successTitle: "Дію завершено",
           errorTitle: "Дію не виконано",
           createSuccess: "Документ створено.",
-          updateSuccess: "Документ збережено.",
+          updateSuccess: "Документ збережено."
         },
         validation: {
           title: "Форма містить помилки",
@@ -1855,15 +2028,15 @@ export const translations = {
           customerRequired: "Виберіть суб'єкт або заповніть ім'я, e-mail та адресу одержувача.",
           vatRequired: "Для звичайного режиму ПДВ заповніть ставку ПДВ.",
           itemsRequired: "Документ повинен містити принаймні одну позицію з описом.",
-          itemNumbers: "Кількість має бути більше нуля, а ціна не може бути від'ємною.",
+          itemNumbers: "Кількість має бути більше нуля, а ціна не може бути від'ємною."
         },
         fields: {
           documentKind: "Тип документа",
           invoiceNumber: "Номер документа",
           issueDate: "Дата видачі",
           dueDate: "Дата оплати",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Бізнес-режим",
+          taxMode: "Податковий режим",
           currency: "Валюта",
           vatRate: "Ставка ПДВ",
           subject: "Суб'єкт / одержувач",
@@ -1877,15 +2050,14 @@ export const translations = {
           note: "Примітка",
           itemDescription: "Опис",
           itemQuantity: "Кількість",
-          itemUnitPrice: "Ціна за одиницю",
-        },
+          itemUnitPrice: "Ціна за одиницю"
+        }
       },
-
       aresWrite: {
         badge: "ARES",
-        legacyParityBadge: "Як у старих фактурах",
+        legacyParityBadge: "Як у рахунків",
         sectionTitle: "Пошук компанії в ARES",
-        sectionDescription: "За назвою або IČO — та сама логіка, що в старому обліку (/admin/invoices).",
+        sectionDescription: "За назвою компанії або IČO.",
         panelHint: "Компанію знайдено — збережіть у реєстр або одразу створіть документ.",
         panelCreateSubject: "Зберегти як замовника",
         panelCreateSupplier: "Зберегти як постачальника",
@@ -1919,7 +2091,7 @@ export const translations = {
         phonePlaceholder: "+420 123 456 789",
         address: "Adresa",
         addressPlaceholder: "Ulice, PSČ, město, stát",
-        sourceLabel: "Zdroj",
+        sourceLabel: "Zdroj"
       },
       customerPersistence: {
         customerSaved: "Замовника збережено в реєстрі.",
@@ -1945,18 +2117,18 @@ export const translations = {
         limitedResultsShown: "Показано лише перші 20 результатів — уточніть пошук.",
         pickerDescription: "Оберіть існуючого замовника або заповніть дані вручну / з ARES.",
         validationMissingCompanyName: "Заповніть назву компанії замовника.",
-        validationMissingIco: "Для однозначного зіставлення рекомендуємо заповнити IČO.",
+        validationMissingIco: "Для однозначного зіставлення рекомендуємо заповнити IČO."
       },
       money: {
-        invalidFormat: "Введіть суму у форматі 925,55 або 925.55",
+        invalidFormat: "Введіть суму, наприклад 925,55."
       },
       paymentMethods: {
-        bank_transfer: "Банківський переказ",
-        cash: "Готівка",
-        card: "Платіжна картка",
+        bank_transfer: "Переказом",
+        cash: "Готівкою",
+        card: "Карткою"
       },
       subjectWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Активний",
         loading: "Načítání formuláře odběratele…",
         loadFailed: "Formulář odběratele se nepodařilo načíst.",
         createTitle: "Nový odběratel",
@@ -1965,22 +2137,32 @@ export const translations = {
         backToDetail: "Zpět na detail odběratele",
         save: "Uložit odběratele",
         update: "Uložit změny",
-        actions: { createSubject: "Nový odběratel", editSubject: "Upravit odběratele" },
+        actions: {
+          createSubject: "Nový odběratel",
+          editSubject: "Upravit odběratele"
+        },
         duplicate: {
           title: "Odběratel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího odběratele",
+          useExisting: "Použít existujícího odběratele"
         },
-        mutation: { createSuccess: "Odběratel byl uložen.", updateSuccess: "Odběratel byl aktualizován." },
+        mutation: {
+          createSuccess: "Odběratel byl uložen.",
+          updateSuccess: "Odběratel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam.",
+          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       supplierWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Активний",
         loading: "Načítání formuláře dodavatele…",
         createTitle: "Nový dodavatel",
         editTitle: "Upravit dodavatele",
@@ -1988,22 +2170,32 @@ export const translations = {
         backToDetail: "Zpět na detail dodavatele",
         save: "Uložit dodavatele",
         update: "Uložit změny",
-        actions: { createSupplier: "Nový dodavatel", editSupplier: "Upravit dodavatele" },
+        actions: {
+          createSupplier: "Nový dodavatel",
+          editSupplier: "Upravit dodavatele"
+        },
         duplicate: {
           title: "Dodavatel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího dodavatele",
+          useExisting: "Použít existujícího dodavatele"
         },
-        mutation: { createSuccess: "Dodavatel byl uložen.", updateSuccess: "Dodavatel byl aktualizován." },
+        mutation: {
+          createSuccess: "Dodavatel byl uložen.",
+          updateSuccess: "Dodavatel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Dodavatel s tímto IČO už existuje.",
+          duplicateIco: "Dodavatel s tímto IČO už existuje."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       expenseWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Активний",
         loading: "Načítání formuláře výdaje…",
         createTitle: "Nový výdaj",
         editTitle: "Upravit výdaj",
@@ -2012,8 +2204,14 @@ export const translations = {
         save: "Uložit výdaj",
         update: "Uložit změny",
         addItem: "Přidat položku",
-        actions: { createExpense: "Nový výdaj", editExpense: "Upravit výdaj" },
-        mutation: { createSuccess: "Výdaj byl uložen.", updateSuccess: "Výdaj byl aktualizován." },
+        actions: {
+          createExpense: "Nový výdaj",
+          editExpense: "Upravit výdaj"
+        },
+        mutation: {
+          createSuccess: "Výdaj byl uložen.",
+          updateSuccess: "Výdaj byl aktualizován."
+        },
         payment: {
           title: "Přidat platbu výdaje",
           description: "Platba přepočítá stav úhrady výdaje.",
@@ -2023,14 +2221,19 @@ export const translations = {
           confirmAction: "Potvrdit platbu",
           success: "Platba byla přidána.",
           disabledHint: "Platbu nelze přidat pro tento stav výdaje.",
-          fields: { amount: "Částka", paidAt: "Datum úhrady", method: "Způsob platby", note: "Poznámka" },
+          fields: {
+            amount: "Částka",
+            paidAt: "Datum úhrady",
+            method: "Způsob platby",
+            note: "Poznámka"
+          }
         },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula.",
+          itemNumbers: "Množství musí být větší než nula."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -2051,8 +2254,8 @@ export const translations = {
           supplierNone: "Bez dodavatele — ruční snapshot",
           itemDescription: "Popis",
           itemQuantity: "Množství",
-          itemUnitPrice: "Cena za jednotku",
-        },
+          itemUnitPrice: "Cena za jednotku"
+        }
       },
       subjects: {
         badge: "Odběratelé",
@@ -2067,18 +2270,18 @@ export const translations = {
           dic: "DIČ",
           contact: "Kontakt",
           country: "Země",
-          detail: "Detail odběratele",
-        },
+          detail: "Detail odběratele"
+        }
       },
       subjectDetail: {
         notFoundTitle: "Odběratel nebyl nalezen",
         notFoundDescription: "Požadovaný odběratel nebyl nalezen.",
-        description: "Detail uloženého odběratele pro opakované použití v dokladech.",
+        description: "Detail uloženého odběratele pro opakované použití v dokladech."
       },
       expenses: {
         badge: "Витрати",
-        title: "Read-only вхідні документи та витрати",
-        description: "Огляд використовує лише безпечні GET endpoint. Він не містить create, edit, delete, apply payment або імпортних дій.",
+        title: "Витрати",
+        description: "Облік отриманих документів і витрат компанії.",
         searchPlaceholder: "Шукати за номером, VS, постачальником, IČO або DIČ",
         searchLabel: "Шукати витрати",
         expenseStatusLabel: "Фільтрувати за станом витрати",
@@ -2086,7 +2289,7 @@ export const translations = {
         paymentStatusLabel: "Фільтрувати за станом оплати витрати",
         paymentStatusAll: "Усі стани оплати",
         shownCount: "{count} витрат показано",
-        detailRouteHint: "деталі ведуть лише до нового паралельного маршруту `{route}`",
+        detailRouteHint: "Натисніть рядок, щоб відкрити деталі запису.",
         table: {
           expense: "Витрата",
           supplier: "Постачальник",
@@ -2095,31 +2298,31 @@ export const translations = {
           dueDate: "Термін",
           total: "Разом",
           statuses: "Статуси",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       expenseDetail: {
         notFoundTitle: "Витрату не знайдено",
-        notFoundDescription: "Запитану read-only витрату не знайдено на бекенді. Початкова секція `/admin/invoices` залишається недоторканою.",
-        description: "Read-only деталі вхідного документа в новій паралельній секції. Старі видані рахунки залишаються в `/admin/invoices`.",
+        notFoundDescription: "Запис не знайдено.",
+        description: "Деталі отриманого документа або витрати.",
         supplierTitle: "Знімок постачальника",
-        supplierDescription: "Лише read-only відображення збережених даних вхідного документа.",
+        supplierDescription: "Дані постачальника, збережені у витраті.",
         paymentTitle: "Платіж і суми",
-        paymentDescription: "Жодного редагування, жодного apply payment, лише збережений стан бекенду.",
+        paymentDescription: "Платіжні дані та стан оплати.",
         noteTitle: "Примітка",
         itemsTitle: "Позиції витрати",
-        itemsDescription: "Read-only огляд позицій, повернених detail endpoint.",
+        itemsDescription: "Позиції витрати.",
         amountsTitle: "Підсумок сум",
-        amountsDescription: "Без редагування, без видалення, без зіставлення платежів.",
+        amountsDescription: "Підсумок сум витрати.",
         paymentsTitle: "Платежі витрати",
-        paymentsDescription: "Read-only список платежів, повернений detail або payment endpoint.",
-        operationsTitle: "Read-only операційна примітка",
-        operationsDescription: "Цей детальний маршрут навмисно призначений лише для безпечного читання.",
-        operationsItemOne: "Тут немає кнопок для редагування, видалення, apply payment, upload або архівації.",
-        operationsItemTwo: "Старі видані рахунки доступні лише в legacy секції `/admin/invoices`.",
-        operationsItemThree: "Якщо бекенд повертає `401` або `404`, маршрут показує безпечний стан замість падіння або редиректу.",
+        paymentsDescription: "Платежі, зафіксовані для витрати.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         auditTitle: "Останні audit-події",
-        auditDescription: "Опційна read-only секція поверх audit endpoint для витрат.",
+        auditDescription: "Історія змін цієї витрати.",
         fields: {
           variableSymbol: "Змінний символ",
           issueDate: "Дата видачі",
@@ -2147,39 +2350,39 @@ export const translations = {
           subtotal: "Проміжний підсумок",
           vat: "ПДВ",
           total: "Разом",
-          vatRate: "Ставка ПДВ",
-        },
+          vatRate: "Ставка ПДВ"
+        }
       },
       suppliers: {
         badge: "Постачальники",
-        title: "Read-only реєстр постачальників",
-        description: "Огляд використовує лише GET endpoint. Він не містить create, edit або delete дій.",
+        title: "Постачальники",
+        description: "Довідник постачальників для витрат і отриманих рахунків.",
         searchPlaceholder: "Шукати за назвою, e-mail, телефоном, IČO або DIČ",
         searchLabel: "Шукати постачальників",
         countryLabel: "Фільтрувати за країною постачальника",
         countryAll: "Усі країни",
         shownCount: "{count} постачальників показано",
-        detailRouteHint: "деталі ведуть лише до нового паралельного маршруту `{route}`",
+        detailRouteHint: "Натисніть рядок, щоб відкрити деталі запису.",
         table: {
           supplier: "Постачальник",
           ico: "IČO",
           dic: "DIČ",
           contact: "Контакт",
           country: "Країна",
-          detail: "Read-only деталі",
-        },
+          detail: "Деталі"
+        }
       },
       supplierDetail: {
         notFoundTitle: "Постачальника не знайдено",
-        notFoundDescription: "Запитаний постачальник не знайдений на read-only endpoint.",
-        description: "Read-only деталі постачальника в новій паралельній секції. Старі issued invoices залишаються в `/admin/invoices`.",
+        notFoundDescription: "Запис не знайдено.",
+        description: "Деталі збереженого постачальника.",
         identityTitle: "Ідентифікація та контакт",
-        identityDescription: "Лише дані, повернуті безпечним GET endpoint.",
-        scopeTitle: "Обсяг read-only деталей",
-        scopeDescription: "Цей маршрут навмисно не відкриває жодної write або руйнівної дії.",
-        scopeItemOne: "Без редагування, без видалення і без зміни банківських даних на бекенді.",
-        scopeItemTwo: "Банківські дані не повертаються поточною safe GET-відповіддю для постачальника, тому деталі їх не показують.",
-        scopeItemThree: "Пов'язані витрати відкладені для цієї фази, щоб інтеграція залишалася консервативною та низькоризиковою.",
+        identityDescription: "Контактні та ідентифікаційні дані постачальника.",
+        scopeTitle: "",
+        scopeDescription: "",
+        scopeItemOne: "",
+        scopeItemTwo: "",
+        scopeItemThree: "",
         noteTitle: "Примітка",
         fields: {
           ico: "IČO",
@@ -2191,13 +2394,13 @@ export const translations = {
           name: "Назва",
           email: "E-mail",
           phone: "Телефон",
-          address: "Адреса",
-        },
+          address: "Адреса"
+        }
       },
       bankTransactions: {
         badge: "Банківські транзакції",
-        title: "Read-only банківські транзакції",
-        description: "Огляд використовує лише безпечні GET endpoint. Він не містить import, upload, apply matching або інших write-дій.",
+        title: "Банківські транзакції",
+        description: "Огляд банківських платежів і їх призначення документам.",
         searchPlaceholder: "Шукати за контрагентом, рахунком, VS, повідомленням або статусом",
         searchLabel: "Шукати банківські транзакції",
         directionLabel: "Фільтрувати за напрямком транзакції",
@@ -2205,7 +2408,7 @@ export const translations = {
         statusLabel: "Фільтрувати за статусом транзакції",
         statusAll: "Усі стани",
         shownCount: "{count} банківських транзакцій показано",
-        detailRouteHint: "деталі ведуть лише до нового паралельного маршруту `{route}`",
+        detailRouteHint: "Натисніть рядок, щоб відкрити деталі запису.",
         table: {
           date: "Дата",
           amount: "Сума",
@@ -2214,24 +2417,24 @@ export const translations = {
           accountAndSymbols: "Рахунок / VS",
           message: "Повідомлення",
           status: "Стан",
-          bookedDate: "Проведено {value}",
-        },
+          bookedDate: "Проведено {value}"
+        }
       },
       bankTransactionDetail: {
         notFoundTitle: "Банківську транзакцію не знайдено",
-        notFoundDescription: "Запитана read-only банківська транзакція не знайдена на бекенді.",
+        notFoundDescription: "Запис не знайдено.",
         title: "Транзакція #{id}",
-        description: "Read-only деталі банківської транзакції в новій паралельній секції. Старі issued invoices залишаються в `/admin/invoices`.",
-        importBadge: "Без імпорту і без apply matching",
+        description: "Деталі банківської транзакції та пов’язаних платежів.",
+        importBadge: "",
         counterpartyTitle: "Знімок контрагента",
-        counterpartyDescription: "Лише read-only дані, повернуті detail endpoint.",
+        counterpartyDescription: "Дані контрагента для транзакції.",
         accountTitle: "Рахунок і символи",
-        accountDescription: "Жодних змін, жодних імпортів, жодних дій зіставлення.",
-        rawPayloadTitle: "Raw payload",
-        matchesTitle: "Наявні payment matches",
-        matchesDescription: "Read-only список, повернутий matches endpoint.",
-        candidatesTitle: "Matching candidates",
-        candidatesDescription: "Кандидати показуються лише якщо існує безпечний GET endpoint.",
+        accountDescription: "Рахунок і платіжні символи.",
+        rawPayloadTitle: "Технічні дані",
+        matchesTitle: "Призначені платежі",
+        matchesDescription: "Платежі, зіставлені з цією транзакцією.",
+        candidatesTitle: "Запропоноване зіставлення",
+        candidatesDescription: "Можливе призначення платежу документу.",
         fields: {
           transactionDate: "Дата транзакції",
           bookedDate: "Дата проведення",
@@ -2250,36 +2453,36 @@ export const translations = {
           variableSymbol: "Змінний символ",
           constantSymbol: "Постійний символ",
           specificSymbol: "Специфічний символ",
-          updatedAt: "Оновлено",
-        },
+          updatedAt: "Оновлено"
+        }
       },
       paymentMatching: {
         badge: "Зіставлення платежів",
-        title: "Read-only огляд зіставлення",
-        description: "Ця секція використовує лише безпечні GET endpoint. Вона не містить apply matching, reject, create payment або import.",
+        title: "Зіставлення платежів",
+        description: "Перевірка, які платежі належать яким документам.",
         matchedTitle: "Зіставлені",
         ignoredTitle: "Проігноровані",
         openTitle: "Відкриті / незіставлені",
-        apiNote: "Наявні match-записи доступні read-only для кожної банківської транзакції окремо.",
-        deferredTitle: "Matching candidates відкладено",
-        deferredDescription: "Matching candidates поки недоступні через безпечний read-only endpoint.",
+        apiNote: "",
+        deferredTitle: "Пропозиції зіставлення",
+        deferredDescription: "Пропозиції зіставлення поки недоступні.",
         table: {
           type: "Тип",
           link: "Зв'язок",
-          confidence: "Confidence",
+          confidence: "Spolehlivost",
           status: "Стан",
           reason: "Причина",
           createdAt: "Створено",
           invoiceLinked: "Рахунок #{id}",
           invoiceMissing: "Рахунок не прив'язано",
           expenseLinked: "Витрата #{id}",
-          expenseMissing: "Витрату не прив'язано",
-        },
+          expenseMissing: "Витрату не прив'язано"
+        }
       },
       todos: {
         badge: "Завдання та нагадування",
-        title: "Read-only список завдань і нагадувань",
-        description: "Цей огляд використовує лише безпечні GET endpoint. Він не містить створення, закриття чи генерації завдань.",
+        title: "Завдання та нагадування",
+        description: "Нагадування про терміни та робота з неоплаченими документами.",
         searchPlaceholder: "Шукати за назвою, повідомленням, типом або станом",
         searchLabel: "Шукати завдання",
         statusFilterLabel: "Фільтр за станом",
@@ -2287,7 +2490,7 @@ export const translations = {
         typeFilterLabel: "Фільтр за типом",
         typeAll: "Усі типи",
         shownCount: "{count} показаних завдань",
-        readOnlyNote: "Лише read-only перегляд. Створення, редагування, закриття та генерація завдань відкладені.",
+        readOnlyNote: "",
         table: {
           title: "Назва",
           status: "Стан",
@@ -2299,15 +2502,20 @@ export const translations = {
           completedAt: "Завершено",
           invoiceLinked: "Рахунок #{id}",
           expenseLinked: "Витрата #{id}",
-          noLink: "Без зв'язку",
-        },
+          noLink: "Без зв'язку"
+        }
       },
       todoDetail: {
         badge: "Деталі завдання",
-        title: "Read-only деталі завдання",
-        description: "Деталі завдання або нагадування без write-дій.",
-        backLabel: "Назад до БухгалтеріяNew",
-        sections: { summary: "Огляд", message: "Повідомлення", links: "Зв'язки", timeline: "Часова шкала" },
+        title: "Деталі завдання",
+        description: "Деталі завдання або нагадування.",
+        backLabel: "Назад до бухгалтерії",
+        sections: {
+          summary: "Огляд",
+          message: "Повідомлення",
+          links: "Зв'язки",
+          timeline: "Часова шкала"
+        },
         fields: {
           title: "Назва",
           status: "Стан",
@@ -2317,15 +2525,15 @@ export const translations = {
           expense: "Витрата",
           createdAt: "Створено",
           updatedAt: "Оновлено",
-          completedAt: "Завершено",
+          completedAt: "Завершено"
         },
         notFoundTitle: "Завдання не знайдено",
-        notFoundDescription: "Запитане завдання не знайдено на read-only endpoint.",
+        notFoundDescription: "Запис не знайдено."
       },
       reminderEmails: {
         badge: "E-mail нагадування",
-        title: "Read-only історія e-mail нагадувань",
-        description: "Історія e-mail завантажується per рахунок через безпечні GET endpoint. Без відправлення чи генерації.",
+        title: "E-mail нагадування",
+        description: "Історія e-mail для неоплачених документів.",
         searchPlaceholder: "Шукати за одержувачем, темою, документом або станом",
         searchLabel: "Шукати e-mail нагадування",
         statusFilterLabel: "Фільтр за станом",
@@ -2333,8 +2541,8 @@ export const translations = {
         typeFilterLabel: "Фільтр за типом нагадування",
         typeAll: "Усі типи",
         shownCount: "{count} показаних e-mail",
-        readOnlyNote: "Лише read-only перегляд. Відправлення, пересилання та генерація нагадувань відкладені.",
-        aggregationNote: "Глобальний список складається з per-рахунок GET endpoint. При великій кількості документів завантаження може тривати довше.",
+        readOnlyNote: "",
+        aggregationNote: "Список формується з історії окремих документів.",
         table: {
           recipient: "Одержувач",
           subject: "Тема",
@@ -2344,15 +2552,19 @@ export const translations = {
           sentAt: "Надіслано",
           createdAt: "Створено",
           invoiceLinked: "Рахунок #{number}",
-          invoiceMissing: "Рахунок #{id}",
-        },
+          invoiceMissing: "Рахунок #{id}"
+        }
       },
       reminderEmailDetail: {
         badge: "Деталі e-mail нагадування",
-        title: "Read-only попередній перегляд e-mail нагадування",
-        description: "Попередній перегляд історичного e-mail нагадування без можливості відправлення.",
-        backLabel: "Назад до БухгалтеріяNew",
-        sections: { summary: "Огляд", message: "Тіло e-mail", delivery: "Доставка" },
+        title: "E-mail нагадування",
+        description: "Перегляд надісланого e-mail нагадування.",
+        backLabel: "Назад до бухгалтерії",
+        sections: {
+          summary: "Огляд",
+          message: "Тіло e-mail",
+          delivery: "Доставка"
+        },
         fields: {
           recipient: "Одержувач",
           subject: "Тема",
@@ -2362,17 +2574,17 @@ export const translations = {
           todo: "Завдання",
           sentAt: "Надіслано",
           createdAt: "Створено",
-          errorMessage: "Помилка доставки",
+          errorMessage: "Помилка доставки"
         },
         notFoundTitle: "E-mail нагадування не знайдено",
-        notFoundDescription: "Запитаний e-mail нагадування не знайдено на read-only endpoint.",
+        notFoundDescription: "Запис не знайдено."
       },
       recurring: {
         badge: "Повторювані",
-        title: "Read-only список повторюваних шаблонів",
-        description: "Цей огляд використовує лише безпечні GET endpoint для recurring-шаблонів. Він не містить create, edit, delete, enable, disable або generate дій.",
-        readOnlyNote: "Лише read-only перегляд. Створення, редагування, видалення, активація, пауза та генерація документів залишаються відкладеними.",
-        deferredFieldsNote: "Safe GET endpoint поки не повертає окремий номер шаблону або start/end дату повторення, тому UI показує лише консервативний snapshot доступних даних.",
+        title: "Повторювані шаблони",
+        description: "Шаблони для регулярно виставлених документів.",
+        readOnlyNote: "",
+        deferredFieldsNote: "",
         searchPlaceholder: "Шукати за назвою, типом, станом, приміткою або пов'язаним суб'єктом",
         searchLabel: "Шукати повторювані шаблони",
         typeFilterLabel: "Фільтр за типом шаблону",
@@ -2380,7 +2592,7 @@ export const translations = {
         statusFilterLabel: "Фільтр за станом шаблону",
         statusAll: "Усі стани",
         shownCount: "{count} шаблонів показано",
-        detailRouteHint: "деталі ведуть лише до нового паралельного маршруту `{route}`",
+        detailRouteHint: "Натисніть рядок, щоб відкрити деталі запису.",
         relatedSubject: "Клієнт #{id}",
         relatedSupplier: "Постачальник #{id}",
         frequencyWithCount: "{frequency} × {count}",
@@ -2393,51 +2605,51 @@ export const translations = {
           relatedParty: "Клієнт / постачальник",
           amount: "Сума",
           nextRun: "Наступний запуск",
-          lastRun: "Останній запуск",
+          lastRun: "Останній запуск"
         },
         templateKinds: {
           invoice: "Повторюваний рахунок",
-          expense: "Повторювана витрата",
+          expense: "Повторювана витрата"
         },
         frequencies: {
           daily: "Щодня",
           weekly: "Щотижня",
           monthly: "Щомісяця",
           quarterly: "Щокварталу",
-          yearly: "Щороку",
-        },
+          yearly: "Щороку"
+        }
       },
       recurringDetail: {
         badge: "Деталі повторюваного шаблону",
-        title: "Read-only деталі повторюваного шаблону",
-        description: "Read-only деталі recurring-шаблону в новій паралельній секції. Старі issued invoices залишаються в `/admin/invoices`.",
-        backLabel: "Назад до БухгалтеріяNew",
+        title: "Деталі повторюваного шаблону",
+        description: "Деталі шаблону для регулярних документів.",
+        backLabel: "Назад до бухгалтерії",
         recurrenceTitle: "Налаштування повторення",
-        recurrenceDescription: "Лише безпечно завантажені дані про інтервал і стан шаблону.",
+        recurrenceDescription: "Налаштування інтервалу та стану шаблону.",
         relatedTitle: "Пов'язані суб'єкти та суми",
-        relatedDescription: "UI показує лише дані, повернуті GET endpoint, і безпечно обчислену суму позицій.",
-        paymentTitle: "Оплата і збереження legacy UI",
-        paymentDescription: "Платіжні дані показані лише як read-only snapshot. Жодної генерації і жодного втручання у старий invoicing UI.",
-        operationsTitle: "Read-only операційна примітка",
-        operationsDescription: "Цей маршрут навмисно обмежено лише безпечним читанням.",
-        operationsItemOne: "Тут немає кнопок для create, edit, delete, activate, pause, cancel або generate.",
-        operationsItemTwo: "Безпечні GET endpoint поки не віддають start/end дату повторення або окремий номер шаблону, тому UI цього не вигадує.",
-        operationsItemThree: "Старі видані рахунки залишаються доступними лише в legacy-секції `/admin/invoices`.",
+        relatedDescription: "Пов’язані суб’єкти та суми.",
+        paymentTitle: "Платіж",
+        paymentDescription: "Платіжні дані шаблону.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         itemsTitle: "Snapshot позицій шаблону",
-        itemsDescription: "Read-only огляд позицій, повернутих detail endpoint.",
+        itemsDescription: "Позиції шаблону.",
         amountsTitle: "Підсумок сум",
-        amountsDescription: "Підсумки обчислюються лише з позицій, повернутих бекендом.",
+        amountsDescription: "Підсумок сум шаблону.",
         noteTitle: "Примітка",
         generationsTitle: "Історія генерації",
-        generationsDescription: "Read-only історія запусків, повернена безпечним GET endpoint для цього шаблону.",
-        scheduleWindowDeferred: "Safe GET endpoint поки не повертає start/end дату повторення або окремий номер шаблону.",
+        generationsDescription: "Історія документів, згенерованих з цього шаблону.",
+        scheduleWindowDeferred: "",
         generatedInvoiceLinked: "Документ #{id}",
         generatedExpenseLinked: "Витрата #{id}",
         generatedDocumentMissing: "Не згенеровано",
         generatedExpenseMissing: "Не згенеровано",
-        oldInvoicesDescription: "Початкові issued invoices та старий invoicing UI залишаються без змін у `/admin/invoices`.",
+        oldInvoicesDescription: "",
         notFoundTitle: "Повторюваний шаблон не знайдено",
-        notFoundDescription: "Запитаний recurring-шаблон не знайдено на read-only endpoint.",
+        notFoundDescription: "Запис не знайдено.",
         fields: {
           templateType: "Тип шаблону",
           templateNumber: "Ідентифікатор шаблону",
@@ -2447,8 +2659,8 @@ export const translations = {
           lastRunDate: "Останній запуск",
           recurrenceInterval: "Інтервал",
           recurrenceCount: "Кількість інтервалів",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Бізнес-режим",
+          taxMode: "Податковий режим",
           subject: "Клієнт",
           supplier: "Постачальник",
           currency: "Валюта",
@@ -2468,15 +2680,15 @@ export const translations = {
           generationStatus: "Стан запуску",
           generatedDocument: "Згенерований документ",
           generatedExpense: "Згенерована витрата",
-          oldInvoicesNote: "Legacy рахунки",
-        },
+          oldInvoicesNote: "Poznámka"
+        }
       },
       attachments: {
         badge: "Вкладення",
-        title: "Read-only список вкладень",
-        description: "Цей огляд використовує лише безпечні GET endpoint для accounting вкладень. Він не містить upload, delete, archive або link/unlink дій.",
-        readOnlyNote: "Лише read-only перегляд. Завантаження, видалення, архівація та зв'язки залишаються відкладеними.",
-        safetyNote: "Правило безпеки: на цій фазі немає кнопок upload, delete, archive, link або unlink.",
+        title: "Додатки",
+        description: "Файли, прикріплені до документів і витрат.",
+        readOnlyNote: "",
+        safetyNote: "",
         searchPlaceholder: "Шукати за назвою файлу, типом, MIME, станом або зв'язком",
         searchLabel: "Шукати вкладення",
         statusFilterLabel: "Фільтр за станом вкладення",
@@ -2495,22 +2707,22 @@ export const translations = {
           expenseLinked: "Витрата #{id}",
           todoLinked: "Завдання #{id}",
           bankTransactionLinked: "Банківська транзакція #{id}",
-          noLink: "Без зв'язку",
-        },
+          noLink: "Без зв'язку"
+        }
       },
       attachmentDetail: {
         badge: "Деталі вкладення",
-        title: "Read-only деталі вкладення",
-        description: "Read-only metadata вкладення в новій паралельній секції. Початкові issued invoices залишаються в `/admin/invoices`.",
-        backLabel: "Назад до ÚčetnictvíNew",
+        title: "Деталі додатку",
+        description: "Інформація про файл і його зв’язки.",
+        backLabel: "Назад до бухгалтерії",
         notFoundTitle: "Вкладення не знайдено",
-        notFoundDescription: "Запитане вкладення не знайдено на read-only endpoint. Старі рахунки в `/admin/invoices` залишаються недоторканими.",
+        notFoundDescription: "Запис не знайдено.",
         sections: {
-          summary: "Metadata файлу",
+          summary: "Файл",
           relations: "Зв'язки з документами та сутностями",
           note: "Примітка",
-          operations: "Read-only операційна примітка",
-          audit: "Audit-події",
+          operations: "",
+          audit: "Audit-події"
         },
         fields: {
           attachmentType: "Тип вкладення",
@@ -2522,20 +2734,20 @@ export const translations = {
           invoice: "Документ",
           expense: "Витрата",
           todo: "Завдання",
-          bankTransaction: "Банківська транзакція",
+          bankTransaction: "Банківська транзакція"
         },
-        operationsDescription: "Цей маршрут навмисно обмежений лише безпечним читанням.",
-        operationsItemOne: "Тут немає кнопок upload, delete, archive, link або unlink.",
-        operationsItemTwo: "Download не показується, якщо endpoint не є чистим безпечним GET без невизначених side-effect.",
-        operationsItemThree: "Старі видані рахунки залишаються доступними лише в legacy секції `/admin/invoices`.",
-        oldInvoicesDescription: "Початкові issued invoices і старий invoicing UI залишаються без змін у `/admin/invoices`.",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
+        oldInvoicesDescription: ""
       },
       attachmentInbox: {
         badge: "Inbox вкладень",
-        title: "Незв'язані вкладення (inbox)",
-        description: "Read-only огляд незв'язаних вкладень, завантажених безпечним GET фільтром `unlinked_only`. Без upload і без link дій.",
-        readOnlyNote: "Лише read-only inbox. Upload і зв'язування з документами залишаються відкладеними.",
-        apiNote: "Список базується на безпечному GET endpoint `/api/admin/invoices/attachments?unlinked_only=true`.",
+        title: "Inbox додатків",
+        description: "Нещодавно завантажені файли, що очікують призначення.",
+        readOnlyNote: "",
+        apiNote: "",
         searchPlaceholder: "Шукати за назвою файлу, типом або станом",
         searchLabel: "Шукати в inbox",
         shownCount: "{count} незв'язаних вкладень показано",
@@ -2544,40 +2756,109 @@ export const translations = {
           type: "Тип",
           size: "Розмір",
           status: "Стан",
-          createdAt: "Отримано / створено",
-        },
+          createdAt: "Отримано / створено"
+        }
       },
       moduleRegistry: {
-        dashboard: { label: "Дашборд", description: "Безпечний огляд завантажених документів, витрат, банку та audit-слідів." },
-        documents: { label: "Документи", description: "Read-only список рахунків, proforma, податкових документів, фінальних рахунків, коригувань і пропозицій." },
-        documentDetail: { label: "Деталі документа", description: "Read-only деталі документа з позиціями, платежами, зв'язками та audit-слідом." },
-        subjects: { label: "Одержувачі", description: "Реєстр клієнтів для повторного використання в документах з ARES lookup." },
-        subjectDetail: { label: "Деталі одержувача", description: "Деталі збереженого одержувача для повторного використання в документах." },
-        expenses: { label: "Витрати", description: "Read-only огляд вхідних документів і їх поточних станів оплати." },
-        expenseDetail: { label: "Деталі витрати", description: "Read-only деталі вхідного документа з позиціями, платежами й audit-слідом." },
-        suppliers: { label: "Постачальники", description: "Read-only реєстр постачальників, готовий для подальшого паралельного accounting workflow." },
-        supplierDetail: { label: "Деталі постачальника", description: "Read-only знімок ідентичності та контактів постачальника без write-дій." },
-        bankTransactions: { label: "Банківські транзакції", description: "Read-only завантаження банківських транзакцій без імпорту і підтверджувальних кроків." },
-        bankTransactionDetail: { label: "Деталі банківської транзакції", description: "Read-only деталі транзакції з наявними match-записами та raw payload." },
-        paymentMatching: { label: "Зіставлення платежів", description: "Read-only overview наявних станів зіставлення без apply matching або reject-дій." },
-        reminders: { label: "Завдання та нагадування", description: "Read-only огляд завдань і нагадувань без створення, закриття та генерації." },
-        todoDetail: { label: "Деталі завдання", description: "Read-only деталі завдання або нагадування без write-дій." },
-        reminderEmails: { label: "E-mail нагадування", description: "Read-only історія e-mail нагадувань, завантажена per рахунок, без відправлення." },
-        reminderEmailDetail: { label: "Деталі e-mail нагадування", description: "Read-only попередній перегляд історичного e-mail нагадування без send-дій." },
-        attachments: { label: "Вкладення", description: "Read-only список accounting вкладень і metadata без upload, delete, archive і link дій." },
-        attachmentDetail: { label: "Деталі вкладення", description: "Read-only деталі вкладення зі зв'язками, checksum і audit-слідом через безпечні GET endpoint." },
-        attachmentInbox: { label: "Inbox вкладень", description: "Read-only незв'язані вкладення з inbox без upload і link дій." },
-        recurring: { label: "Повторювані шаблони", description: "Read-only список recurring-шаблонів без генерації, активації та інших write-дій." },
-        recurringDetail: { label: "Деталі повторюваного шаблону", description: "Read-only деталі recurring-шаблону з позиціями та історією генерації через безпечні GET endpoint." },
-        exports: { label: "Експорти", description: "Metadata для пакетних експортів і пошукових workflow підготовлені для наступної фази." },
-        audit: { label: "Аудит", description: "Metadata для окремого audit-модуля і cross-module нагляду залишаються готовими." },
+        dashboard: {
+          label: "Огляд",
+          description: "Зведений огляд документів, витрат і платежів."
+        },
+        documents: {
+          label: "Документи",
+          description: "Створення та керування рахунками, проформами та іншими документами."
+        },
+        documentDetail: {
+          label: "Деталі документа",
+          description: "Деталі документа з позиціями, платежами та історією."
+        },
+        subjects: {
+          label: "Одержувачі",
+          description: "Довідник клієнтів для повторного використання у рахунках."
+        },
+        subjectDetail: {
+          label: "Деталі одержувача",
+          description: "Деталі збереженого одержувача для повторного використання в документах."
+        },
+        expenses: {
+          label: "Витрати",
+          description: "Облік отриманих документів і витрат компанії."
+        },
+        expenseDetail: {
+          label: "Деталі витрати",
+          description: "Деталі витрати з позиціями, платежами та історією."
+        },
+        suppliers: {
+          label: "Постачальники",
+          description: "Довідник постачальників для витрат і отриманих рахунків."
+        },
+        supplierDetail: {
+          label: "Деталі постачальника",
+          description: "Деталі постачальника з контактними даними."
+        },
+        bankTransactions: {
+          label: "Банківські транзакції",
+          description: "Огляд банківських платежів і призначення документам."
+        },
+        bankTransactionDetail: {
+          label: "Деталі банківської транзакції",
+          description: "Деталі банківської транзакції та зіставлених платежів."
+        },
+        paymentMatching: {
+          label: "Зіставлення платежів",
+          description: "Перевірка, які платежі належать яким документам."
+        },
+        reminders: {
+          label: "Завдання та нагадування",
+          description: "Нагадування про терміни та неоплачені документи."
+        },
+        todoDetail: {
+          label: "Деталі завдання",
+          description: "Деталі завдання або нагадування."
+        },
+        reminderEmails: {
+          label: "E-mail нагадування",
+          description: "Історія e-mail для неоплачених документів."
+        },
+        reminderEmailDetail: {
+          label: "Деталі e-mail нагадування",
+          description: "Перегляд надісланого e-mail нагадування."
+        },
+        attachments: {
+          label: "Вкладення",
+          description: "Файли, прикріплені до документів і витрат."
+        },
+        attachmentDetail: {
+          label: "Деталі вкладення",
+          description: "Деталі додатку зі зв’язками та історією."
+        },
+        attachmentInbox: {
+          label: "Inbox вкладень",
+          description: "Нещодavно завантажені файли, що очікують призначення."
+        },
+        recurring: {
+          label: "Повторювані шаблони",
+          description: "Шаблони для регулярно виставлених документів."
+        },
+        recurringDetail: {
+          label: "Деталі повторюваного шаблону",
+          description: "Деталі повторюваного шаблону з позиціями та історією."
+        },
+        exports: {
+          label: "Експорти",
+          description: "Експорт буде доступний у наступній версії."
+        },
+        audit: {
+          label: "Audit",
+          description: "Історія змін у бухгалтерії."
+        }
       },
       rag: {
         labels: {
           module: "Модуль",
           entityType: "Тип сутності",
           searchableField: "Пошукове поле",
-          voiceAlias: "Голосовий аліас",
+          voiceAlias: "Голосовий аліас"
         },
         entityTypes: {
           dashboard: "Дашборд",
@@ -2589,12 +2870,24 @@ export const translations = {
           reminder: "Нагадування",
           todo: "Завдання",
           reminder_email: "E-mail нагадування",
-          attachment: "Вкладення",
+          attachment: "Додаток",
           attachment_inbox_item: "Незв'язане вкладення",
           recurring_template: "Повторюваний шаблон",
           recurring_generation: "Запуск повторюваного шаблону",
           export: "Експорт",
           audit_event: "Audit-подія",
+          invoice: "Документ",
+          subject: "Одержувач",
+          invoice_payment: "Платіж за документом",
+          expense_payment: "Платіж за витратою",
+          created: "Створено",
+          updated: "Оновлено",
+          deleted: "Видалено",
+          issued: "Видано",
+          payment_added: "Додано платіж",
+          payment_removed: "Платіж видалено",
+          cancelled: "Скасовано",
+          admin_api: "Адміністрування"
         },
         searchableFields: {
           invoiceNumber: "Номер документа",
@@ -2606,7 +2899,7 @@ export const translations = {
           counterpartyName: "Контрагент",
           status: "Стан",
           reason: "Причина",
-          confidence: "Confidence",
+          confidence: "Надійність",
           note: "Примітка",
           country: "Країна",
           ico: "IČO",
@@ -2640,12 +2933,12 @@ export const translations = {
           checksum: "Контрольна сума",
           uploadedAt: "Завантажено",
           archivedAt: "Архівовано",
-          rawPayload: "Raw payload",
+          rawPayload: "Технічні дані",
           attachmentType: "Тип вкладення",
           name: "Назва",
           entityType: "Тип сутності",
-          eventType: "Тип події",
-        },
+          eventType: "Тип події"
+        }
       },
       voice: {
         labels: {
@@ -2671,42 +2964,152 @@ export const translations = {
           recurring: "Повторювані шаблони",
           recurringDetail: "Деталі повторюваного шаблону",
           exports: "Експорти",
-          audit: "Аудит",
+          audit: "Аудит"
         },
         aliases: {
-          dashboard: ["бухгалтерія", "дашборд бухгалтерії", "accounting dashboard"],
-          documents: ["документи", "рахунки", "видані документи"],
-          documentDetail: ["деталі документа", "деталі рахунку"],
-          subjects: ["одержувачі", "клієнти", "subjects registry"],
-          subjectDetail: ["деталі одержувача", "subject detail"],
-          expenses: ["витрати", "вхідні документи", "затрати"],
-          expenseDetail: ["деталі витрати", "деталі вхідного документа"],
-          suppliers: ["постачальники", "supplier registry"],
-          supplierDetail: ["деталі постачальника", "supplier detail"],
-          bankTransactions: ["банк", "банківські транзакції", "виписки"],
-          bankTransactionDetail: ["деталі банківської транзакції", "bank detail"],
-          paymentMatching: ["зіставлення платежів", "matching", "payment matching"],
-          reminders: ["нагадування", "завдання", "upomínka"],
-          todoDetail: ["деталі завдання", "деталі нагадування", "task detail"],
-          reminderEmails: ["e-mail нагадування", "нагадувальні листи", "email reminders", "email reminder"],
-          reminderEmailDetail: ["деталі e-mail нагадування", "попередній перегляд нагадування", "reminder history"],
-          attachments: ["вкладення", "вкладення", "файл", "file", "invoice attachment", "expense attachment", "attachment inbox"],
-          attachmentDetail: ["деталі вкладення", "attachment detail", "вкладення рахунку", "вкладення витрати"],
-          attachmentInbox: ["inbox вкладень", "незв'язані вкладення", "незв'язане вкладення", "unassigned file", "inbox"],
-          recurring: ["повторювані шаблони", "повторювані документи", "recurring"],
-          recurringDetail: ["деталі повторюваного шаблону", "деталі recurring", "деталі шаблону"],
-          recurringTemplate: ["повторюваний шаблон", "recurring template"],
-          recurringInvoice: ["повторюваний рахунок", "invoice template"],
-          recurringExpense: ["повторювана витрата", "expense template"],
-          repeatInvoice: ["повторити рахунок", "повторюваний рахунок"],
-          scheduledInvoice: ["запланований рахунок", "scheduled invoice"],
-          scheduledExpense: ["запланована витрата", "scheduled expense"],
-          exports: ["експорти", "пакетні експорти"],
-          audit: ["аудит", "audit log"],
-        },
+          dashboard: [
+            "бухгалтерія",
+            "дашборд бухгалтерії",
+            "accounting dashboard"
+          ],
+          documents: [
+            "документи",
+            "рахунки",
+            "видані документи"
+          ],
+          documentDetail: [
+            "деталі документа",
+            "деталі рахунку"
+          ],
+          subjects: [
+            "одержувачі",
+            "клієнти",
+            "subjects registry"
+          ],
+          subjectDetail: [
+            "деталі одержувача",
+            "subject detail"
+          ],
+          expenses: [
+            "витрати",
+            "вхідні документи",
+            "затрати"
+          ],
+          expenseDetail: [
+            "деталі витрати",
+            "деталі вхідного документа"
+          ],
+          suppliers: [
+            "постачальники",
+            "supplier registry"
+          ],
+          supplierDetail: [
+            "деталі постачальника",
+            "supplier detail"
+          ],
+          bankTransactions: [
+            "банк",
+            "банківські транзакції",
+            "виписки"
+          ],
+          bankTransactionDetail: [
+            "деталі банківської транзакції",
+            "bank detail"
+          ],
+          paymentMatching: [
+            "зіставлення платежів",
+            "matching",
+            "payment matching"
+          ],
+          reminders: [
+            "нагадування",
+            "завдання",
+            "upomínka"
+          ],
+          todoDetail: [
+            "деталі завдання",
+            "деталі нагадування",
+            "task detail"
+          ],
+          reminderEmails: [
+            "e-mail нагадування",
+            "нагадувальні листи",
+            "email reminders",
+            "email reminder"
+          ],
+          reminderEmailDetail: [
+            "деталі e-mail нагадування",
+            "попередній перегляд нагадування",
+            "reminder history"
+          ],
+          attachments: [
+            "вкладення",
+            "вкладення",
+            "файл",
+            "file",
+            "invoice attachment",
+            "expense attachment",
+            "attachment inbox"
+          ],
+          attachmentDetail: [
+            "деталі вкладення",
+            "attachment detail",
+            "вкладення рахунку",
+            "вкладення витрати"
+          ],
+          attachmentInbox: [
+            "inbox вкладень",
+            "незв'язані вкладення",
+            "незв'язане вкладення",
+            "unassigned file",
+            "inbox"
+          ],
+          recurring: [
+            "повторювані шаблони",
+            "повторювані документи",
+            "recurring"
+          ],
+          recurringDetail: [
+            "деталі повторюваного шаблону",
+            "деталі recurring",
+            "деталі шаблону"
+          ],
+          recurringTemplate: [
+            "повторюваний шаблон",
+            "recurring template"
+          ],
+          recurringInvoice: [
+            "повторюваний рахунок",
+            "invoice template"
+          ],
+          recurringExpense: [
+            "повторювана витрата",
+            "expense template"
+          ],
+          repeatInvoice: [
+            "повторити рахунок",
+            "повторюваний рахунок"
+          ],
+          scheduledInvoice: [
+            "запланований рахунок",
+            "scheduled invoice"
+          ],
+          scheduledExpense: [
+            "запланована витрата",
+            "scheduled expense"
+          ],
+          exports: [
+            "експорти",
+            "пакетні експорти"
+          ],
+          audit: [
+            "аудит",
+            "audit log"
+          ]
+        }
       },
       statusLabels: {
-        paid: "Оплачено",
+        paid: "Сплачено",
         unpaid: "Не оплачено",
         partially_paid: "Частково оплачено",
         partial: "Частково оплачено",
@@ -2730,6 +3133,10 @@ export const translations = {
         uploaded: "Завантажено",
         linked: "Зв'язано",
         archived: "Архівовано",
+        closed: "Закрито",
+        bank_transfer: "Переказом",
+        cash: "Готівкою",
+        card: "Карткою"
       },
       attachmentTypes: {
         invoice_document: "Документ рахунку",
@@ -2737,7 +3144,7 @@ export const translations = {
         todo_note: "Примітка до завдання",
         bank_transaction: "Банківська транзакція",
         payment_proof: "Доказ платежу",
-        other: "Інше",
+        other: "Інше"
       },
       documentKinds: {
         invoice: "Рахунок",
@@ -2745,14 +3152,31 @@ export const translations = {
         tax_document: "Податковий документ",
         correction: "Коригувальний документ",
         final_invoice: "Фінальний рахунок",
-        quote: "Пропозиція",
+        quote: "Пропозиція"
       },
       transactionDirections: {
         incoming: "Вхідна",
         outgoing: "Вихідна",
         credit: "Надходження",
-        debit: "Списання",
+        debit: "Списання"
       },
+      auditEventTypes: {
+        invoice: "Документ",
+        subject: "Одержувач",
+        supplier: "Постачальник",
+        expense: "Витрата",
+        invoice_payment: "Платіж за документом",
+        expense_payment: "Платіж за витратою",
+        attachment: "Додаток",
+        created: "Створено",
+        updated: "Оновлено",
+        deleted: "Видалено",
+        issued: "Видано",
+        payment_added: "Додано платіж",
+        payment_removed: "Платіж видалено",
+        cancelled: "Скасовано",
+        admin_api: "Адміністрування"
+      }
     },
   },
   ru: {
@@ -2854,11 +3278,11 @@ export const translations = {
         bankTransactions: "Банковские транзакции",
         paymentMatching: "Сопоставление платежей",
         backToDashboard: "Назад в бухгалтерию",
-        legacyInvoices: "Старые счета",
+        legacyInvoices: "Старые счета"
       },
       common: {
-        readOnly: "Только чтение",
-        readOnlyDetail: "Детали только для чтения",
+        readOnly: "Обзор",
+        readOnlyDetail: "Детали записи",
         noValue: "Не указано",
         noMessage: "Без сообщения",
         noReason: "Без деталей",
@@ -2867,140 +3291,140 @@ export const translations = {
         noVariableSymbol: "VS не указан",
         noConstantSymbol: "KS -",
         noSpecificSymbol: "SS -",
-        readOnlyBadge: "Только чтение",
-        readyBadge: "Подготовлено",
-        noMetrics: "На этом этапе нет активных read-only метрик.",
-        withoutWriteActions: "Без write-действий",
+        readOnlyBadge: "Обзор",
+        readyBadge: "Готово",
+        noMetrics: "Пока без статистики.",
+        withoutWriteActions: "",
         paidAt: "Оплачено {value}",
         appliedAt: "Применено {value}",
-        sourcePrefix: "источник {value}",
-        detailRouteOnly: "детали открываются только в новом параллельном маршруте `{route}`",
-        noAuditMessage: "Бэкенд не прислал текстовое сообщение, поэтому UI показывает только тип события.",
-        noRefresh: "У дашборда пока нет сохраненного успешного обновления.",
+        sourcePrefix: "источник: {value}",
+        detailRouteOnly: "Нажмите строку, чтобы открыть детали записи.",
+        noAuditMessage: "Событие зафиксировано.",
+        noRefresh: "Последнее обновление пока недоступно."
       },
       auth: {
-        dashboardTitle: "Для read-only бухгалтерского дашборда требуется вход",
-        dashboardDescription: "Без активной admin-сессии новые бухгалтерские обзоры не загрузятся. Существующий `/admin/invoices` остается без изменений.",
-        documentsTitle: "Для загрузки документов требуется вход",
-        documentsDescription: "Без активной admin-сессии read-only список документов не отобразится. Legacy invoicing UI остается нетронутым.",
-        documentDetailTitle: "Для read-only деталей документа требуется вход",
-        documentDetailDescription: "Без активной admin-сессии детали нового документа не загрузятся. Исходный `/admin/invoices` остается доступным.",
-        expensesTitle: "Для загрузки расходов требуется вход",
-        expensesDescription: "Без активной admin-сессии read-only список расходов не загрузится. Старые issued invoices не меняются.",
-        expenseDetailTitle: "Для read-only деталей расхода требуется вход",
-        expenseDetailDescription: "Без активной admin-сессии детали входящего документа не загрузятся. Legacy счета остаются в `/admin/invoices`.",
-        suppliersTitle: "Для загрузки поставщиков требуется вход",
-        suppliersDescription: "Без активной admin-сессии read-only список поставщиков не загрузится. Legacy invoicing UI не меняется.",
-        supplierDetailTitle: "Для read-only деталей поставщика требуется вход",
-        supplierDetailDescription: "Без активной admin-сессии детали поставщика не загрузятся. Исходный `/admin/invoices` остается доступным.",
-        bankTransactionsTitle: "Для загрузки банковских транзакций требуется вход",
-        bankTransactionsDescription: "Без активной admin-сессии read-only банковские транзакции не загрузятся.",
-        bankTransactionDetailTitle: "Для read-only деталей банковской транзакции требуется вход",
-        bankTransactionDetailDescription: "Без активной admin-сессии детали банковской транзакции не загрузятся.",
-        paymentMatchingTitle: "Для загрузки обзора сопоставления требуется вход",
-        paymentMatchingDescription: "Без активной admin-сессии read-only данные сопоставления не загрузятся.",
-        todosTitle: "Для загрузки задач требуется вход",
-        todosDescription: "Без активной admin-сессии read-only список задач и напоминаний не загрузится.",
-        todoDetailTitle: "Для read-only деталей задачи требуется вход",
-        todoDetailDescription: "Без активной admin-сессии детали задачи не загрузятся. Исходный `/admin/invoices` остается доступным.",
-        reminderEmailsTitle: "Для загрузки e-mail напоминаний требуется вход",
-        reminderEmailsDescription: "Без активной admin-сессии история e-mail напоминаний не загрузится.",
-        reminderEmailDetailTitle: "Для read-only деталей e-mail напоминания требуется вход",
-        reminderEmailDetailDescription: "Без активной admin-сессии предпросмотр e-mail напоминания не загрузится.",
-        recurringTitle: "Для загрузки повторяющихся шаблонов требуется вход",
-        recurringDescription: "Без активной admin-сессии read-only список повторяющихся шаблонов не загрузится.",
-        recurringDetailTitle: "Для read-only деталей повторяющегося шаблона требуется вход",
-        recurringDetailDescription: "Без активной admin-сессии детали повторяющегося шаблона не загрузятся. Исходный `/admin/invoices` остается доступным.",
-        attachmentsTitle: "Для загрузки вложений требуется вход",
-        attachmentsDescription: "Без активной admin-сессии read-only список вложений не загрузится.",
-        attachmentDetailTitle: "Для read-only деталей вложения требуется вход",
-        attachmentDetailDescription: "Без активной admin-сессии детали вложения не загрузятся. Исходный `/admin/invoices` остается доступным.",
-        attachmentInboxTitle: "Для загрузки inbox вложений требуется вход",
-        attachmentInboxDescription: "Без активной admin-сессии несвязанные вложения не загрузятся.",
-        subjectsTitle: "Для загрузки получателей требуется вход",
-        subjectsDescription: "Без активной admin-сессии список получателей не загрузится.",
-        subjectDetailTitle: "Для деталей получателя требуется вход",
-        subjectDetailDescription: "Без активной admin-сессии детали получателя не загрузятся.",
+        dashboardTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        dashboardDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        documentsTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        documentsDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        documentDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        documentDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        expensesTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        expensesDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        expenseDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        expenseDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        suppliersTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        suppliersDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        supplierDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        supplierDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        bankTransactionsTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        bankTransactionsDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        bankTransactionDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        bankTransactionDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        paymentMatchingTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        paymentMatchingDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        todosTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        todosDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        todoDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        todoDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        reminderEmailsTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        reminderEmailsDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        reminderEmailDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        reminderEmailDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        recurringTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        recurringDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        recurringDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        recurringDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        attachmentsTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        attachmentsDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        attachmentDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        attachmentDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        attachmentInboxTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        attachmentInboxDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        subjectsTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        subjectsDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        subjectDetailTitle: "Войдите, чтобы просмотреть бухгалтерию.",
+        subjectDetailDescription: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными."
       },
       errors: {
-        dashboardTitle: "Не удалось загрузить read-only бухгалтерский дашборд",
-        partialDataTitle: "Часть read-only данных не удалось загрузить",
-        partialDataDescription: "Поэтому дашборд показывает только безопасные данные, которые реально вернул бэкенд.",
-        documentsTitle: "Не удалось загрузить read-only список документов",
-        documentDetailTitle: "Не удалось загрузить read-only детали документа",
-        expensesTitle: "Не удалось загрузить read-only список расходов",
-        expenseDetailTitle: "Не удалось загрузить read-only детали расхода",
-        suppliersTitle: "Не удалось загрузить read-only список поставщиков",
-        supplierDetailTitle: "Не удалось загрузить read-only детали поставщика",
-        bankTransactionsTitle: "Не удалось загрузить read-only список банковских транзакций",
-        bankTransactionDetailTitle: "Не удалось загрузить read-only детали банковской транзакции",
-        paymentMatchingTitle: "Не удалось загрузить read-only обзор сопоставления",
-        todosTitle: "Не удалось загрузить read-only список задач",
-        todoDetailTitle: "Не удалось загрузить read-only детали задачи",
-        reminderEmailsTitle: "Не удалось загрузить read-only историю e-mail напоминаний",
-        reminderEmailDetailTitle: "Не удалось загрузить read-only детали e-mail напоминания",
-        recurringTitle: "Не удалось загрузить read-only список повторяющихся шаблонов",
-        recurringDetailTitle: "Не удалось загрузить read-only детали повторяющегося шаблона",
-        attachmentsTitle: "Не удалось загрузить read-only список вложений",
-        attachmentDetailTitle: "Не удалось загрузить read-only детали вложения",
-        attachmentInboxTitle: "Не удалось загрузить read-only inbox вложений",
-        subjectsTitle: "Не удалось загрузить список получателей",
-        subjectDetailTitle: "Не удалось загрузить детали получателя",
-        supplementalTitle: "Часть дополнительных read-only секций не удалось загрузить",
-        invalidIdentifier: "Запрошенный идентификатор бухгалтерской сущности не является корректным положительным числом.",
-        loginRequiredGeneric: "Для загрузки read-only бухгалтерской части нужен вход в админку.",
-        notFoundGeneric: "Запрошенная бухгалтерская запись не найдена на read-only endpoint.",
-        requestAborted: "Загрузка read-only бухгалтерских данных была прервана.",
-        networkGeneric: "Read-only загрузка бухгалтерских данных не удалась из-за сетевой ошибки.",
-        httpGeneric: "Read-only загрузка бухгалтерских данных не удалась ({status}).",
-        validationFailed: "Введённые данные недействительны. Проверьте форму и попробуйте снова.",
-        actionFailed: "Не удалось выполнить действие. Попробуйте снова.",
+        dashboardTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        partialDataTitle: "Часть данных не удалось загрузить. Показан доступный обзор.",
+        partialDataDescription: "",
+        documentsTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        documentDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        expensesTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        expenseDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        suppliersTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        supplierDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        bankTransactionsTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        bankTransactionDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        paymentMatchingTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        todosTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        todoDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        reminderEmailsTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        reminderEmailDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        recurringTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        recurringDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        attachmentsTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        attachmentDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        attachmentInboxTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        subjectsTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        subjectDetailTitle: "Не удалось загрузить данные. Попробуйте ещё раз.",
+        supplementalTitle: "Часть данных не удалось загрузить. Показан доступный обзор.",
+        invalidIdentifier: "Недействительный идентификатор записи.",
+        loginRequiredGeneric: "Войдите, чтобы просмотреть бухгалтерию.",
+        notFoundGeneric: "Запись не найдена.",
+        requestAborted: "Загрузка прервана.",
+        networkGeneric: "Не удалось загрузить данные из-за сетевой ошибки.",
+        httpGeneric: "Не удалось загрузить данные (ошибка {status}).",
+        validationFailed: "Проверьте введённые данные.",
+        actionFailed: "Не удалось выполнить действие. Попробуйте ещё раз."
       },
       empty: {
-        documents: "Бэкенд пока не вернул ни одного read-only документа. Новая параллельная секция все равно готова, а исходные счета в `/admin/invoices` не меняются.",
+        documents: "Пока нет документов.",
         documentsFiltered: "Текущие фильтры не вернули ни одного документа. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        expenses: "Бэкенд пока не вернул ни одного read-only расхода. Новая параллельная секция все равно остается безопасной, а исходные счета не меняются.",
+        expenses: "Пока нет расходов.",
         expensesFiltered: "Текущие фильтры не вернули ни одного расхода. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        suppliers: "Бэкенд пока не вернул ни одного read-only поставщика. Новая параллельная секция все равно готова без вмешательства в старый invoicing UI.",
+        suppliers: "Пока нет поставщиков.",
         suppliersFiltered: "Текущие фильтры не вернули ни одного поставщика. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        bankTransactions: "Бэкенд пока не вернул ни одной read-only банковской транзакции. Новая параллельная секция все равно безопасна и без импортных действий.",
+        bankTransactions: "Пока нет банковских транзакций.",
         bankTransactionsFiltered: "Текущие фильтры не вернули ни одной банковской транзакции. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        documentItems: "Этот документ пока не содержит ни одной позиции в read-only деталях.",
-        expenseItems: "Этот расход пока не содержит ни одной позиции в read-only деталях.",
-        documentPayments: "Бэкенд пока не вернул ни одного платежа для этого документа.",
-        expensePayments: "Бэкенд пока не вернул ни одного платежа для этого расхода.",
-        documentRelations: "Для этого документа пока не загружено ни одной read-only связи.",
-        documentAudit: "Для этого документа пока не удалось загрузить ни одного audit-события.",
-        expenseAudit: "Для этого расхода пока не удалось загрузить ни одного audit-события.",
-        bankTransactionMatches: "Для этой банковской транзакции бэкенд пока не вернул ни одной read-only match-записи.",
-        todos: "Бэкенд пока не вернул ни одной read-only задачи или напоминания.",
+        documentItems: "У этого документа пока нет позиций.",
+        expenseItems: "У этого расхода пока нет позиций.",
+        documentPayments: "К этому документу пока не зафиксированы платежи.",
+        expensePayments: "К этому расходу пока не зафиксированы платежи.",
+        documentRelations: "К этому документу пока не привязаны связанные записи.",
+        documentAudit: "Для этого документа пока нет аудитных событий.",
+        expenseAudit: "Для этого расхода пока нет аудитных событий.",
+        bankTransactionMatches: "К этой транзакции пока не назначены платежи.",
+        todos: "Пока нет задач или напоминаний.",
         todosFiltered: "Текущие фильтры не вернули ни одной задачи. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        reminderEmails: "Бэкенд пока не вернул ни одного read-only e-mail напоминания.",
+        reminderEmails: "Пока нет e-mail напоминаний.",
         reminderEmailsFiltered: "Текущие фильтры не вернули ни одного e-mail напоминания. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        recurring: "Бэкенд пока не вернул ни одного read-only повторяющегося шаблона. Новая параллельная секция при этом остается безопасной и не генерирует документы.",
+        recurring: "Пока нет повторяющихся шаблонов.",
         recurringFiltered: "Текущие фильтры не вернули ни одного повторяющегося шаблона. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        recurringItems: "Этот повторяющийся шаблон пока не содержит ни одной позиции в read-only деталях.",
-        recurringGenerations: "Для этого повторяющегося шаблона бэкенд пока не вернул ни одной read-only истории генерации.",
-        attachments: "Бэкенд пока не вернул ни одного read-only вложения. Новая параллельная секция при этом остается без upload, delete и link действий.",
+        recurringItems: "У этого шаблона пока нет позиций.",
+        recurringGenerations: "У этого шаблона пока нет истории генерации.",
+        attachments: "Пока нет вложений.",
         attachmentsFiltered: "Текущие фильтры не вернули ни одного вложения. Попробуйте изменить поиск или сбросить фильтры на `Все`.",
-        attachmentInbox: "Inbox пока не содержит несвязанных вложений, возвращенных безопасным GET endpoint.",
+        attachmentInbox: "Inbox пока не содержит нераспределённых вложений.",
         attachmentInboxFiltered: "Текущие фильтры не вернули ни одного несвязанного вложения. Попробуйте изменить поиск.",
-        dashboardAudit: "Audit-события пока не удалось загрузить или бэкенд вернул пустой список.",
-        subjects: "Пока нет сохранённых получателей. Запустите backfill из старых счетов или создайте нового получателя.",
+        dashboardAudit: "Пока нет аудитных событий.",
+        subjects: "Пока нет сохранённых плательщиков. Создайте нового или загрузите компанию из ARES."
       },
       dashboard: {
         badges: {
-          parallelSection: "Параллельная секция",
-          readOnly: "Read-only дашборд",
-          noMigration: "Без миграции",
-          nextStep: "Следующий шаг",
+          parallelSection: "Бухгалтерия",
+          readOnly: "Обзор",
+          noMigration: "",
+          nextStep: ""
         },
         title: "Бухгалтерия",
-        description: "Новая параллельная бухгалтерская секция загружает только безопасные данные только для чтения поверх существующего accounting backend.",
-        preservationNotice: "Существующие выставленные счета и исходный invoicing UI остаются без изменений в `/admin/invoices`. Эта новая часть ничего не мигрирует, не переписывает и не запускает write-действия.",
-        progressNotice: "Текущая фаза расширяет безопасный shell отдельным read-only API-клиентом, изолированными типами, реестром модулей, локализацией и RAG-ready metadata для будущего поиска.",
-        summaryTitle: "Read-only обзор",
-        summaryDescription: "Метрики ниже основаны только на безопасно загруженных GET endpoint. Если какого-то источника нет, дашборд сознательно ничего не пересчитывает агрессивно.",
+        description: "Здесь вы найдёте документы, плательщиков, расходы, платежи и вложения.",
+        preservationNotice: "Здесь можно выставить документ, зафиксировать платёж и управлять учётными данными.",
+        progressNotice: "Когда вы что-то добавите, это появится в этом обзоре.",
+        summaryTitle: "Обзор",
+        summaryDescription: "Сводка документов, расходов, платежей и других данных.",
         documentsTitle: "Документы",
         documentsDescription: "{count} с открытым остатком",
         expensesTitle: "Расходы",
@@ -3008,24 +3432,24 @@ export const translations = {
         todosTitle: "Задачи",
         todosDescription: "{overdue} просроченных из {total}",
         bankTitle: "Банк",
-        bankDescription: "Только read-only загруженные транзакции",
+        bankDescription: "Обзор банковских платежей",
         attachmentsTitle: "Вложения",
         attachmentsDescription: "Inbox и связи без архивации",
         auditTitle: "Аудит",
         auditDescription: "Последние бухгалтерские события",
-        subjectsTitle: "Субъекты",
-        subjectsDescription: "{count} поставщиков в параллельном слое",
+        subjectsTitle: "Плательщики",
+        subjectsDescription: "{count} сохранённых плательщиков",
         recurringTitle: "Повторяющиеся",
-        recurringDescription: "Шаблоны без генерации документов",
-        recentAuditTitle: "Последние audit-события",
-        recentAuditDescription: "Последние пять read-only событий, возвращенных audit endpoint.",
-        loadStateTitle: "Состояние загрузки",
-        loadStateDescription: "Дашборд намеренно консервативен и использует только read-only источники.",
-        loadStateSafeGet: "Новый клиент использует только `GET` endpoint под `/api/admin/invoices/*`, разделяет admin cookie session и не содержит create, update или delete действий.",
-        loadStateAuth: "Если бэкенд возвращает `401`, страница показывает безопасное состояние login-required вместо падения, автоматического логина или вмешательства в legacy маршруты.",
+        recurringDescription: "Шаблоны для регулярно выставляемых документов",
+        recentAuditTitle: "Последние события",
+        recentAuditDescription: "Пять последних изменений в бухгалтерии.",
+        loadStateTitle: "Статус обзора",
+        loadStateDescription: "Информация о последнем обновлении данных.",
+        loadStateSafeGet: "Когда вы что-то добавите, это появится в этом обзоре.",
+        loadStateAuth: "Войдите, чтобы просмотреть бухгалтерию.",
         lastRefresh: "Последнее успешное обновление дашборда: {value}.",
-        modulesTitle: "Модули параллельной бухгалтерии",
-        modulesDescription: "Ниже приведены модули новой параллельной секции. На этом этапе добавляются только read-only загрузка, реестр модулей и поисковые metadata.",
+        modulesTitle: "Модули бухгалтерии",
+        modulesDescription: "Быстрый доступ к разделам бухгалтерии.",
         moduleStats: {
           dashboard: "{documents} документов, {todos} открытых задач",
           documents: "{count} загруженных документов",
@@ -3037,13 +3461,13 @@ export const translations = {
           attachments: "{count} вложений",
           recurring: "{count} шаблонов",
           exports: "Экспорты остаются подготовленными для следующей фазы.",
-          audit: "{count} audit-событий",
-        },
+          audit: "{count} audit-событий"
+        }
       },
       documents: {
         badge: "Документы",
-        title: "Read-only список бухгалтерских документов",
-        description: "Этот обзор использует только новые параллельные GET endpoint. Он не содержит create, edit, delete или миграционных действий.",
+        title: "Документы",
+        description: "Создание и управление счетами, проформами и другими документами.",
         searchPlaceholder: "Искать по номеру документа, VS, клиенту или типу",
         searchLabel: "Искать документы",
         kindFilterLabel: "Фильтр по типу документа",
@@ -3055,7 +3479,7 @@ export const translations = {
         hideDocuments: "Скрыть документы",
         listCollapsed: "В списке {count} документов — обзор свёрнут.",
         tooManyUseSearch: "Для поиска используйте фильтр — показан только ограниченный выбор.",
-        detailRouteHint: "детали открываются только в новом параллельном маршруте `{route}`",
+        detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           document: "Документ",
           kind: "Тип",
@@ -3064,28 +3488,28 @@ export const translations = {
           dueDate: "Срок",
           total: "Итого",
           statuses: "Статусы",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       documentDetail: {
         notFoundTitle: "Документ не найден",
-        notFoundDescription: "Запрошенный accounting документ не найден на read-only endpoint. Существующие счета в `/admin/invoices` остаются нетронутыми.",
-        description: "Read-only accounting детали в новой параллельной секции. Исходные issued invoices в `/admin/invoices` остаются сохраненными без изменений.",
+        notFoundDescription: "Запись не найдена.",
+        description: "Детали документа с позициями, платежами и связанными данными.",
         customerTitle: "Снимок клиента",
-        customerDescription: "Только read-only отображение сохраненных данных документа.",
+        customerDescription: "Данные плательщика, сохранённые в документе.",
         issuerTitle: "Снимок выставителя и платежа",
         issuerDescription: "Показанные данные взяты из документа без редактирования.",
         noteTitle: "Примечание",
         itemsTitle: "Позиции документа",
-        itemsDescription: "Read-only обзор позиций, возвращенных detail endpoint.",
+        itemsDescription: "Позиции документа.",
         amountsTitle: "Сводка сумм",
-        amountsDescription: "Никаких write-действий, только состояние, сохраненное на бэкенде.",
+        amountsDescription: "Сводка сумм документа.",
         paymentsTitle: "Платежи",
-        paymentsDescription: "Read-only список платежей, возвращенных detail endpoint.",
+        paymentsDescription: "Платежи, зафиксированные для документа.",
         relationsTitle: "Связи документа",
-        relationsDescription: "Опциональная read-only секция поверх relation endpoint.",
+        relationsDescription: "Связанные документы и связи.",
         auditTitle: "Последние audit-события",
-        auditDescription: "Опциональная read-only секция поверх audit endpoint.",
+        auditDescription: "История изменений этого документа.",
         sourceLabel: "Источник",
         targetLabel: "Цель",
         relationDocument: "{number} · {kind}",
@@ -3094,8 +3518,8 @@ export const translations = {
           variableSymbol: "Переменный символ",
           issueDate: "Дата выставления",
           dueDate: "Дата оплаты",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Бизнес-режим",
+          taxMode: "Налоговый режим",
           status: "Статус",
           createdAt: "Создано",
           customerName: "Имя / компания",
@@ -3115,14 +3539,14 @@ export const translations = {
           total: "Итого",
           totalPaid: "Оплачено",
           remainingAmount: "Остаток",
-          vatRate: "Ставка НДС",
-        },
+          vatRate: "Ставка НДС"
+        }
       },
       documentWrite: {
-        badgeFunctional: "Функциональный write слой",
+        badgeFunctional: "Активный",
         loading: "Загрузка формы документа…",
-        createTitle: "Новый accounting документ",
-        createDescription: "Создание черновика или выставление нового документа в параллельной секции. Legacy счета в `/admin/invoices` остаются нетронутыми.",
+        createTitle: "Новый документ",
+        createDescription: "Создайте черновик или сразу выставьте новый документ.",
         editTitle: "Редактировать черновик документа",
         editDescription: "Редактирование разрешено только для черновиков. Выставленные документы здесь не изменяются.",
         backToDetail: "Назад к деталям документа",
@@ -3131,25 +3555,25 @@ export const translations = {
         saveAndIssue: "Сохранить и выставить",
         addItem: "Добавить позицию",
         notEditableTitle: "Документ нельзя редактировать",
-        notEditableDescription: "Этот документ уже не является черновиком. Для legacy выставленных счетов используйте `/admin/invoices`.",
-        legacyNoticeTitle: "Сохранение legacy счетов",
-        legacyNoticeDescription: "Этот write слой работает только с новыми accounting документами. Исходные issued invoices остаются в `/admin/invoices` без изменений.",
+        notEditableDescription: "Этот документ уже не черновик и здесь не редактируется.",
+        legacyNoticeTitle: "",
+        legacyNoticeDescription: "",
         emailDeferred: "Отправка e-mail отложена до более поздней безопасной фазы.",
         customerSectionTitle: "Получатель",
         customerSectionDescription: "Выберите существующий субъект или заполните snapshot получателя вручную.",
         itemsSectionTitle: "Позиции",
-        itemsSectionDescription: "Позиции документа, отправляемые на backend.",
+        itemsSectionDescription: "Позиции документа.",
         subjectSelectedHint: "Использован субъект: {name}",
         businessModes: {
           autoservice: "Автосервис",
-          construction: "Строительные работы",
+          construction: "Строительные работы"
         },
         taxModes: {
           standard: "Обычный режим НДС",
-          reverse_charge: "Обратное налогообложение",
+          reverse_charge: "Обратное налогообложение"
         },
         confirm: {
-          cancel: "Отмена",
+          cancel: "Отмена"
         },
         actions: {
           createDocument: "Новый документ",
@@ -3157,17 +3581,17 @@ export const translations = {
           editDisabledHint: "Редактировать можно только черновик документа.",
           issueDocument: "Выставить документ",
           issueDisabledHint: "Выставить можно только черновик документа.",
-          downloadPdf: "Скачать PDF",
+          downloadPdf: "Скачать PDF"
         },
         issue: {
           confirmTitle: "Подтвердить выставление документа",
           confirmDescription: "Это действие изменит статус документа на выставленный. Продолжайте только если данные верны.",
           confirmAction: "Выставить",
-          success: "Документ выставлен.",
+          success: "Документ выставлен."
         },
         payment: {
           title: "Добавить платеж",
-          description: "Платеж будет записан на backend и пересчитает статус оплаты документа.",
+          description: "Платёж будет зафиксирован и обновлён статус оплаты документа.",
           submit: "Добавить платеж",
           confirmTitle: "Подтвердить добавление платежа",
           confirmDescription: "Это действие изменит статус оплаты документа. Проверьте сумму и дату платежа.",
@@ -3178,14 +3602,14 @@ export const translations = {
             amount: "Сумма",
             paidAt: "Дата оплаты",
             method: "Способ оплаты",
-            note: "Примечание",
-          },
+            note: "Примечание"
+          }
         },
         mutation: {
           successTitle: "Действие выполнено",
           errorTitle: "Действие не выполнено",
           createSuccess: "Документ создан.",
-          updateSuccess: "Документ сохранен.",
+          updateSuccess: "Документ сохранен."
         },
         validation: {
           title: "Форма содержит ошибки",
@@ -3194,15 +3618,15 @@ export const translations = {
           customerRequired: "Выберите субъект или заполните имя, e-mail и адрес получателя.",
           vatRequired: "Для обычного режима НДС заполните ставку НДС.",
           itemsRequired: "Документ должен содержать хотя бы одну позицию с описанием.",
-          itemNumbers: "Количество должно быть больше нуля, а цена не может быть отрицательной.",
+          itemNumbers: "Количество должно быть больше нуля, а цена не может быть отрицательной."
         },
         fields: {
           documentKind: "Тип документа",
           invoiceNumber: "Номер документа",
           issueDate: "Дата выставления",
           dueDate: "Дата оплаты",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Бизнес-режим",
+          taxMode: "Налоговый режим",
           currency: "Валюта",
           vatRate: "Ставка НДС",
           subject: "Субъект / получатель",
@@ -3216,15 +3640,14 @@ export const translations = {
           note: "Примечание",
           itemDescription: "Описание",
           itemQuantity: "Количество",
-          itemUnitPrice: "Цена за единицу",
-        },
+          itemUnitPrice: "Цена за единицу"
+        }
       },
-
       aresWrite: {
         badge: "ARES",
-        legacyParityBadge: "Как в старых фактурах",
+        legacyParityBadge: "Как в счетах",
         sectionTitle: "Поиск компании в ARES",
-        sectionDescription: "По названию или IČO — та же логика, что в старом учёте (/admin/invoices).",
+        sectionDescription: "По названию компании или IČO.",
         panelHint: "Компания найдена — сохраните в реестр или сразу создайте документ.",
         panelCreateSubject: "Сохранить как заказчика",
         panelCreateSupplier: "Сохранить как поставщика",
@@ -3258,7 +3681,7 @@ export const translations = {
         phonePlaceholder: "+420 123 456 789",
         address: "Adresa",
         addressPlaceholder: "Ulice, PSČ, město, stát",
-        sourceLabel: "Zdroj",
+        sourceLabel: "Zdroj"
       },
       customerPersistence: {
         customerSaved: "Заказчик сохранён в реестре.",
@@ -3284,18 +3707,18 @@ export const translations = {
         limitedResultsShown: "Показаны только первые 20 результатов — уточните поиск.",
         pickerDescription: "Выберите существующего заказчика или заполните данные вручную / из ARES.",
         validationMissingCompanyName: "Заполните название компании заказчика.",
-        validationMissingIco: "Для однозначного сопоставления рекомендуем заполнить IČO.",
+        validationMissingIco: "Для однозначного сопоставления рекомендуем заполнить IČO."
       },
       money: {
-        invalidFormat: "Введите сумму в формате 925,55 или 925.55",
+        invalidFormat: "Введите сумму, например 925,55."
       },
       paymentMethods: {
-        bank_transfer: "Банковский перевод",
-        cash: "Наличные",
-        card: "Банковская карта",
+        bank_transfer: "Переводом",
+        cash: "Наличными",
+        card: "Картой"
       },
       subjectWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Активный",
         loading: "Načítání formuláře odběratele…",
         loadFailed: "Formulář odběratele se nepodařilo načíst.",
         createTitle: "Nový odběratel",
@@ -3304,22 +3727,32 @@ export const translations = {
         backToDetail: "Zpět na detail odběratele",
         save: "Uložit odběratele",
         update: "Uložit změny",
-        actions: { createSubject: "Nový odběratel", editSubject: "Upravit odběratele" },
+        actions: {
+          createSubject: "Nový odběratel",
+          editSubject: "Upravit odběratele"
+        },
         duplicate: {
           title: "Odběratel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího odběratele",
+          useExisting: "Použít existujícího odběratele"
         },
-        mutation: { createSuccess: "Odběratel byl uložen.", updateSuccess: "Odběratel byl aktualizován." },
+        mutation: {
+          createSuccess: "Odběratel byl uložen.",
+          updateSuccess: "Odběratel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam.",
+          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       supplierWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Активный",
         loading: "Načítání formuláře dodavatele…",
         createTitle: "Nový dodavatel",
         editTitle: "Upravit dodavatele",
@@ -3327,22 +3760,32 @@ export const translations = {
         backToDetail: "Zpět na detail dodavatele",
         save: "Uložit dodavatele",
         update: "Uložit změny",
-        actions: { createSupplier: "Nový dodavatel", editSupplier: "Upravit dodavatele" },
+        actions: {
+          createSupplier: "Nový dodavatel",
+          editSupplier: "Upravit dodavatele"
+        },
         duplicate: {
           title: "Dodavatel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího dodavatele",
+          useExisting: "Použít existujícího dodavatele"
         },
-        mutation: { createSuccess: "Dodavatel byl uložen.", updateSuccess: "Dodavatel byl aktualizován." },
+        mutation: {
+          createSuccess: "Dodavatel byl uložen.",
+          updateSuccess: "Dodavatel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Dodavatel s tímto IČO už existuje.",
+          duplicateIco: "Dodavatel s tímto IČO už existuje."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       expenseWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Активный",
         loading: "Načítání formuláře výdaje…",
         createTitle: "Nový výdaj",
         editTitle: "Upravit výdaj",
@@ -3351,8 +3794,14 @@ export const translations = {
         save: "Uložit výdaj",
         update: "Uložit změny",
         addItem: "Přidat položku",
-        actions: { createExpense: "Nový výdaj", editExpense: "Upravit výdaj" },
-        mutation: { createSuccess: "Výdaj byl uložen.", updateSuccess: "Výdaj byl aktualizován." },
+        actions: {
+          createExpense: "Nový výdaj",
+          editExpense: "Upravit výdaj"
+        },
+        mutation: {
+          createSuccess: "Výdaj byl uložen.",
+          updateSuccess: "Výdaj byl aktualizován."
+        },
         payment: {
           title: "Přidat platbu výdaje",
           description: "Platba přepočítá stav úhrady výdaje.",
@@ -3362,14 +3811,19 @@ export const translations = {
           confirmAction: "Potvrdit platbu",
           success: "Platba byla přidána.",
           disabledHint: "Platbu nelze přidat pro tento stav výdaje.",
-          fields: { amount: "Částka", paidAt: "Datum úhrady", method: "Způsob platby", note: "Poznámka" },
+          fields: {
+            amount: "Částka",
+            paidAt: "Datum úhrady",
+            method: "Způsob platby",
+            note: "Poznámka"
+          }
         },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula.",
+          itemNumbers: "Množství musí být větší než nula."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -3390,8 +3844,8 @@ export const translations = {
           supplierNone: "Bez dodavatele — ruční snapshot",
           itemDescription: "Popis",
           itemQuantity: "Množství",
-          itemUnitPrice: "Cena za jednotku",
-        },
+          itemUnitPrice: "Cena za jednotku"
+        }
       },
       subjects: {
         badge: "Odběratelé",
@@ -3406,18 +3860,18 @@ export const translations = {
           dic: "DIČ",
           contact: "Kontakt",
           country: "Země",
-          detail: "Detail odběratele",
-        },
+          detail: "Detail odběratele"
+        }
       },
       subjectDetail: {
         notFoundTitle: "Odběratel nebyl nalezen",
         notFoundDescription: "Požadovaný odběratel nebyl nalezen.",
-        description: "Detail uloženého odběratele pro opakované použití v dokladech.",
+        description: "Detail uloženého odběratele pro opakované použití v dokladech."
       },
       expenses: {
         badge: "Расходы",
-        title: "Read-only входящие документы и расходы",
-        description: "Обзор использует только безопасные GET endpoint. Он не содержит create, edit, delete, apply payment или import-действий.",
+        title: "Расходы",
+        description: "Учёт полученных документов и расходов компании.",
         searchPlaceholder: "Искать по номеру, VS, поставщику, IČO или DIČ",
         searchLabel: "Искать расходы",
         expenseStatusLabel: "Фильтр по статусу расхода",
@@ -3425,7 +3879,7 @@ export const translations = {
         paymentStatusLabel: "Фильтр по статусу оплаты",
         paymentStatusAll: "Все статусы оплаты",
         shownCount: "{count} расходов показано",
-        detailRouteHint: "детали открываются только в новом параллельном маршруте `{route}`",
+        detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           expense: "Расход",
           supplier: "Поставщик",
@@ -3434,31 +3888,31 @@ export const translations = {
           dueDate: "Срок",
           total: "Итого",
           statuses: "Статусы",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       expenseDetail: {
         notFoundTitle: "Расход не найден",
-        notFoundDescription: "Запрошенный read-only расход не найден на бэкенде. Исходная секция `/admin/invoices` остается нетронутой.",
-        description: "Read-only детали входящего документа в новой параллельной секции. Старые выставленные счета остаются в `/admin/invoices`.",
+        notFoundDescription: "Запись не найдена.",
+        description: "Детали полученного документа или расхода.",
         supplierTitle: "Снимок поставщика",
-        supplierDescription: "Только read-only отображение сохраненных данных входящего документа.",
+        supplierDescription: "Данные поставщика, сохранённые в расходе.",
         paymentTitle: "Платеж и суммы",
-        paymentDescription: "Никакого редактирования, никакого apply payment, только сохраненное состояние бэкенда.",
+        paymentDescription: "Платёжные данные и статус оплаты.",
         noteTitle: "Примечание",
         itemsTitle: "Позиции расхода",
-        itemsDescription: "Read-only обзор позиций, возвращенных detail endpoint.",
+        itemsDescription: "Позиции расхода.",
         amountsTitle: "Сводка сумм",
-        amountsDescription: "Без редактирования, без удаления, без сопоставления платежей.",
+        amountsDescription: "Сводка сумм расхода.",
         paymentsTitle: "Платежи расхода",
-        paymentsDescription: "Read-only список платежей, возвращенный detail или payment endpoint.",
-        operationsTitle: "Read-only операционная заметка",
-        operationsDescription: "Этот детальный маршрут намеренно ограничен безопасным чтением.",
-        operationsItemOne: "Здесь нет кнопок для edit, delete, apply payment, upload или archive.",
-        operationsItemTwo: "Старые выставленные счета доступны только в legacy секции `/admin/invoices`.",
-        operationsItemThree: "Если бэкенд возвращает `401` или `404`, маршрут показывает безопасное состояние вместо падения или редиректа.",
+        paymentsDescription: "Платежи, зафиксированные для расхода.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         auditTitle: "Последние audit-события",
-        auditDescription: "Опциональная read-only секция поверх audit endpoint расходов.",
+        auditDescription: "История изменений этого расхода.",
         fields: {
           variableSymbol: "Переменный символ",
           issueDate: "Дата выставления",
@@ -3486,39 +3940,39 @@ export const translations = {
           subtotal: "Промежуточный итог",
           vat: "НДС",
           total: "Итого",
-          vatRate: "Ставка НДС",
-        },
+          vatRate: "Ставка НДС"
+        }
       },
       suppliers: {
         badge: "Поставщики",
-        title: "Read-only реестр поставщиков",
-        description: "Этот обзор использует только GET endpoint. Он не содержит create, edit или delete действий.",
+        title: "Поставщики",
+        description: "Справочник поставщиков для расходов и полученных счетов.",
         searchPlaceholder: "Искать по названию, email, телефону, IČO или DIČ",
         searchLabel: "Искать поставщиков",
         countryLabel: "Фильтр по стране поставщика",
         countryAll: "Все страны",
         shownCount: "{count} поставщиков показано",
-        detailRouteHint: "детали открываются только в новом параллельном маршруте `{route}`",
+        detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           supplier: "Поставщик",
           ico: "IČO",
           dic: "DIČ",
           contact: "Контакт",
           country: "Страна",
-          detail: "Read-only детали",
-        },
+          detail: "Детали"
+        }
       },
       supplierDetail: {
         notFoundTitle: "Поставщик не найден",
-        notFoundDescription: "Запрошенный поставщик не найден на read-only endpoint.",
-        description: "Read-only детали поставщика в новой параллельной секции. Старые issued invoices остаются в `/admin/invoices`.",
+        notFoundDescription: "Запись не найдена.",
+        description: "Детали сохранённого поставщика.",
         identityTitle: "Идентичность и контакт",
-        identityDescription: "Только данные, возвращенные безопасным GET endpoint.",
-        scopeTitle: "Объем read-only деталей",
-        scopeDescription: "Этот маршрут намеренно не открывает никаких write или destructive действий.",
-        scopeItemOne: "Без редактирования, без удаления и без изменений банковских данных на бэкенде.",
-        scopeItemTwo: "Банковские данные не возвращаются текущим safe GET supplier response, поэтому детали их не показывают.",
-        scopeItemThree: "Связанные расходы остаются отложенными на этой фазе, чтобы интеграция оставалась консервативной и низкорисковой.",
+        identityDescription: "Контактные и идентификационные данные поставщика.",
+        scopeTitle: "",
+        scopeDescription: "",
+        scopeItemOne: "",
+        scopeItemTwo: "",
+        scopeItemThree: "",
         noteTitle: "Примечание",
         fields: {
           ico: "IČO",
@@ -3530,13 +3984,13 @@ export const translations = {
           name: "Название",
           email: "Email",
           phone: "Телефон",
-          address: "Адрес",
-        },
+          address: "Адрес"
+        }
       },
       bankTransactions: {
         badge: "Банковские транзакции",
-        title: "Read-only банковские транзакции",
-        description: "Этот обзор использует только безопасные GET endpoint. Он не содержит import, upload, apply matching или других write-действий.",
+        title: "Банковские транзакции",
+        description: "Обзор банковских платежей и их привязки к документам.",
         searchPlaceholder: "Искать по контрагенту, счету, VS, сообщению или статусу",
         searchLabel: "Искать банковские транзакции",
         directionLabel: "Фильтр по направлению транзакции",
@@ -3544,7 +3998,7 @@ export const translations = {
         statusLabel: "Фильтр по статусу транзакции",
         statusAll: "Все статусы",
         shownCount: "{count} банковских транзакций показано",
-        detailRouteHint: "детали открываются только в новом параллельном маршруте `{route}`",
+        detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           date: "Дата",
           amount: "Сумма",
@@ -3553,24 +4007,24 @@ export const translations = {
           accountAndSymbols: "Счет / VS",
           message: "Сообщение",
           status: "Статус",
-          bookedDate: "Проведено {value}",
-        },
+          bookedDate: "Проведено {value}"
+        }
       },
       bankTransactionDetail: {
         notFoundTitle: "Банковская транзакция не найдена",
-        notFoundDescription: "Запрошенная read-only банковская транзакция не найдена на бэкенде.",
+        notFoundDescription: "Запись не найдена.",
         title: "Транзакция #{id}",
-        description: "Read-only детали банковской транзакции в новой параллельной секции. Старые issued invoices остаются в `/admin/invoices`.",
-        importBadge: "Без импорта и без apply matching",
+        description: "Детали банковской транзакции и связанных платежей.",
+        importBadge: "",
         counterpartyTitle: "Снимок контрагента",
-        counterpartyDescription: "Только read-only данные, возвращенные detail endpoint.",
+        counterpartyDescription: "Данные контрагента для транзакции.",
         accountTitle: "Счет и символы",
-        accountDescription: "Никаких изменений, никаких импортов, никаких действий сопоставления.",
-        rawPayloadTitle: "Raw payload",
-        matchesTitle: "Существующие payment matches",
-        matchesDescription: "Read-only список, возвращенный matches endpoint.",
-        candidatesTitle: "Matching candidates",
-        candidatesDescription: "Кандидаты показываются только если существует безопасный GET endpoint.",
+        accountDescription: "Счёт и платёжные символы.",
+        rawPayloadTitle: "Технические данные",
+        matchesTitle: "Назначенные платежи",
+        matchesDescription: "Платежи, сопоставленные с этой транзакцией.",
+        candidatesTitle: "Предложенное сопоставление",
+        candidatesDescription: "Возможное назначение платежа документу.",
         fields: {
           transactionDate: "Дата транзакции",
           bookedDate: "Дата проведения",
@@ -3589,36 +4043,36 @@ export const translations = {
           variableSymbol: "Переменный символ",
           constantSymbol: "Постоянный символ",
           specificSymbol: "Специфический символ",
-          updatedAt: "Обновлено",
-        },
+          updatedAt: "Обновлено"
+        }
       },
       paymentMatching: {
         badge: "Сопоставление платежей",
-        title: "Read-only обзор сопоставления",
-        description: "Эта секция использует только безопасные GET endpoint. Она не содержит apply matching, reject, create payment или import-действий.",
+        title: "Сопоставление платежей",
+        description: "Проверка, какие платежи относятся к каким документам.",
         matchedTitle: "Сопоставленные",
         ignoredTitle: "Игнорированные",
         openTitle: "Открытые / не сопоставленные",
-        apiNote: "Существующие match-записи доступны read-only по каждой банковской транзакции отдельно.",
-        deferredTitle: "Matching candidates отложены",
-        deferredDescription: "Matching candidates пока недоступны через безопасный read-only endpoint.",
+        apiNote: "",
+        deferredTitle: "Предложения сопоставления",
+        deferredDescription: "Предложения сопоставления пока недоступны.",
         table: {
           type: "Тип",
           link: "Связь",
-          confidence: "Confidence",
+          confidence: "Spolehlivost",
           status: "Статус",
           reason: "Причина",
           createdAt: "Создано",
           invoiceLinked: "Счет #{id}",
           invoiceMissing: "Счет не привязан",
           expenseLinked: "Расход #{id}",
-          expenseMissing: "Расход не привязан",
-        },
+          expenseMissing: "Расход не привязан"
+        }
       },
       todos: {
         badge: "Задачи и напоминания",
-        title: "Read-only список задач и напоминаний",
-        description: "Этот обзор использует только безопасные GET endpoint. Он не содержит создания, закрытия или генерации задач.",
+        title: "Задачи и напоминания",
+        description: "Напоминания о сроках и работа с неоплаченными документами.",
         searchPlaceholder: "Искать по названию, сообщению, типу или статусу",
         searchLabel: "Искать задачи",
         statusFilterLabel: "Фильтр по статусу",
@@ -3626,7 +4080,7 @@ export const translations = {
         typeFilterLabel: "Фильтр по типу",
         typeAll: "Все типы",
         shownCount: "{count} показанных задач",
-        readOnlyNote: "Только read-only просмотр. Создание, редактирование, закрытие и генерация задач отложены.",
+        readOnlyNote: "",
         table: {
           title: "Название",
           status: "Статус",
@@ -3638,15 +4092,20 @@ export const translations = {
           completedAt: "Завершено",
           invoiceLinked: "Счет #{id}",
           expenseLinked: "Расход #{id}",
-          noLink: "Без связи",
-        },
+          noLink: "Без связи"
+        }
       },
       todoDetail: {
         badge: "Детали задачи",
-        title: "Read-only детали задачи",
-        description: "Детали задачи или напоминания без write-действий.",
-        backLabel: "Назад к БухгалтерияNew",
-        sections: { summary: "Обзор", message: "Сообщение", links: "Связи", timeline: "Временная шкала" },
+        title: "Детали задачи",
+        description: "Детали задачи или напоминания.",
+        backLabel: "Назад к бухгалтерии",
+        sections: {
+          summary: "Обзор",
+          message: "Сообщение",
+          links: "Связи",
+          timeline: "Временная шкала"
+        },
         fields: {
           title: "Название",
           status: "Статус",
@@ -3656,15 +4115,15 @@ export const translations = {
           expense: "Расход",
           createdAt: "Создано",
           updatedAt: "Обновлено",
-          completedAt: "Завершено",
+          completedAt: "Завершено"
         },
         notFoundTitle: "Задача не найдена",
-        notFoundDescription: "Запрошенная задача не найдена на read-only endpoint.",
+        notFoundDescription: "Запись не найдена."
       },
       reminderEmails: {
         badge: "E-mail напоминания",
-        title: "Read-only история e-mail напоминаний",
-        description: "История e-mail загружается per счет через безопасные GET endpoint. Без отправки и генерации.",
+        title: "E-mail напоминания",
+        description: "История e-mail для неоплаченных документов.",
         searchPlaceholder: "Искать по получателю, теме, документу или статусу",
         searchLabel: "Искать e-mail напоминания",
         statusFilterLabel: "Фильтр по статусу",
@@ -3672,8 +4131,8 @@ export const translations = {
         typeFilterLabel: "Фильтр по типу напоминания",
         typeAll: "Все типы",
         shownCount: "{count} показанных e-mail",
-        readOnlyNote: "Только read-only просмотр. Отправка, пересылка и генерация напоминаний отложены.",
-        aggregationNote: "Глобальный список собирается из per-счет GET endpoint. При большом числе документов загрузка может занять больше времени.",
+        readOnlyNote: "",
+        aggregationNote: "Список формируется из истории отдельных документов.",
         table: {
           recipient: "Получатель",
           subject: "Тема",
@@ -3683,15 +4142,19 @@ export const translations = {
           sentAt: "Отправлено",
           createdAt: "Создано",
           invoiceLinked: "Счет #{number}",
-          invoiceMissing: "Счет #{id}",
-        },
+          invoiceMissing: "Счет #{id}"
+        }
       },
       reminderEmailDetail: {
         badge: "Детали e-mail напоминания",
-        title: "Read-only предпросмотр e-mail напоминания",
-        description: "Предпросмотр исторического e-mail напоминания без возможности отправки.",
-        backLabel: "Назад к БухгалтерияNew",
-        sections: { summary: "Обзор", message: "Тело e-mail", delivery: "Доставка" },
+        title: "E-mail напоминание",
+        description: "Просмотр отправленного e-mail напоминания.",
+        backLabel: "Назад к бухгалтерии",
+        sections: {
+          summary: "Обзор",
+          message: "Тело e-mail",
+          delivery: "Доставка"
+        },
         fields: {
           recipient: "Получатель",
           subject: "Тема",
@@ -3701,17 +4164,17 @@ export const translations = {
           todo: "Задача",
           sentAt: "Отправлено",
           createdAt: "Создано",
-          errorMessage: "Ошибка доставки",
+          errorMessage: "Ошибка доставки"
         },
         notFoundTitle: "E-mail напоминания не найден",
-        notFoundDescription: "Запрошенный e-mail напоминания не найден на read-only endpoint.",
+        notFoundDescription: "Запись не найдена."
       },
       recurring: {
         badge: "Повторяющиеся",
-        title: "Read-only список повторяющихся шаблонов",
-        description: "Этот обзор использует только безопасные GET endpoint для recurring-шаблонов. Он не содержит create, edit, delete, enable, disable или generate действий.",
-        readOnlyNote: "Только read-only просмотр. Создание, редактирование, удаление, активация, пауза и генерация документов остаются отложенными.",
-        deferredFieldsNote: "Safe GET endpoint пока не возвращает отдельный номер шаблона или start/end дату повторения, поэтому UI показывает только консервативный snapshot доступных данных.",
+        title: "Повторяющиеся шаблоны",
+        description: "Шаблоны для регулярно выставляемых документов.",
+        readOnlyNote: "",
+        deferredFieldsNote: "",
         searchPlaceholder: "Искать по названию, типу, статусу, примечанию или связанному субъекту",
         searchLabel: "Искать повторяющиеся шаблоны",
         typeFilterLabel: "Фильтр по типу шаблона",
@@ -3719,7 +4182,7 @@ export const translations = {
         statusFilterLabel: "Фильтр по статусу шаблона",
         statusAll: "Все статусы",
         shownCount: "{count} шаблонов показано",
-        detailRouteHint: "детали открываются только в новом параллельном маршруте `{route}`",
+        detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         relatedSubject: "Клиент #{id}",
         relatedSupplier: "Поставщик #{id}",
         frequencyWithCount: "{frequency} × {count}",
@@ -3732,51 +4195,51 @@ export const translations = {
           relatedParty: "Клиент / поставщик",
           amount: "Сумма",
           nextRun: "Следующий запуск",
-          lastRun: "Последний запуск",
+          lastRun: "Последний запуск"
         },
         templateKinds: {
           invoice: "Повторяющийся счет",
-          expense: "Повторяющийся расход",
+          expense: "Повторяющийся расход"
         },
         frequencies: {
           daily: "Ежедневно",
           weekly: "Еженедельно",
           monthly: "Ежемесячно",
           quarterly: "Ежеквартально",
-          yearly: "Ежегодно",
-        },
+          yearly: "Ежегодно"
+        }
       },
       recurringDetail: {
         badge: "Детали повторяющегося шаблона",
-        title: "Read-only детали повторяющегося шаблона",
-        description: "Read-only детали recurring-шаблона в новой параллельной секции. Старые issued invoices остаются в `/admin/invoices`.",
-        backLabel: "Назад в БухгалтерияNew",
+        title: "Детали повторяющегося шаблона",
+        description: "Детали шаблона для регулярных документов.",
+        backLabel: "Назад к бухгалтерии",
         recurrenceTitle: "Настройки повторения",
-        recurrenceDescription: "Только безопасно загруженные данные об интервале и состоянии шаблона.",
+        recurrenceDescription: "Настройки интервала и статуса шаблона.",
         relatedTitle: "Связанные субъекты и суммы",
-        relatedDescription: "UI показывает только данные, возвращенные GET endpoint, и безопасно вычисленную сумму позиций.",
-        paymentTitle: "Оплата и сохранение legacy UI",
-        paymentDescription: "Платежные данные показаны только как read-only snapshot. Никакой генерации и никакого вмешательства в старый invoicing UI.",
-        operationsTitle: "Read-only операционная заметка",
-        operationsDescription: "Этот маршрут намеренно ограничен только безопасным чтением.",
-        operationsItemOne: "Здесь нет кнопок для create, edit, delete, activate, pause, cancel или generate.",
-        operationsItemTwo: "Безопасные GET endpoint пока не отдают start/end дату повторения или отдельный номер шаблона, поэтому UI этого не выдумывает.",
-        operationsItemThree: "Старые выставленные счета остаются доступны только в legacy-секции `/admin/invoices`.",
+        relatedDescription: "Связанные субъекты и суммы.",
+        paymentTitle: "Платёж",
+        paymentDescription: "Платёжные данные шаблона.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         itemsTitle: "Snapshot позиций шаблона",
-        itemsDescription: "Read-only обзор позиций, возвращенных detail endpoint.",
+        itemsDescription: "Позиции шаблона.",
         amountsTitle: "Сводка сумм",
-        amountsDescription: "Итоги вычисляются только из позиций, возвращенных бэкендом.",
+        amountsDescription: "Сводка сумм шаблона.",
         noteTitle: "Примечание",
         generationsTitle: "История генерации",
-        generationsDescription: "Read-only история запусков, возвращенная безопасным GET endpoint для этого шаблона.",
-        scheduleWindowDeferred: "Safe GET endpoint пока не возвращает start/end дату повторения или отдельный номер шаблона.",
+        generationsDescription: "История документов, сгенерированных из этого шаблона.",
+        scheduleWindowDeferred: "",
         generatedInvoiceLinked: "Документ #{id}",
         generatedExpenseLinked: "Расход #{id}",
         generatedDocumentMissing: "Не сгенерировано",
         generatedExpenseMissing: "Не сгенерировано",
-        oldInvoicesDescription: "Исходные issued invoices и старый invoicing UI остаются без изменений в `/admin/invoices`.",
+        oldInvoicesDescription: "",
         notFoundTitle: "Повторяющийся шаблон не найден",
-        notFoundDescription: "Запрошенный recurring-шаблон не найден на read-only endpoint.",
+        notFoundDescription: "Запись не найдена.",
         fields: {
           templateType: "Тип шаблона",
           templateNumber: "Идентификатор шаблона",
@@ -3786,8 +4249,8 @@ export const translations = {
           lastRunDate: "Последний запуск",
           recurrenceInterval: "Интервал",
           recurrenceCount: "Количество интервалов",
-          businessMode: "Business mode",
-          taxMode: "Tax mode",
+          businessMode: "Бизнес-режим",
+          taxMode: "Налоговый режим",
           subject: "Клиент",
           supplier: "Поставщик",
           currency: "Валюта",
@@ -3807,15 +4270,15 @@ export const translations = {
           generationStatus: "Статус запуска",
           generatedDocument: "Сгенерированный документ",
           generatedExpense: "Сгенерированный расход",
-          oldInvoicesNote: "Legacy счета",
-        },
+          oldInvoicesNote: "Poznámka"
+        }
       },
       attachments: {
         badge: "Вложения",
-        title: "Read-only список вложений",
-        description: "Этот обзор использует только безопасные GET endpoint для accounting вложений. Он не содержит upload, delete, archive или link/unlink действий.",
-        readOnlyNote: "Только read-only просмотр. Загрузка, удаление, архивация и связи остаются отложенными.",
-        safetyNote: "Правило безопасности: на этой фазе нет кнопок upload, delete, archive, link или unlink.",
+        title: "Вложения",
+        description: "Файлы, прикреплённые к документам и расходам.",
+        readOnlyNote: "",
+        safetyNote: "",
         searchPlaceholder: "Искать по имени файла, типу, MIME, статусу или связи",
         searchLabel: "Искать вложения",
         statusFilterLabel: "Фильтр по статусу вложения",
@@ -3834,22 +4297,22 @@ export const translations = {
           expenseLinked: "Расход #{id}",
           todoLinked: "Задача #{id}",
           bankTransactionLinked: "Банковская транзакция #{id}",
-          noLink: "Без связи",
-        },
+          noLink: "Без связи"
+        }
       },
       attachmentDetail: {
         badge: "Детали вложения",
-        title: "Read-only детали вложения",
-        description: "Read-only metadata вложения в новой параллельной секции. Исходные issued invoices остаются в `/admin/invoices`.",
-        backLabel: "Назад к ÚčetnictvíNew",
+        title: "Детали вложения",
+        description: "Информация о файле и его связях.",
+        backLabel: "Назад к бухгалтерии",
         notFoundTitle: "Вложение не найдено",
-        notFoundDescription: "Запрошенное вложение не найдено на read-only endpoint. Старые счета в `/admin/invoices` остаются нетронутыми.",
+        notFoundDescription: "Запись не найдена.",
         sections: {
-          summary: "Metadata файла",
+          summary: "Файл",
           relations: "Связи с документами и сущностями",
           note: "Примечание",
-          operations: "Read-only операционная заметка",
-          audit: "Audit-события",
+          operations: "",
+          audit: "Audit-события"
         },
         fields: {
           attachmentType: "Тип вложения",
@@ -3861,20 +4324,20 @@ export const translations = {
           invoice: "Документ",
           expense: "Расход",
           todo: "Задача",
-          bankTransaction: "Банковская транзакция",
+          bankTransaction: "Банковская транзакция"
         },
-        operationsDescription: "Этот маршрут намеренно ограничен только безопасным чтением.",
-        operationsItemOne: "Здесь нет кнопок upload, delete, archive, link или unlink.",
-        operationsItemTwo: "Download не показывается, если endpoint не является чистым безопасным GET без неопределенных side-effect.",
-        operationsItemThree: "Старые выставленные счета остаются доступными только в legacy секции `/admin/invoices`.",
-        oldInvoicesDescription: "Исходные issued invoices и старый invoicing UI остаются без изменений в `/admin/invoices`.",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
+        oldInvoicesDescription: ""
       },
       attachmentInbox: {
         badge: "Inbox вложений",
-        title: "Несвязанные вложения (inbox)",
-        description: "Read-only обзор несвязанных вложений, загруженных безопасным GET фильтром `unlinked_only`. Без upload и без link действий.",
-        readOnlyNote: "Только read-only inbox. Upload и связывание с документами остаются отложенными.",
-        apiNote: "Список основан на безопасном GET endpoint `/api/admin/invoices/attachments?unlinked_only=true`.",
+        title: "Inbox вложений",
+        description: "Недавно загруженные файлы, ожидающие назначения.",
+        readOnlyNote: "",
+        apiNote: "",
         searchPlaceholder: "Искать по имени файла, типу или статусу",
         searchLabel: "Искать в inbox",
         shownCount: "{count} несвязанных вложений показано",
@@ -3883,40 +4346,109 @@ export const translations = {
           type: "Тип",
           size: "Размер",
           status: "Статус",
-          createdAt: "Получено / создано",
-        },
+          createdAt: "Получено / создано"
+        }
       },
       moduleRegistry: {
-        dashboard: { label: "Дашборд", description: "Безопасный обзор загруженных документов, расходов, банка и audit-следов." },
-        documents: { label: "Документы", description: "Read-only список счетов, proforma, налоговых документов, финальных счетов, корректировок и предложений." },
-        documentDetail: { label: "Детали документа", description: "Read-only детали документа с позициями, платежами, связями и audit trail." },
-        subjects: { label: "Получатели", description: "Реестр клиентов для повторного использования в документах с ARES lookup." },
-        subjectDetail: { label: "Детали получателя", description: "Детали сохранённого получателя для повторного использования в документах." },
-        expenses: { label: "Расходы", description: "Read-only обзор входящих документов и их текущих состояний оплаты." },
-        expenseDetail: { label: "Детали расхода", description: "Read-only детали входящего документа с позициями, платежами и audit trail." },
-        suppliers: { label: "Поставщики", description: "Read-only реестр поставщиков, подготовленный для следующего параллельного accounting workflow." },
-        supplierDetail: { label: "Детали поставщика", description: "Read-only снимок идентичности и контактов поставщика без write-действий." },
-        bankTransactions: { label: "Банковские транзакции", description: "Read-only загрузка банковских транзакций без импорта и подтверждающих шагов." },
-        bankTransactionDetail: { label: "Детали банковской транзакции", description: "Read-only детали транзакции с существующими match-записями и raw payload." },
-        paymentMatching: { label: "Сопоставление платежей", description: "Read-only обзор существующих состояний сопоставления без apply matching или reject-действий." },
-        reminders: { label: "Задачи и напоминания", description: "Read-only обзор задач и напоминаний без создания, закрытия и генерации." },
-        todoDetail: { label: "Детали задачи", description: "Read-only детали задачи или напоминания без write-действий." },
-        reminderEmails: { label: "Письма-напоминания", description: "Read-only история писем-напоминаний, загруженная per счет, без отправки." },
-        reminderEmailDetail: { label: "Детали письма-напоминания", description: "Read-only предпросмотр исторического письма-напоминания без send-действий." },
-        attachments: { label: "Вложения", description: "Read-only список accounting вложений и metadata без upload, delete, archive и link действий." },
-        attachmentDetail: { label: "Детали вложения", description: "Read-only детали вложения со связями, checksum и audit-следом через безопасные GET endpoint." },
-        attachmentInbox: { label: "Inbox вложений", description: "Read-only несвязанные вложения из inbox без upload и link действий." },
-        recurring: { label: "Повторяющиеся шаблоны", description: "Read-only список recurring-шаблонов без генерации, активации и других write-действий." },
-        recurringDetail: { label: "Детали повторяющегося шаблона", description: "Read-only детали recurring-шаблона с позициями и историей генерации через безопасные GET endpoint." },
-        exports: { label: "Экспорты", description: "Metadata для пакетных экспортов и поисковых workflow подготовлены для следующей фазы." },
-        audit: { label: "Аудит", description: "Metadata для отдельного audit-модуля и cross-module контроля остаются подготовленными." },
+        dashboard: {
+          label: "Обзор",
+          description: "Сводный обзор документов, расходов и платежей."
+        },
+        documents: {
+          label: "Документы",
+          description: "Создание и управление счетами, проформами и другими документами."
+        },
+        documentDetail: {
+          label: "Детали документа",
+          description: "Детали документа с позициями, платежами и историей."
+        },
+        subjects: {
+          label: "Получатели",
+          description: "Справочник клиентов для повторного использования в счетах."
+        },
+        subjectDetail: {
+          label: "Детали получателя",
+          description: "Детали сохранённого получателя для повторного использования в документах."
+        },
+        expenses: {
+          label: "Расходы",
+          description: "Учёт полученных документов и расходов компании."
+        },
+        expenseDetail: {
+          label: "Детали расхода",
+          description: "Детали расхода с позициями, платежами и историей."
+        },
+        suppliers: {
+          label: "Поставщики",
+          description: "Справочник поставщиков для расходов и полученных счетов."
+        },
+        supplierDetail: {
+          label: "Детали поставщика",
+          description: "Детали поставщика с контактными данными."
+        },
+        bankTransactions: {
+          label: "Банковские транзакции",
+          description: "Обзор банковских платежей и привязки к документам."
+        },
+        bankTransactionDetail: {
+          label: "Детали банковской транзакции",
+          description: "Детали банковской транзакции и сопоставленных платежей."
+        },
+        paymentMatching: {
+          label: "Сопоставление платежей",
+          description: "Проверка, какие платежи относятся к каким документам."
+        },
+        reminders: {
+          label: "Задачи и напоминания",
+          description: "Напоминания о сроках и неоплаченные документы."
+        },
+        todoDetail: {
+          label: "Детали задачи",
+          description: "Детали задачи или напоминания."
+        },
+        reminderEmails: {
+          label: "Письма-напоминания",
+          description: "История e-mail для неоплаченных документов."
+        },
+        reminderEmailDetail: {
+          label: "Детали письма-напоминания",
+          description: "Просмотр отправленного e-mail напоминания."
+        },
+        attachments: {
+          label: "Вложения",
+          description: "Файлы, прикреплённые к документам и расходам."
+        },
+        attachmentDetail: {
+          label: "Детали вложения",
+          description: "Детали вложения со связями и историей."
+        },
+        attachmentInbox: {
+          label: "Inbox вложений",
+          description: "Недавно загруженные файлы, ожидающие назначения."
+        },
+        recurring: {
+          label: "Повторяющиеся шаблоны",
+          description: "Шаблоны для регулярно выставляемых документов."
+        },
+        recurringDetail: {
+          label: "Детали повторяющегося шаблона",
+          description: "Детали повторяющегося шаблона с позициями и историей."
+        },
+        exports: {
+          label: "Экспорты",
+          description: "Экспорт будет доступен в следующей версии."
+        },
+        audit: {
+          label: "Audit",
+          description: "История изменений в бухгалтерии."
+        }
       },
       rag: {
         labels: {
           module: "Модуль",
           entityType: "Тип сущности",
           searchableField: "Поисковое поле",
-          voiceAlias: "Голосовой алиас",
+          voiceAlias: "Голосовой алиас"
         },
         entityTypes: {
           dashboard: "Дашборд",
@@ -3934,6 +4466,18 @@ export const translations = {
           recurring_generation: "Запуск повторяющегося шаблона",
           export: "Экспорт",
           audit_event: "Audit-событие",
+          invoice: "Документ",
+          subject: "Плательщик",
+          invoice_payment: "Платёж по документу",
+          expense_payment: "Платёж по расходу",
+          created: "Создано",
+          updated: "Обновлено",
+          deleted: "Удалено",
+          issued: "Выставлено",
+          payment_added: "Добавлен платёж",
+          payment_removed: "Платёж удалён",
+          cancelled: "Отменено",
+          admin_api: "Администрирование"
         },
         searchableFields: {
           invoiceNumber: "Номер документа",
@@ -3945,7 +4489,7 @@ export const translations = {
           counterpartyName: "Контрагент",
           status: "Статус",
           reason: "Причина",
-          confidence: "Confidence",
+          confidence: "Надёжность",
           note: "Примечание",
           country: "Страна",
           ico: "IČO",
@@ -3979,12 +4523,12 @@ export const translations = {
           checksum: "Контрольная сумма",
           uploadedAt: "Загружено",
           archivedAt: "Архивировано",
-          rawPayload: "Raw payload",
+          rawPayload: "Технические данные",
           attachmentType: "Тип вложения",
           name: "Название",
           entityType: "Тип сущности",
-          eventType: "Тип события",
-        },
+          eventType: "Тип события"
+        }
       },
       voice: {
         labels: {
@@ -4010,52 +4554,162 @@ export const translations = {
           recurring: "Повторяющиеся шаблоны",
           recurringDetail: "Детали повторяющегося шаблона",
           exports: "Экспорты",
-          audit: "Аудит",
+          audit: "Аудит"
         },
         aliases: {
-          dashboard: ["бухгалтерия", "бухгалтерский дашборд", "accounting dashboard"],
-          documents: ["документы", "счета", "выставленные документы"],
-          documentDetail: ["детали документа", "детали счета"],
-          subjects: ["получатели", "клиенты", "subjects registry"],
-          subjectDetail: ["детали получателя", "subject detail"],
-          expenses: ["расходы", "входящие документы", "затраты"],
-          expenseDetail: ["детали расхода", "детали входящего документа"],
-          suppliers: ["поставщики", "supplier registry"],
-          supplierDetail: ["детали поставщика", "supplier detail"],
-          bankTransactions: ["банк", "банковские транзакции", "выписки"],
-          bankTransactionDetail: ["детали банковской транзакции", "bank detail"],
-          paymentMatching: ["сопоставление платежей", "matching", "payment matching"],
-          reminders: ["напоминания", "задачи", "upomínka"],
-          todoDetail: ["детали задачи", "детали напоминания", "task detail"],
-          reminderEmails: ["письма-напоминания", "email напоминания", "reminder emails", "email reminder"],
-          reminderEmailDetail: ["детали письма-напоминания", "предпросмотр напоминания", "reminder history"],
-          attachments: ["вложения", "вложение", "файл", "file", "invoice attachment", "expense attachment", "attachment inbox"],
-          attachmentDetail: ["детали вложения", "attachment detail", "вложение счета", "вложение расхода"],
-          attachmentInbox: ["inbox вложений", "несвязанные вложения", "несвязанное вложение", "unassigned file", "inbox"],
-          recurring: ["повторяющиеся шаблоны", "повторяющиеся документы", "recurring"],
-          recurringDetail: ["детали повторяющегося шаблона", "детали recurring", "детали шаблона"],
-          recurringTemplate: ["повторяющийся шаблон", "recurring template"],
-          recurringInvoice: ["повторяющийся счет", "invoice template"],
-          recurringExpense: ["повторяющийся расход", "expense template"],
-          repeatInvoice: ["повторить счет", "повторяющийся счет"],
-          scheduledInvoice: ["запланированный счет", "scheduled invoice"],
-          scheduledExpense: ["запланированный расход", "scheduled expense"],
-          exports: ["экспорты", "пакетные экспорты"],
-          audit: ["аудит", "audit log"],
-        },
+          dashboard: [
+            "бухгалтерия",
+            "бухгалтерский дашборд",
+            "accounting dashboard"
+          ],
+          documents: [
+            "документы",
+            "счета",
+            "выставленные документы"
+          ],
+          documentDetail: [
+            "детали документа",
+            "детали счета"
+          ],
+          subjects: [
+            "получатели",
+            "клиенты",
+            "subjects registry"
+          ],
+          subjectDetail: [
+            "детали получателя",
+            "subject detail"
+          ],
+          expenses: [
+            "расходы",
+            "входящие документы",
+            "затраты"
+          ],
+          expenseDetail: [
+            "детали расхода",
+            "детали входящего документа"
+          ],
+          suppliers: [
+            "поставщики",
+            "supplier registry"
+          ],
+          supplierDetail: [
+            "детали поставщика",
+            "supplier detail"
+          ],
+          bankTransactions: [
+            "банк",
+            "банковские транзакции",
+            "выписки"
+          ],
+          bankTransactionDetail: [
+            "детали банковской транзакции",
+            "bank detail"
+          ],
+          paymentMatching: [
+            "сопоставление платежей",
+            "matching",
+            "payment matching"
+          ],
+          reminders: [
+            "напоминания",
+            "задачи",
+            "upomínka"
+          ],
+          todoDetail: [
+            "детали задачи",
+            "детали напоминания",
+            "task detail"
+          ],
+          reminderEmails: [
+            "письма-напоминания",
+            "email напоминания",
+            "reminder emails",
+            "email reminder"
+          ],
+          reminderEmailDetail: [
+            "детали письма-напоминания",
+            "предпросмотр напоминания",
+            "reminder history"
+          ],
+          attachments: [
+            "вложения",
+            "вложение",
+            "файл",
+            "file",
+            "invoice attachment",
+            "expense attachment",
+            "attachment inbox"
+          ],
+          attachmentDetail: [
+            "детали вложения",
+            "attachment detail",
+            "вложение счета",
+            "вложение расхода"
+          ],
+          attachmentInbox: [
+            "inbox вложений",
+            "несвязанные вложения",
+            "несвязанное вложение",
+            "unassigned file",
+            "inbox"
+          ],
+          recurring: [
+            "повторяющиеся шаблоны",
+            "повторяющиеся документы",
+            "recurring"
+          ],
+          recurringDetail: [
+            "детали повторяющегося шаблона",
+            "детали recurring",
+            "детали шаблона"
+          ],
+          recurringTemplate: [
+            "повторяющийся шаблон",
+            "recurring template"
+          ],
+          recurringInvoice: [
+            "повторяющийся счет",
+            "invoice template"
+          ],
+          recurringExpense: [
+            "повторяющийся расход",
+            "expense template"
+          ],
+          repeatInvoice: [
+            "повторить счет",
+            "повторяющийся счет"
+          ],
+          scheduledInvoice: [
+            "запланированный счет",
+            "scheduled invoice"
+          ],
+          scheduledExpense: [
+            "запланированный расход",
+            "scheduled expense"
+          ],
+          exports: [
+            "экспорты",
+            "пакетные экспорты"
+          ],
+          audit: [
+            "аудит",
+            "audit log"
+          ]
+        }
       },
       statusLabels: {
-        paid: "Оплачено",
+        paid: "Оплачен",
         unpaid: "Не оплачено",
         partially_paid: "Частично оплачено",
         partial: "Частично оплачено",
         overdue: "Просрочено",
-        issued: "Выставлено",
+        issued: "Выставлен",
         draft: "Черновик",
         sent: "Отправлено",
         active: "Активно",
         paused: "Приостановлено",
-        cancelled: "Отменено",
+        cancelled: "Отменён",
         matched: "Сопоставлено",
         ignored: "Игнорировано",
         open: "Открыто",
@@ -4069,6 +4723,10 @@ export const translations = {
         uploaded: "Загружено",
         linked: "Связано",
         archived: "Архивировано",
+        closed: "Закрыт",
+        bank_transfer: "Переводом",
+        cash: "Наличными",
+        card: "Картой"
       },
       attachmentTypes: {
         invoice_document: "Документ счета",
@@ -4076,7 +4734,7 @@ export const translations = {
         todo_note: "Примечание к задаче",
         bank_transaction: "Банковская транзакция",
         payment_proof: "Подтверждение платежа",
-        other: "Другое",
+        other: "Другое"
       },
       documentKinds: {
         invoice: "Счет",
@@ -4084,14 +4742,31 @@ export const translations = {
         tax_document: "Налоговый документ",
         correction: "Корректировочный документ",
         final_invoice: "Финальный счет",
-        quote: "Предложение",
+        quote: "Предложение"
       },
       transactionDirections: {
         incoming: "Входящая",
         outgoing: "Исходящая",
         credit: "Зачисление",
-        debit: "Списание",
+        debit: "Списание"
       },
+      auditEventTypes: {
+        invoice: "Документ",
+        subject: "Плательщик",
+        supplier: "Поставщик",
+        expense: "Расход",
+        invoice_payment: "Платёж по документу",
+        expense_payment: "Платёж по расходу",
+        attachment: "Вложение",
+        created: "Создано",
+        updated: "Обновлено",
+        deleted: "Удалено",
+        issued: "Выставлено",
+        payment_added: "Добавлен платёж",
+        payment_removed: "Платёж удалён",
+        cancelled: "Отменено",
+        admin_api: "Администрирование"
+      }
     },
   },
   en: {
@@ -4193,11 +4868,11 @@ export const translations = {
         bankTransactions: "Bank transactions",
         paymentMatching: "Payment matching",
         backToDashboard: "Back to Accounting",
-        legacyInvoices: "Legacy invoices",
+        legacyInvoices: "Original invoices"
       },
       common: {
-        readOnly: "Read-only",
-        readOnlyDetail: "Read-only detail",
+        readOnly: "Overview",
+        readOnlyDetail: "Record detail",
         noValue: "Not provided",
         noMessage: "No message",
         noReason: "No detail",
@@ -4206,140 +4881,140 @@ export const translations = {
         noVariableSymbol: "Variable symbol not provided",
         noConstantSymbol: "CS -",
         noSpecificSymbol: "SS -",
-        readOnlyBadge: "Read-only",
+        readOnlyBadge: "Overview",
         readyBadge: "Ready",
-        noMetrics: "No active read-only metrics are available at this stage.",
-        withoutWriteActions: "No write actions",
+        noMetrics: "No statistics yet.",
+        withoutWriteActions: "",
         paidAt: "Paid {value}",
         appliedAt: "Applied {value}",
-        sourcePrefix: "source {value}",
-        detailRouteOnly: "detail opens only in the new parallel route `{route}`",
-        noAuditMessage: "The backend did not send a text message, so the UI shows only the event type.",
-        noRefresh: "The dashboard does not have a stored successful refresh yet.",
+        sourcePrefix: "source: {value}",
+        detailRouteOnly: "Click a row to open record details.",
+        noAuditMessage: "The event was recorded.",
+        noRefresh: "Last refresh is not available yet."
       },
       auth: {
-        dashboardTitle: "Login is required for the read-only accounting dashboard",
-        dashboardDescription: "Without an active admin session the new accounting overviews cannot load. The existing `/admin/invoices` route stays unchanged.",
-        documentsTitle: "Login is required to load documents",
-        documentsDescription: "Without an active admin session the read-only document list is hidden. The legacy invoicing UI stays untouched.",
-        documentDetailTitle: "Login is required for the read-only document detail",
-        documentDetailDescription: "Without an active admin session the new document detail cannot load. The original `/admin/invoices` route stays available.",
-        expensesTitle: "Login is required to load expenses",
-        expensesDescription: "Without an active admin session the read-only expenses list cannot load. Existing issued invoices stay unchanged.",
-        expenseDetailTitle: "Login is required for the read-only expense detail",
-        expenseDetailDescription: "Without an active admin session the incoming document detail cannot load. Legacy invoices remain in `/admin/invoices`.",
-        suppliersTitle: "Login is required to load suppliers",
-        suppliersDescription: "Without an active admin session the read-only suppliers list cannot load. The legacy invoicing UI stays unchanged.",
-        supplierDetailTitle: "Login is required for the read-only supplier detail",
-        supplierDetailDescription: "Without an active admin session the supplier detail cannot load. The original `/admin/invoices` route stays available.",
-        bankTransactionsTitle: "Login is required to load bank transactions",
-        bankTransactionsDescription: "Without an active admin session the read-only bank transactions cannot load.",
-        bankTransactionDetailTitle: "Login is required for the read-only bank transaction detail",
-        bankTransactionDetailDescription: "Without an active admin session the bank transaction detail cannot load.",
-        paymentMatchingTitle: "Login is required to load the matching overview",
-        paymentMatchingDescription: "Without an active admin session the read-only matching data cannot load.",
-        todosTitle: "Login required to load tasks",
-        todosDescription: "Without an active admin session the read-only tasks and reminders list cannot load.",
-        todoDetailTitle: "Login required for read-only task detail",
-        todoDetailDescription: "Without an active admin session the task detail cannot load. Legacy `/admin/invoices` remains available.",
-        reminderEmailsTitle: "Login required to load reminder emails",
-        reminderEmailsDescription: "Without an active admin session the reminder email history cannot load.",
-        reminderEmailDetailTitle: "Login required for read-only reminder email detail",
-        reminderEmailDetailDescription: "Without an active admin session the reminder email preview cannot load.",
-        recurringTitle: "Login required to load recurring templates",
-        recurringDescription: "Without an active admin session the read-only recurring templates list cannot load.",
-        recurringDetailTitle: "Login required for read-only recurring template detail",
-        recurringDetailDescription: "Without an active admin session the recurring template detail cannot load. Legacy `/admin/invoices` remains available.",
-        attachmentsTitle: "Login required to load attachments",
-        attachmentsDescription: "Without an active admin session the read-only attachments list cannot load.",
-        attachmentDetailTitle: "Login required for read-only attachment detail",
-        attachmentDetailDescription: "Without an active admin session the attachment detail cannot load. Legacy `/admin/invoices` remains available.",
-        attachmentInboxTitle: "Login required to load attachment inbox",
-        attachmentInboxDescription: "Without an active admin session unassigned attachments cannot load.",
-        subjectsTitle: "Login required to load customers",
-        subjectsDescription: "Without an active admin session the customer list will not load.",
-        subjectDetailTitle: "Login required for customer detail",
-        subjectDetailDescription: "Without an active admin session the customer detail will not load.",
+        dashboardTitle: "Please sign in to view accounting.",
+        dashboardDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        documentsTitle: "Please sign in to view accounting.",
+        documentsDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        documentDetailTitle: "Please sign in to view accounting.",
+        documentDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        expensesTitle: "Please sign in to view accounting.",
+        expensesDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        expenseDetailTitle: "Please sign in to view accounting.",
+        expenseDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        suppliersTitle: "Please sign in to view accounting.",
+        suppliersDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        supplierDetailTitle: "Please sign in to view accounting.",
+        supplierDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        bankTransactionsTitle: "Please sign in to view accounting.",
+        bankTransactionsDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        bankTransactionDetailTitle: "Please sign in to view accounting.",
+        bankTransactionDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        paymentMatchingTitle: "Please sign in to view accounting.",
+        paymentMatchingDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        todosTitle: "Please sign in to view accounting.",
+        todosDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        todoDetailTitle: "Please sign in to view accounting.",
+        todoDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        reminderEmailsTitle: "Please sign in to view accounting.",
+        reminderEmailsDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        reminderEmailDetailTitle: "Please sign in to view accounting.",
+        reminderEmailDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        recurringTitle: "Please sign in to view accounting.",
+        recurringDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        recurringDetailTitle: "Please sign in to view accounting.",
+        recurringDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        attachmentsTitle: "Please sign in to view accounting.",
+        attachmentsDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        attachmentDetailTitle: "Please sign in to view accounting.",
+        attachmentDetailDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        attachmentInboxTitle: "Please sign in to view accounting.",
+        attachmentInboxDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        subjectsTitle: "Please sign in to view accounting.",
+        subjectsDescription: "Issue documents, record payments, and manage accounting details in one place.",
+        subjectDetailTitle: "Please sign in to view accounting.",
+        subjectDetailDescription: "Issue documents, record payments, and manage accounting details in one place."
       },
       errors: {
-        dashboardTitle: "The read-only accounting dashboard could not be loaded",
-        partialDataTitle: "Part of the read-only data could not be loaded",
-        partialDataDescription: "The dashboard therefore shows only the safe data that the backend actually returned.",
-        documentsTitle: "The read-only document list could not be loaded",
-        documentDetailTitle: "The read-only document detail could not be loaded",
-        expensesTitle: "The read-only expenses list could not be loaded",
-        expenseDetailTitle: "The read-only expense detail could not be loaded",
-        suppliersTitle: "The read-only suppliers list could not be loaded",
-        supplierDetailTitle: "The read-only supplier detail could not be loaded",
-        bankTransactionsTitle: "The read-only bank transactions list could not be loaded",
-        bankTransactionDetailTitle: "The read-only bank transaction detail could not be loaded",
-        paymentMatchingTitle: "The read-only matching overview could not be loaded",
-        todosTitle: "The read-only tasks list could not be loaded",
-        todoDetailTitle: "The read-only task detail could not be loaded",
-        reminderEmailsTitle: "The read-only reminder email history could not be loaded",
-        reminderEmailDetailTitle: "The read-only reminder email detail could not be loaded",
-        recurringTitle: "The read-only recurring templates list could not be loaded",
-        recurringDetailTitle: "The read-only recurring template detail could not be loaded",
-        attachmentsTitle: "The read-only attachments list could not be loaded",
-        attachmentDetailTitle: "The read-only attachment detail could not be loaded",
-        attachmentInboxTitle: "The read-only attachment inbox could not be loaded",
-        subjectsTitle: "The customer list could not be loaded",
-        subjectDetailTitle: "The customer detail could not be loaded",
-        supplementalTitle: "Part of the supplemental read-only sections could not be loaded",
-        invalidIdentifier: "The requested accounting entity identifier is not a valid positive number.",
-        loginRequiredGeneric: "An admin login is required to load the read-only accounting area.",
-        notFoundGeneric: "The requested accounting record was not found on the read-only endpoint.",
-        requestAborted: "Loading the read-only accounting data was aborted.",
-        networkGeneric: "Read-only accounting data loading failed because of a network error.",
-        httpGeneric: "Read-only accounting data loading failed ({status}).",
-        validationFailed: "The entered data is invalid. Check the form and try again.",
-        actionFailed: "The action could not be completed. Please try again.",
+        dashboardTitle: "Could not load data. Please try again.",
+        partialDataTitle: "Some data could not be loaded. Showing the available overview.",
+        partialDataDescription: "",
+        documentsTitle: "Could not load data. Please try again.",
+        documentDetailTitle: "Could not load data. Please try again.",
+        expensesTitle: "Could not load data. Please try again.",
+        expenseDetailTitle: "Could not load data. Please try again.",
+        suppliersTitle: "Could not load data. Please try again.",
+        supplierDetailTitle: "Could not load data. Please try again.",
+        bankTransactionsTitle: "Could not load data. Please try again.",
+        bankTransactionDetailTitle: "Could not load data. Please try again.",
+        paymentMatchingTitle: "Could not load data. Please try again.",
+        todosTitle: "Could not load data. Please try again.",
+        todoDetailTitle: "Could not load data. Please try again.",
+        reminderEmailsTitle: "Could not load data. Please try again.",
+        reminderEmailDetailTitle: "Could not load data. Please try again.",
+        recurringTitle: "Could not load data. Please try again.",
+        recurringDetailTitle: "Could not load data. Please try again.",
+        attachmentsTitle: "Could not load data. Please try again.",
+        attachmentDetailTitle: "Could not load data. Please try again.",
+        attachmentInboxTitle: "Could not load data. Please try again.",
+        subjectsTitle: "Could not load data. Please try again.",
+        subjectDetailTitle: "Could not load data. Please try again.",
+        supplementalTitle: "Some data could not be loaded. Showing the available overview.",
+        invalidIdentifier: "Invalid record identifier.",
+        loginRequiredGeneric: "Please sign in to view accounting.",
+        notFoundGeneric: "The requested record was not found.",
+        requestAborted: "Loading was interrupted.",
+        networkGeneric: "Could not load data due to a network error.",
+        httpGeneric: "Could not load data (error {status}).",
+        validationFailed: "Please check the entered details.",
+        actionFailed: "The action could not be completed. Please try again."
       },
       empty: {
-        documents: "The backend has not returned any read-only documents yet. The new parallel section still stays ready and the original invoices in `/admin/invoices` are unchanged.",
+        documents: "No documents yet.",
         documentsFiltered: "The current filters returned no documents. Try adjusting the search or resetting filters to `All`.",
-        expenses: "The backend has not returned any read-only expenses yet. The new parallel section still stays safe and the original invoices are unchanged.",
+        expenses: "No expenses yet.",
         expensesFiltered: "The current filters returned no expenses. Try adjusting the search or resetting filters to `All`.",
-        suppliers: "The backend has not returned any read-only suppliers yet. The new parallel section still stays ready without touching the old invoicing UI.",
+        suppliers: "No suppliers yet.",
         suppliersFiltered: "The current filters returned no suppliers. Try adjusting the search or resetting filters to `All`.",
-        bankTransactions: "The backend has not returned any read-only bank transactions yet. The new parallel section still stays safe and has no import actions.",
+        bankTransactions: "No bank transactions yet.",
         bankTransactionsFiltered: "The current filters returned no bank transactions. Try adjusting the search or resetting filters to `All`.",
-        documentItems: "This document does not contain any items in the read-only detail yet.",
-        expenseItems: "This expense does not contain any items in the read-only detail yet.",
-        documentPayments: "The backend has not returned any payments for this document yet.",
-        expensePayments: "The backend has not returned any payments for this expense yet.",
-        documentRelations: "No read-only relations have been loaded for this document yet.",
-        documentAudit: "No audit events could be loaded for this document yet.",
-        expenseAudit: "No audit events could be loaded for this expense yet.",
-        bankTransactionMatches: "The backend has not returned any read-only match records for this bank transaction yet.",
-        todos: "The backend has not returned any read-only tasks or reminders yet.",
+        documentItems: "This document has no line items yet.",
+        expenseItems: "This expense has no line items yet.",
+        documentPayments: "No payments recorded for this document yet.",
+        expensePayments: "No payments recorded for this expense yet.",
+        documentRelations: "No related records linked to this document yet.",
+        documentAudit: "No audit events for this document yet.",
+        expenseAudit: "No audit events for this expense yet.",
+        bankTransactionMatches: "No payment matches for this transaction yet.",
+        todos: "No tasks or reminders yet.",
         todosFiltered: "The current filters returned no tasks. Try adjusting the search or resetting filters to `All`.",
-        reminderEmails: "The backend has not returned any read-only reminder emails yet.",
+        reminderEmails: "No reminder emails yet.",
         reminderEmailsFiltered: "The current filters returned no reminder emails. Try adjusting the search or resetting filters to `All`.",
-        recurring: "The backend has not returned any read-only recurring templates yet. The new parallel section still stays safe and does not generate documents.",
+        recurring: "No recurring templates yet.",
         recurringFiltered: "The current filters returned no recurring templates. Try adjusting the search or resetting filters to `All`.",
-        recurringItems: "This recurring template does not contain any items in the read-only detail yet.",
-        recurringGenerations: "The backend has not returned any read-only generation history for this recurring template yet.",
-        attachments: "The backend has not returned any read-only attachments yet. The new parallel section still has no upload, delete, or link actions.",
+        recurringItems: "This template has no line items yet.",
+        recurringGenerations: "This template has no generation history yet.",
+        attachments: "No attachments yet.",
         attachmentsFiltered: "The current filters returned no attachments. Try adjusting the search or resetting filters to `All`.",
-        attachmentInbox: "The inbox does not contain any unassigned attachments returned by the safe GET endpoint yet.",
+        attachmentInbox: "The inbox has no unassigned attachments yet.",
         attachmentInboxFiltered: "The current filters returned no unassigned attachments. Try adjusting the search.",
-        dashboardAudit: "No audit events could be loaded yet or the backend returned an empty list.",
-        subjects: "No saved customers yet. Run backfill from legacy invoices or create a new customer.",
+        dashboardAudit: "No audit events yet.",
+        subjects: "No customers saved yet. Create one or load a company from ARES."
       },
       dashboard: {
         badges: {
-          parallelSection: "Parallel section",
-          readOnly: "Read-only dashboard",
-          noMigration: "No migration",
-          nextStep: "Next step",
+          parallelSection: "Accounting",
+          readOnly: "Overview",
+          noMigration: "",
+          nextStep: ""
         },
         title: "Accounting",
-        description: "The new parallel accounting section loads only safe read-only data on top of the existing accounting backend.",
-        preservationNotice: "Existing issued invoices and the original invoicing UI remain preserved without changes in `/admin/invoices`. This new section does not migrate, rewrite, or trigger any write actions.",
-        progressNotice: "The current phase extends the safe shell with a separate read-only API client, isolated types, a module registry, localization, and RAG-ready metadata for future search.",
-        summaryTitle: "Read-only overview",
-        summaryDescription: "The metrics below are based only on safely loaded GET endpoints. If any source is missing, the dashboard intentionally does not over-compute.",
+        description: "Find documents, customers, expenses, payments, and attachments here.",
+        preservationNotice: "Issue documents, record payments, and manage accounting details in one place.",
+        progressNotice: "When you add something, it will appear in this overview.",
+        summaryTitle: "Overview",
+        summaryDescription: "Summary of documents, expenses, payments, and related data.",
         documentsTitle: "Documents",
         documentsDescription: "{count} with an open balance",
         expensesTitle: "Expenses",
@@ -4347,24 +5022,24 @@ export const translations = {
         todosTitle: "Tasks",
         todosDescription: "{overdue} overdue out of {total}",
         bankTitle: "Bank",
-        bankDescription: "Only read-only loaded transactions",
+        bankDescription: "Overview of bank payments",
         attachmentsTitle: "Attachments",
         attachmentsDescription: "Inbox and links without archiving",
         auditTitle: "Audit",
         auditDescription: "Latest accounting events",
-        subjectsTitle: "Subjects",
-        subjectsDescription: "{count} suppliers in the parallel layer",
+        subjectsTitle: "Customers",
+        subjectsDescription: "{count} saved customers",
         recurringTitle: "Recurring",
-        recurringDescription: "Templates without document generation",
-        recentAuditTitle: "Recent audit events",
-        recentAuditDescription: "The latest five read-only events returned by audit endpoints.",
-        loadStateTitle: "Load state",
-        loadStateDescription: "The dashboard is intentionally conservative and uses only read-only sources.",
-        loadStateSafeGet: "The new client uses only `GET` endpoints under `/api/admin/invoices/*`, shares the admin cookie session, and contains no create, update, or delete actions.",
-        loadStateAuth: "If the backend returns `401`, the page shows a safe login-required state instead of crashing, auto-login, or touching legacy routes.",
+        recurringDescription: "Templates for regularly issued documents",
+        recentAuditTitle: "Recent events",
+        recentAuditDescription: "The five most recent accounting changes.",
+        loadStateTitle: "Overview status",
+        loadStateDescription: "Information about the last data refresh.",
+        loadStateSafeGet: "When you add something, it will appear in this overview.",
+        loadStateAuth: "Please sign in to view accounting.",
         lastRefresh: "Last successful dashboard refresh: {value}.",
-        modulesTitle: "Parallel accounting modules",
-        modulesDescription: "Below are the modules of the new parallel section. This phase adds only read-only loading, a module registry, and search metadata.",
+        modulesTitle: "Accounting modules",
+        modulesDescription: "Quick access to accounting sections.",
         moduleStats: {
           dashboard: "{documents} documents, {todos} open tasks",
           documents: "{count} loaded documents",
@@ -4376,13 +5051,13 @@ export const translations = {
           attachments: "{count} attachments",
           recurring: "{count} templates",
           exports: "Exports remain prepared for the next phase.",
-          audit: "{count} audit events",
-        },
+          audit: "{count} audit events"
+        }
       },
       documents: {
         badge: "Documents",
-        title: "Read-only list of accounting documents",
-        description: "This overview uses only the new parallel GET endpoints. It contains no create, edit, delete, or migration actions.",
+        title: "Documents",
+        description: "Create and manage invoices, proformas, and other documents.",
         searchPlaceholder: "Search by document number, variable symbol, customer, or kind",
         searchLabel: "Search documents",
         kindFilterLabel: "Filter by document kind",
@@ -4394,7 +5069,7 @@ export const translations = {
         hideDocuments: "Hide documents",
         listCollapsed: "{count} documents in the list — overview is collapsed.",
         tooManyUseSearch: "Use search to filter — only a limited selection is shown.",
-        detailRouteHint: "detail opens only in the new parallel route `{route}`",
+        detailRouteHint: "Click a row to open record details.",
         table: {
           document: "Document",
           kind: "Kind",
@@ -4403,28 +5078,28 @@ export const translations = {
           dueDate: "Due",
           total: "Total",
           statuses: "Statuses",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       documentDetail: {
         notFoundTitle: "Document not found",
-        notFoundDescription: "The requested accounting document was not found on the read-only endpoint. Existing invoices in `/admin/invoices` remain untouched.",
-        description: "Read-only accounting detail in the new parallel section. The original issued invoices in `/admin/invoices` remain preserved without changes.",
+        notFoundDescription: "The requested record was not found.",
+        description: "Document detail including line items, payments, and related data.",
         customerTitle: "Customer snapshot",
-        customerDescription: "Only a read-only view of the stored document data.",
+        customerDescription: "Customer details stored on the document.",
         issuerTitle: "Issuer and payment snapshot",
         issuerDescription: "The displayed data is taken from the document without editing.",
         noteTitle: "Note",
         itemsTitle: "Document items",
-        itemsDescription: "Read-only overview of items returned by the detail endpoint.",
+        itemsDescription: "Document line items.",
         amountsTitle: "Amount summary",
-        amountsDescription: "No write actions, only the state stored on the backend.",
+        amountsDescription: "Document amount summary.",
         paymentsTitle: "Payments",
-        paymentsDescription: "Read-only list of payments returned by the detail endpoint.",
+        paymentsDescription: "Payments recorded for this document.",
         relationsTitle: "Document relations",
-        relationsDescription: "Optional read-only section on top of the relations endpoint.",
+        relationsDescription: "Related documents and links.",
         auditTitle: "Recent audit events",
-        auditDescription: "Optional read-only section on top of the audit endpoint.",
+        auditDescription: "Change history for this document.",
         sourceLabel: "Source",
         targetLabel: "Target",
         relationDocument: "{number} · {kind}",
@@ -4454,14 +5129,14 @@ export const translations = {
           total: "Total",
           totalPaid: "Paid",
           remainingAmount: "Remaining",
-          vatRate: "VAT rate",
-        },
+          vatRate: "VAT rate"
+        }
       },
       documentWrite: {
-        badgeFunctional: "Functional write layer",
+        badgeFunctional: "Active",
         loading: "Loading document form…",
-        createTitle: "New accounting document",
-        createDescription: "Create a draft or issue a new document in the parallel section. Legacy invoices in `/admin/invoices` remain untouched.",
+        createTitle: "New document",
+        createDescription: "Create a draft or issue a new document.",
         editTitle: "Edit document draft",
         editDescription: "Edits are allowed only for drafts. Issued documents are not edited here.",
         backToDetail: "Back to document detail",
@@ -4470,25 +5145,25 @@ export const translations = {
         saveAndIssue: "Save and issue",
         addItem: "Add item",
         notEditableTitle: "Document cannot be edited",
-        notEditableDescription: "This document is no longer a draft. For legacy issued invoices use `/admin/invoices`.",
-        legacyNoticeTitle: "Legacy invoice preservation",
-        legacyNoticeDescription: "This write layer works only with new accounting documents. Original issued invoices remain in `/admin/invoices` unchanged.",
+        notEditableDescription: "This document is no longer a draft and cannot be edited here.",
+        legacyNoticeTitle: "",
+        legacyNoticeDescription: "",
         emailDeferred: "Email sending remains deferred to a later safe phase.",
         customerSectionTitle: "Customer",
         customerSectionDescription: "Select an existing subject or fill in a manual customer snapshot.",
         itemsSectionTitle: "Items",
-        itemsSectionDescription: "Document items sent to the backend.",
+        itemsSectionDescription: "Document line items.",
         subjectSelectedHint: "Subject used: {name}",
         businessModes: {
           autoservice: "Auto service",
-          construction: "Construction work",
+          construction: "Construction work"
         },
         taxModes: {
           standard: "Standard VAT mode",
-          reverse_charge: "Reverse charge",
+          reverse_charge: "Reverse charge"
         },
         confirm: {
-          cancel: "Cancel",
+          cancel: "Cancel"
         },
         actions: {
           createDocument: "New document",
@@ -4496,17 +5171,17 @@ export const translations = {
           editDisabledHint: "Only a document draft can be edited.",
           issueDocument: "Issue document",
           issueDisabledHint: "Only a document draft can be issued.",
-          downloadPdf: "Download PDF",
+          downloadPdf: "Download PDF"
         },
         issue: {
           confirmTitle: "Confirm document issue",
           confirmDescription: "This action changes the document state to issued. Continue only if the data is correct.",
           confirmAction: "Issue",
-          success: "Document issued.",
+          success: "Document issued."
         },
         payment: {
           title: "Add payment",
-          description: "The payment is written to the backend and recalculates the document payment state.",
+          description: "The payment will be recorded and the document balance updated.",
           submit: "Add payment",
           confirmTitle: "Confirm payment addition",
           confirmDescription: "This action changes the document payment state. Check the amount and payment date.",
@@ -4517,14 +5192,14 @@ export const translations = {
             amount: "Amount",
             paidAt: "Payment date",
             method: "Payment method",
-            note: "Note",
-          },
+            note: "Note"
+          }
         },
         mutation: {
           successTitle: "Action completed",
           errorTitle: "Action failed",
           createSuccess: "Document created.",
-          updateSuccess: "Document saved.",
+          updateSuccess: "Document saved."
         },
         validation: {
           title: "The form contains errors",
@@ -4533,7 +5208,7 @@ export const translations = {
           customerRequired: "Select a subject or fill in customer name, email, and address.",
           vatRequired: "For standard VAT mode fill in the VAT rate.",
           itemsRequired: "The document must contain at least one item with a description.",
-          itemNumbers: "Quantity must be greater than zero and price cannot be negative.",
+          itemNumbers: "Quantity must be greater than zero and price cannot be negative."
         },
         fields: {
           documentKind: "Document kind",
@@ -4555,15 +5230,14 @@ export const translations = {
           note: "Note",
           itemDescription: "Description",
           itemQuantity: "Quantity",
-          itemUnitPrice: "Unit price",
-        },
+          itemUnitPrice: "Unit price"
+        }
       },
-
       aresWrite: {
         badge: "ARES",
-        legacyParityBadge: "Same as legacy invoices",
+        legacyParityBadge: "Same as invoices",
         sectionTitle: "Company lookup in ARES",
-        sectionDescription: "By company name or ID — same flow as legacy accounting (/admin/invoices).",
+        sectionDescription: "Search by company name or company ID.",
         panelHint: "Company found — save to registry or create a document.",
         panelCreateSubject: "Save as customer",
         panelCreateSupplier: "Save as supplier",
@@ -4597,7 +5271,7 @@ export const translations = {
         phonePlaceholder: "+420 123 456 789",
         address: "Adresa",
         addressPlaceholder: "Ulice, PSČ, město, stát",
-        sourceLabel: "Zdroj",
+        sourceLabel: "Zdroj"
       },
       customerPersistence: {
         customerSaved: "Customer saved to the registry.",
@@ -4623,18 +5297,18 @@ export const translations = {
         limitedResultsShown: "Only the first 20 results are shown — refine your search.",
         pickerDescription: "Select an existing customer or fill details manually / from ARES.",
         validationMissingCompanyName: "Enter the customer company name.",
-        validationMissingIco: "For reliable matching, we recommend entering the company ID.",
+        validationMissingIco: "For reliable matching, we recommend entering the company ID."
       },
       money: {
-        invalidFormat: "Enter the amount as 925.55 or 925,55",
+        invalidFormat: "Enter an amount such as 925.55."
       },
       paymentMethods: {
         bank_transfer: "Bank transfer",
         cash: "Cash",
-        card: "Card payment",
+        card: "Card"
       },
       subjectWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Active",
         loading: "Načítání formuláře odběratele…",
         loadFailed: "Formulář odběratele se nepodařilo načíst.",
         createTitle: "Nový odběratel",
@@ -4643,22 +5317,32 @@ export const translations = {
         backToDetail: "Zpět na detail odběratele",
         save: "Uložit odběratele",
         update: "Uložit změny",
-        actions: { createSubject: "Nový odběratel", editSubject: "Upravit odběratele" },
+        actions: {
+          createSubject: "Nový odběratel",
+          editSubject: "Upravit odběratele"
+        },
         duplicate: {
           title: "Odběratel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího odběratele",
+          useExisting: "Použít existujícího odběratele"
         },
-        mutation: { createSuccess: "Odběratel byl uložen.", updateSuccess: "Odběratel byl aktualizován." },
+        mutation: {
+          createSuccess: "Odběratel byl uložen.",
+          updateSuccess: "Odběratel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam.",
+          duplicateIco: "Odběratel s tímto IČO už existuje — použijte existující záznam."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       supplierWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Active",
         loading: "Načítání formuláře dodavatele…",
         createTitle: "Nový dodavatel",
         editTitle: "Upravit dodavatele",
@@ -4666,22 +5350,32 @@ export const translations = {
         backToDetail: "Zpět na detail dodavatele",
         save: "Uložit dodavatele",
         update: "Uložit změny",
-        actions: { createSupplier: "Nový dodavatel", editSupplier: "Upravit dodavatele" },
+        actions: {
+          createSupplier: "Nový dodavatel",
+          editSupplier: "Upravit dodavatele"
+        },
         duplicate: {
           title: "Dodavatel s tímto IČO už existuje",
           description: "Firma {name} je už v registru.",
-          useExisting: "Použít existujícího dodavatele",
+          useExisting: "Použít existujícího dodavatele"
         },
-        mutation: { createSuccess: "Dodavatel byl uložen.", updateSuccess: "Dodavatel byl aktualizován." },
+        mutation: {
+          createSuccess: "Dodavatel byl uložen.",
+          updateSuccess: "Dodavatel byl aktualizován."
+        },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredFields: "Vyplňte název, e-mail a adresu.",
-          duplicateIco: "Dodavatel s tímto IČO už existuje.",
+          duplicateIco: "Dodavatel s tímto IČO už existuje."
         },
-        fields: { note: "Poznámka", country: "Země", dataBox: "Datová schránka" },
+        fields: {
+          note: "Poznámka",
+          country: "Země",
+          dataBox: "Datová schránka"
+        }
       },
       expenseWrite: {
-        badgeFunctional: "Funkční write vrstva",
+        badgeFunctional: "Active",
         loading: "Načítání formuláře výdaje…",
         createTitle: "Nový výdaj",
         editTitle: "Upravit výdaj",
@@ -4690,8 +5384,14 @@ export const translations = {
         save: "Uložit výdaj",
         update: "Uložit změny",
         addItem: "Přidat položku",
-        actions: { createExpense: "Nový výdaj", editExpense: "Upravit výdaj" },
-        mutation: { createSuccess: "Výdaj byl uložen.", updateSuccess: "Výdaj byl aktualizován." },
+        actions: {
+          createExpense: "Nový výdaj",
+          editExpense: "Upravit výdaj"
+        },
+        mutation: {
+          createSuccess: "Výdaj byl uložen.",
+          updateSuccess: "Výdaj byl aktualizován."
+        },
         payment: {
           title: "Přidat platbu výdaje",
           description: "Platba přepočítá stav úhrady výdaje.",
@@ -4701,14 +5401,19 @@ export const translations = {
           confirmAction: "Potvrdit platbu",
           success: "Platba byla přidána.",
           disabledHint: "Platbu nelze přidat pro tento stav výdaje.",
-          fields: { amount: "Částka", paidAt: "Datum úhrady", method: "Způsob platby", note: "Poznámka" },
+          fields: {
+            amount: "Částka",
+            paidAt: "Datum úhrady",
+            method: "Způsob platby",
+            note: "Poznámka"
+          }
         },
         validation: {
           title: "Formulář obsahuje chyby",
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula.",
+          itemNumbers: "Množství musí být větší než nula."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -4729,8 +5434,8 @@ export const translations = {
           supplierNone: "Bez dodavatele — ruční snapshot",
           itemDescription: "Popis",
           itemQuantity: "Množství",
-          itemUnitPrice: "Cena za jednotku",
-        },
+          itemUnitPrice: "Cena za jednotku"
+        }
       },
       subjects: {
         badge: "Odběratelé",
@@ -4745,18 +5450,18 @@ export const translations = {
           dic: "DIČ",
           contact: "Kontakt",
           country: "Země",
-          detail: "Detail odběratele",
-        },
+          detail: "Detail odběratele"
+        }
       },
       subjectDetail: {
         notFoundTitle: "Odběratel nebyl nalezen",
         notFoundDescription: "Požadovaný odběratel nebyl nalezen.",
-        description: "Detail uloženého odběratele pro opakované použití v dokladech.",
+        description: "Detail uloženého odběratele pro opakované použití v dokladech."
       },
       expenses: {
         badge: "Expenses",
-        title: "Read-only incoming documents and expenses",
-        description: "This overview uses only safe GET endpoints. It contains no create, edit, delete, apply payment, or import actions.",
+        title: "Expenses",
+        description: "Track received documents and business expenses.",
         searchPlaceholder: "Search by number, variable symbol, supplier, company ID, or VAT ID",
         searchLabel: "Search expenses",
         expenseStatusLabel: "Filter by expense status",
@@ -4764,7 +5469,7 @@ export const translations = {
         paymentStatusLabel: "Filter by payment status",
         paymentStatusAll: "All payment statuses",
         shownCount: "{count} expenses shown",
-        detailRouteHint: "detail opens only in the new parallel route `{route}`",
+        detailRouteHint: "Click a row to open record details.",
         table: {
           expense: "Expense",
           supplier: "Supplier",
@@ -4773,31 +5478,31 @@ export const translations = {
           dueDate: "Due",
           total: "Total",
           statuses: "Statuses",
-          variableSymbol: "VS {value}",
-        },
+          variableSymbol: "VS {value}"
+        }
       },
       expenseDetail: {
         notFoundTitle: "Expense not found",
-        notFoundDescription: "The requested read-only expense was not found on the backend. The original `/admin/invoices` section remains untouched.",
-        description: "Read-only detail of an incoming document in the new parallel section. Old issued invoices remain in `/admin/invoices`.",
+        notFoundDescription: "The requested record was not found.",
+        description: "Received document or expense detail.",
         supplierTitle: "Supplier snapshot",
-        supplierDescription: "Only a read-only view of the stored incoming document data.",
+        supplierDescription: "Supplier details stored on the expense.",
         paymentTitle: "Payment and amounts",
-        paymentDescription: "No edits, no apply payment, only the stored backend state.",
+        paymentDescription: "Payment details and settlement status.",
         noteTitle: "Note",
         itemsTitle: "Expense items",
-        itemsDescription: "Read-only overview of items returned by the detail endpoint.",
+        itemsDescription: "Expense line items.",
         amountsTitle: "Amount summary",
-        amountsDescription: "No editing, no deletion, no payment matching.",
+        amountsDescription: "Expense amount summary.",
         paymentsTitle: "Expense payments",
-        paymentsDescription: "Read-only list of payments returned by the detail or payment endpoint.",
-        operationsTitle: "Read-only operational note",
-        operationsDescription: "This detail route is intentionally limited to safe reading.",
-        operationsItemOne: "There are no buttons here for edit, delete, apply payment, upload, or archive.",
-        operationsItemTwo: "Old issued invoices stay available only in the legacy `/admin/invoices` section.",
-        operationsItemThree: "If the backend returns `401` or `404`, the route shows a safe state instead of crashing or redirecting.",
+        paymentsDescription: "Payments recorded for this expense.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         auditTitle: "Recent audit events",
-        auditDescription: "Optional read-only section on top of the expense audit endpoint.",
+        auditDescription: "Change history for this expense.",
         fields: {
           variableSymbol: "Variable symbol",
           issueDate: "Issue date",
@@ -4825,39 +5530,39 @@ export const translations = {
           subtotal: "Subtotal",
           vat: "VAT",
           total: "Total",
-          vatRate: "VAT rate",
-        },
+          vatRate: "VAT rate"
+        }
       },
       suppliers: {
         badge: "Suppliers",
-        title: "Read-only supplier registry",
-        description: "This overview uses only GET endpoints. It contains no create, edit, or delete actions.",
+        title: "Suppliers",
+        description: "Supplier directory for expenses and received invoices.",
         searchPlaceholder: "Search by name, email, phone, company ID, or VAT ID",
         searchLabel: "Search suppliers",
         countryLabel: "Filter by supplier country",
         countryAll: "All countries",
         shownCount: "{count} suppliers shown",
-        detailRouteHint: "detail opens only in the new parallel route `{route}`",
+        detailRouteHint: "Click a row to open record details.",
         table: {
           supplier: "Supplier",
           ico: "Company ID",
           dic: "VAT ID",
           contact: "Contact",
           country: "Country",
-          detail: "Read-only detail",
-        },
+          detail: "Detail"
+        }
       },
       supplierDetail: {
         notFoundTitle: "Supplier not found",
-        notFoundDescription: "The requested supplier was not found on the read-only endpoint.",
-        description: "Read-only supplier detail in the new parallel section. Old issued invoices remain in `/admin/invoices`.",
+        notFoundDescription: "The requested record was not found.",
+        description: "Saved supplier detail.",
         identityTitle: "Identity and contact",
-        identityDescription: "Only data returned by the safe GET endpoint.",
-        scopeTitle: "Read-only detail scope",
-        scopeDescription: "This route intentionally does not open any write or destructive action.",
-        scopeItemOne: "No editing, no deletion, and no changes to bank data on the backend.",
-        scopeItemTwo: "Bank details are not returned by the current safe GET supplier response, so the detail does not show them.",
-        scopeItemThree: "Linked expenses remain deferred in this phase to keep the integration conservative and low risk.",
+        identityDescription: "Supplier contact and identification details.",
+        scopeTitle: "",
+        scopeDescription: "",
+        scopeItemOne: "",
+        scopeItemTwo: "",
+        scopeItemThree: "",
         noteTitle: "Note",
         fields: {
           ico: "Company ID",
@@ -4869,13 +5574,13 @@ export const translations = {
           name: "Name",
           email: "Email",
           phone: "Phone",
-          address: "Address",
-        },
+          address: "Address"
+        }
       },
       bankTransactions: {
         badge: "Bank transactions",
-        title: "Read-only bank transactions",
-        description: "This overview uses only safe GET endpoints. It contains no import, upload, apply matching, or other write actions.",
+        title: "Bank transactions",
+        description: "Overview of bank payments and their assignment to documents.",
         searchPlaceholder: "Search by counterparty, account, variable symbol, message, or status",
         searchLabel: "Search bank transactions",
         directionLabel: "Filter by transaction direction",
@@ -4883,7 +5588,7 @@ export const translations = {
         statusLabel: "Filter by transaction status",
         statusAll: "All statuses",
         shownCount: "{count} bank transactions shown",
-        detailRouteHint: "detail opens only in the new parallel route `{route}`",
+        detailRouteHint: "Click a row to open record details.",
         table: {
           date: "Date",
           amount: "Amount",
@@ -4892,24 +5597,24 @@ export const translations = {
           accountAndSymbols: "Account / variable symbol",
           message: "Message",
           status: "Status",
-          bookedDate: "Booked {value}",
-        },
+          bookedDate: "Booked {value}"
+        }
       },
       bankTransactionDetail: {
         notFoundTitle: "Bank transaction not found",
-        notFoundDescription: "The requested read-only bank transaction was not found on the backend.",
+        notFoundDescription: "The requested record was not found.",
         title: "Transaction #{id}",
-        description: "Read-only bank transaction detail in the new parallel section. Old issued invoices remain in `/admin/invoices`.",
-        importBadge: "No import and no apply matching",
+        description: "Bank transaction detail and related payments.",
+        importBadge: "",
         counterpartyTitle: "Counterparty snapshot",
-        counterpartyDescription: "Only read-only data returned by the detail endpoint.",
+        counterpartyDescription: "Counterparty details for the transaction.",
         accountTitle: "Account and symbols",
-        accountDescription: "No edits, no imports, no matching actions.",
-        rawPayloadTitle: "Raw payload",
-        matchesTitle: "Existing payment matches",
-        matchesDescription: "Read-only list returned by the matches endpoint.",
-        candidatesTitle: "Matching candidates",
-        candidatesDescription: "Candidates are shown only when a safe GET endpoint exists.",
+        accountDescription: "Account and payment symbols.",
+        rawPayloadTitle: "Technical data",
+        matchesTitle: "Assigned payments",
+        matchesDescription: "Payments matched to this transaction.",
+        candidatesTitle: "Suggested matching",
+        candidatesDescription: "Possible payment assignment to a document.",
         fields: {
           transactionDate: "Transaction date",
           bookedDate: "Booked date",
@@ -4928,36 +5633,36 @@ export const translations = {
           variableSymbol: "Variable symbol",
           constantSymbol: "Constant symbol",
           specificSymbol: "Specific symbol",
-          updatedAt: "Updated",
-        },
+          updatedAt: "Updated"
+        }
       },
       paymentMatching: {
         badge: "Payment matching",
-        title: "Read-only matching overview",
-        description: "This section uses only safe GET endpoints. It contains no apply matching, reject, create payment, or import actions.",
+        title: "Payment matching",
+        description: "Review which payments belong to which documents.",
         matchedTitle: "Matched",
         ignoredTitle: "Ignored",
         openTitle: "Open / unmatched",
-        apiNote: "Existing match records are available read-only per bank transaction.",
-        deferredTitle: "Matching candidates deferred",
-        deferredDescription: "Matching candidates are not available through a safe read-only endpoint yet.",
+        apiNote: "",
+        deferredTitle: "Matching suggestions",
+        deferredDescription: "Matching suggestions are not available yet.",
         table: {
           type: "Type",
           link: "Link",
-          confidence: "Confidence",
+          confidence: "Spolehlivost",
           status: "Status",
           reason: "Reason",
           createdAt: "Created",
           invoiceLinked: "Invoice #{id}",
           invoiceMissing: "Invoice not linked",
           expenseLinked: "Expense #{id}",
-          expenseMissing: "Expense not linked",
-        },
+          expenseMissing: "Expense not linked"
+        }
       },
       todos: {
         badge: "Tasks and reminders",
-        title: "Read-only tasks and reminders list",
-        description: "This overview uses only safe GET endpoints. It contains no create, close, or generate task actions.",
+        title: "Tasks and reminders",
+        description: "Due date reminders and work with unpaid documents.",
         searchPlaceholder: "Search by title, message, type, or status",
         searchLabel: "Search tasks",
         statusFilterLabel: "Filter by status",
@@ -4965,7 +5670,7 @@ export const translations = {
         typeFilterLabel: "Filter by type",
         typeAll: "All types",
         shownCount: "{count} tasks shown",
-        readOnlyNote: "Read-only view only. Creating, editing, closing, and generating tasks remain deferred.",
+        readOnlyNote: "",
         table: {
           title: "Title",
           status: "Status",
@@ -4977,15 +5682,20 @@ export const translations = {
           completedAt: "Completed",
           invoiceLinked: "Invoice #{id}",
           expenseLinked: "Expense #{id}",
-          noLink: "No link",
-        },
+          noLink: "No link"
+        }
       },
       todoDetail: {
         badge: "Task detail",
-        title: "Read-only task detail",
-        description: "Task or reminder detail without write actions.",
-        backLabel: "Back to AccountingNew",
-        sections: { summary: "Summary", message: "Message", links: "Links", timeline: "Timeline" },
+        title: "Task detail",
+        description: "Task or reminder detail.",
+        backLabel: "Back to Accounting",
+        sections: {
+          summary: "Summary",
+          message: "Message",
+          links: "Links",
+          timeline: "Timeline"
+        },
         fields: {
           title: "Title",
           status: "Status",
@@ -4995,15 +5705,15 @@ export const translations = {
           expense: "Expense",
           createdAt: "Created",
           updatedAt: "Updated",
-          completedAt: "Completed",
+          completedAt: "Completed"
         },
         notFoundTitle: "Task not found",
-        notFoundDescription: "The requested task was not found on the read-only endpoint.",
+        notFoundDescription: "The requested record was not found."
       },
       reminderEmails: {
         badge: "Reminder emails",
-        title: "Read-only reminder email history",
-        description: "Email history loads per invoice through safe GET endpoints. No sending or generation.",
+        title: "Reminder emails",
+        description: "Email history for unpaid documents.",
         searchPlaceholder: "Search by recipient, subject, document, or status",
         searchLabel: "Search reminder emails",
         statusFilterLabel: "Filter by status",
@@ -5011,8 +5721,8 @@ export const translations = {
         typeFilterLabel: "Filter by reminder type",
         typeAll: "All types",
         shownCount: "{count} emails shown",
-        readOnlyNote: "Read-only view only. Sending, resending, and generating reminders remain deferred.",
-        aggregationNote: "The global list is assembled from per-invoice GET endpoints. With many documents loading may take longer.",
+        readOnlyNote: "",
+        aggregationNote: "The list is built from history on individual documents.",
         table: {
           recipient: "Recipient",
           subject: "Subject",
@@ -5022,15 +5732,19 @@ export const translations = {
           sentAt: "Sent",
           createdAt: "Created",
           invoiceLinked: "Invoice #{number}",
-          invoiceMissing: "Invoice #{id}",
-        },
+          invoiceMissing: "Invoice #{id}"
+        }
       },
       reminderEmailDetail: {
         badge: "Reminder email detail",
-        title: "Read-only reminder email preview",
-        description: "Preview of a historical reminder email with no send action.",
-        backLabel: "Back to AccountingNew",
-        sections: { summary: "Summary", message: "Email body", delivery: "Delivery" },
+        title: "Reminder email",
+        description: "Preview of a sent reminder email.",
+        backLabel: "Back to Accounting",
+        sections: {
+          summary: "Summary",
+          message: "Email body",
+          delivery: "Delivery"
+        },
         fields: {
           recipient: "Recipient",
           subject: "Subject",
@@ -5040,17 +5754,17 @@ export const translations = {
           todo: "Task",
           sentAt: "Sent",
           createdAt: "Created",
-          errorMessage: "Delivery error",
+          errorMessage: "Delivery error"
         },
         notFoundTitle: "Reminder email not found",
-        notFoundDescription: "The requested reminder email was not found on the read-only endpoint.",
+        notFoundDescription: "The requested record was not found."
       },
       recurring: {
         badge: "Recurring",
-        title: "Read-only recurring templates list",
-        description: "This overview uses only safe GET endpoints for recurring templates. It contains no create, edit, delete, enable, disable, or generate actions.",
-        readOnlyNote: "Read-only view only. Creating, editing, deleting, enabling, disabling, and generating documents remain deferred.",
-        deferredFieldsNote: "The safe GET endpoint does not expose a separate template number or start/end recurrence dates yet, so the UI shows only a conservative snapshot of available data.",
+        title: "Recurring templates",
+        description: "Templates for regularly issued documents.",
+        readOnlyNote: "",
+        deferredFieldsNote: "",
         searchPlaceholder: "Search by name, type, status, note, or linked party",
         searchLabel: "Search recurring templates",
         typeFilterLabel: "Filter by template type",
@@ -5058,7 +5772,7 @@ export const translations = {
         statusFilterLabel: "Filter by template status",
         statusAll: "All statuses",
         shownCount: "{count} templates shown",
-        detailRouteHint: "detail opens only in the new parallel route `{route}`",
+        detailRouteHint: "Click a row to open record details.",
         relatedSubject: "Customer #{id}",
         relatedSupplier: "Supplier #{id}",
         frequencyWithCount: "{frequency} x {count}",
@@ -5071,51 +5785,51 @@ export const translations = {
           relatedParty: "Customer / supplier",
           amount: "Amount",
           nextRun: "Next run",
-          lastRun: "Last run",
+          lastRun: "Last run"
         },
         templateKinds: {
           invoice: "Recurring invoice",
-          expense: "Recurring expense",
+          expense: "Recurring expense"
         },
         frequencies: {
           daily: "Daily",
           weekly: "Weekly",
           monthly: "Monthly",
           quarterly: "Quarterly",
-          yearly: "Yearly",
-        },
+          yearly: "Yearly"
+        }
       },
       recurringDetail: {
         badge: "Recurring template detail",
-        title: "Read-only recurring template detail",
-        description: "Read-only recurring template detail in the new parallel section. Old issued invoices remain in `/admin/invoices`.",
-        backLabel: "Back to AccountingNew",
+        title: "Recurring template detail",
+        description: "Template detail for recurring documents.",
+        backLabel: "Back to Accounting",
         recurrenceTitle: "Recurrence settings",
-        recurrenceDescription: "Only safely loaded interval and status data for the template.",
+        recurrenceDescription: "Template interval and status settings.",
         relatedTitle: "Linked parties and amounts",
-        relatedDescription: "The UI shows only data returned by the GET endpoint and a safely calculated total from returned items.",
-        paymentTitle: "Payment and legacy UI preservation",
-        paymentDescription: "Payment data is shown only as a read-only snapshot. No generation and no changes to the old invoicing UI.",
-        operationsTitle: "Read-only operational note",
-        operationsDescription: "This route is intentionally limited to safe reading only.",
-        operationsItemOne: "There are no buttons here for create, edit, delete, activate, pause, cancel, or generate.",
-        operationsItemTwo: "The safe GET endpoints do not expose start/end recurrence dates or a separate template number yet, so the UI does not invent them.",
-        operationsItemThree: "Old issued invoices remain available only in the legacy `/admin/invoices` section.",
+        relatedDescription: "Linked parties and amounts.",
+        paymentTitle: "Payment",
+        paymentDescription: "Template payment details.",
+        operationsTitle: "",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
         itemsTitle: "Template items snapshot",
-        itemsDescription: "Read-only overview of items returned by the detail endpoint.",
+        itemsDescription: "Template line items.",
         amountsTitle: "Amount summary",
-        amountsDescription: "Totals are calculated only from items returned by the backend.",
+        amountsDescription: "Template amount summary.",
         noteTitle: "Note",
         generationsTitle: "Generation history",
-        generationsDescription: "Read-only run history returned by the safe GET endpoint for this template.",
-        scheduleWindowDeferred: "The safe GET endpoint does not expose start/end recurrence dates or a separate template number yet.",
+        generationsDescription: "History of documents generated from this template.",
+        scheduleWindowDeferred: "",
         generatedInvoiceLinked: "Document #{id}",
         generatedExpenseLinked: "Expense #{id}",
         generatedDocumentMissing: "Not generated",
         generatedExpenseMissing: "Not generated",
-        oldInvoicesDescription: "The original issued invoices and the old invoicing UI remain unchanged in `/admin/invoices`.",
+        oldInvoicesDescription: "",
         notFoundTitle: "Recurring template not found",
-        notFoundDescription: "The requested recurring template was not found on the read-only endpoint.",
+        notFoundDescription: "The requested record was not found.",
         fields: {
           templateType: "Template type",
           templateNumber: "Template identifier",
@@ -5146,15 +5860,15 @@ export const translations = {
           generationStatus: "Run status",
           generatedDocument: "Generated document",
           generatedExpense: "Generated expense",
-          oldInvoicesNote: "Legacy invoices",
-        },
+          oldInvoicesNote: "Note"
+        }
       },
       attachments: {
         badge: "Attachments",
-        title: "Read-only attachments list",
-        description: "This overview uses only safe GET endpoints for accounting attachments. It contains no upload, delete, archive, or link/unlink actions.",
-        readOnlyNote: "Read-only view only. Upload, delete, archive, and linking remain deferred.",
-        safetyNote: "Safety rule: this phase exposes no upload, delete, archive, link, or unlink buttons.",
+        title: "Attachments",
+        description: "Files attached to documents and expenses.",
+        readOnlyNote: "",
+        safetyNote: "",
         searchPlaceholder: "Search by file name, type, MIME, status, or relation",
         searchLabel: "Search attachments",
         statusFilterLabel: "Filter by attachment status",
@@ -5173,22 +5887,22 @@ export const translations = {
           expenseLinked: "Expense #{id}",
           todoLinked: "Todo #{id}",
           bankTransactionLinked: "Bank transaction #{id}",
-          noLink: "No relation",
-        },
+          noLink: "No relation"
+        }
       },
       attachmentDetail: {
         badge: "Attachment detail",
-        title: "Read-only attachment detail",
-        description: "Read-only attachment metadata in the new parallel section. Legacy issued invoices remain in `/admin/invoices`.",
-        backLabel: "Back to ÚčetnictvíNew",
+        title: "Attachment detail",
+        description: "File information and its links.",
+        backLabel: "Back to Accounting",
         notFoundTitle: "Attachment not found",
-        notFoundDescription: "The requested attachment was not found on the read-only endpoint. Legacy invoices in `/admin/invoices` remain untouched.",
+        notFoundDescription: "The requested record was not found.",
         sections: {
-          summary: "File metadata",
+          summary: "File",
           relations: "Relations to documents and entities",
           note: "Note",
-          operations: "Read-only operations note",
-          audit: "Audit events",
+          operations: "",
+          audit: "Audit events"
         },
         fields: {
           attachmentType: "Attachment type",
@@ -5200,20 +5914,20 @@ export const translations = {
           invoice: "Document",
           expense: "Expense",
           todo: "Todo",
-          bankTransaction: "Bank transaction",
+          bankTransaction: "Bank transaction"
         },
-        operationsDescription: "This route is intentionally limited to safe read access only.",
-        operationsItemOne: "There are no upload, delete, archive, link, or unlink buttons here.",
-        operationsItemTwo: "Download is not shown unless the endpoint is a clearly safe GET without uncertain side effects.",
-        operationsItemThree: "Legacy issued invoices remain available only in the `/admin/invoices` section.",
-        oldInvoicesDescription: "Legacy issued invoices and the old invoicing UI remain unchanged in `/admin/invoices`.",
+        operationsDescription: "",
+        operationsItemOne: "",
+        operationsItemTwo: "",
+        operationsItemThree: "",
+        oldInvoicesDescription: ""
       },
       attachmentInbox: {
         badge: "Attachment inbox",
-        title: "Unassigned attachments (inbox)",
-        description: "Read-only overview of unassigned attachments loaded via the safe GET `unlinked_only` filter. No upload and no linking actions.",
-        readOnlyNote: "Read-only inbox only. Upload and document linking remain deferred.",
-        apiNote: "The list comes from the safe GET endpoint `/api/admin/invoices/attachments?unlinked_only=true`.",
+        title: "Attachment inbox",
+        description: "Newly uploaded files waiting to be assigned.",
+        readOnlyNote: "",
+        apiNote: "",
         searchPlaceholder: "Search by file name, type, or status",
         searchLabel: "Search inbox",
         shownCount: "{count} unassigned attachments shown",
@@ -5222,40 +5936,109 @@ export const translations = {
           type: "Type",
           size: "Size",
           status: "Status",
-          createdAt: "Received / created",
-        },
+          createdAt: "Received / created"
+        }
       },
       moduleRegistry: {
-        dashboard: { label: "Dashboard", description: "Safe overview of loaded documents, expenses, bank data, and audit traces." },
-        documents: { label: "Documents", description: "Read-only list of invoices, proformas, tax documents, final invoices, corrections, and quotes." },
-        documentDetail: { label: "Document detail", description: "Read-only document detail with items, payments, relations, and audit trail." },
-        subjects: { label: "Customers", description: "Customer registry for reuse in documents including ARES lookup." },
-        subjectDetail: { label: "Customer detail", description: "Saved customer detail for reuse in documents." },
-        expenses: { label: "Expenses", description: "Read-only overview of incoming documents and their current payment states." },
-        expenseDetail: { label: "Expense detail", description: "Read-only incoming document detail with items, payments, and audit trail." },
-        suppliers: { label: "Suppliers", description: "Read-only supplier registry prepared for the next parallel accounting workflow." },
-        supplierDetail: { label: "Supplier detail", description: "Read-only supplier identity and contact snapshot without write actions." },
-        bankTransactions: { label: "Bank transactions", description: "Read-only loading of bank transactions without import and confirmation steps." },
-        bankTransactionDetail: { label: "Bank transaction detail", description: "Read-only transaction detail with existing match records and raw payload." },
-        paymentMatching: { label: "Payment matching", description: "Read-only overview of existing matching states without apply matching or reject actions." },
-        reminders: { label: "Tasks and reminders", description: "Read-only overview of tasks and reminders without create, close, or generate actions." },
-        todoDetail: { label: "Task detail", description: "Read-only task or reminder detail without write actions." },
-        reminderEmails: { label: "Reminder emails", description: "Read-only reminder email history loaded per invoice without sending." },
-        reminderEmailDetail: { label: "Reminder email detail", description: "Read-only preview of a historical reminder email without send actions." },
-        attachments: { label: "Attachments", description: "Read-only accounting attachments list and metadata without upload, delete, archive, or link actions." },
-        attachmentDetail: { label: "Attachment detail", description: "Read-only attachment detail with relations, checksum, and audit trail from safe GET endpoints." },
-        attachmentInbox: { label: "Attachment inbox", description: "Read-only unassigned attachments from the inbox without upload or link actions." },
-        recurring: { label: "Recurring templates", description: "Read-only recurring templates list without generation, activation, or other write actions." },
-        recurringDetail: { label: "Recurring template detail", description: "Read-only recurring template detail with items and generation history from safe GET endpoints." },
-        exports: { label: "Exports", description: "Metadata for batch exports and search workflows are prepared for the next phase." },
-        audit: { label: "Audit", description: "Metadata for a dedicated audit module and cross-module oversight remain prepared." },
+        dashboard: {
+          label: "Overview",
+          description: "Summary of documents, expenses, and payments."
+        },
+        documents: {
+          label: "Documents",
+          description: "Create and manage invoices, proformas, and other documents."
+        },
+        documentDetail: {
+          label: "Document detail",
+          description: "Document detail with line items, payments, and history."
+        },
+        subjects: {
+          label: "Customers",
+          description: "Customer directory for reuse on invoices."
+        },
+        subjectDetail: {
+          label: "Customer detail",
+          description: "Saved customer detail for reuse in documents."
+        },
+        expenses: {
+          label: "Expenses",
+          description: "Track received documents and business expenses."
+        },
+        expenseDetail: {
+          label: "Expense detail",
+          description: "Expense detail with line items, payments, and history."
+        },
+        suppliers: {
+          label: "Suppliers",
+          description: "Supplier directory for expenses and received invoices."
+        },
+        supplierDetail: {
+          label: "Supplier detail",
+          description: "Supplier detail with contact information."
+        },
+        bankTransactions: {
+          label: "Bank transactions",
+          description: "Overview of bank payments and document assignment."
+        },
+        bankTransactionDetail: {
+          label: "Bank transaction detail",
+          description: "Bank transaction detail and matched payments."
+        },
+        paymentMatching: {
+          label: "Payment matching",
+          description: "Review which payments belong to which documents."
+        },
+        reminders: {
+          label: "Tasks and reminders",
+          description: "Due date reminders and unpaid document work."
+        },
+        todoDetail: {
+          label: "Task detail",
+          description: "Task or reminder detail."
+        },
+        reminderEmails: {
+          label: "Reminder emails",
+          description: "Email history for unpaid documents."
+        },
+        reminderEmailDetail: {
+          label: "Reminder email detail",
+          description: "Preview of a sent reminder email."
+        },
+        attachments: {
+          label: "Attachments",
+          description: "Files attached to documents and expenses."
+        },
+        attachmentDetail: {
+          label: "Attachment detail",
+          description: "Attachment detail with links and history."
+        },
+        attachmentInbox: {
+          label: "Attachment inbox",
+          description: "Newly uploaded files waiting to be assigned."
+        },
+        recurring: {
+          label: "Recurring templates",
+          description: "Templates for regularly issued documents."
+        },
+        recurringDetail: {
+          label: "Recurring template detail",
+          description: "Recurring template detail with line items and history."
+        },
+        exports: {
+          label: "Exports",
+          description: "Exports will be available in a future version."
+        },
+        audit: {
+          label: "Audit",
+          description: "Accounting change history."
+        }
       },
       rag: {
         labels: {
           module: "Module",
           entityType: "Entity type",
           searchableField: "Searchable field",
-          voiceAlias: "Voice alias",
+          voiceAlias: "Voice alias"
         },
         entityTypes: {
           dashboard: "Dashboard",
@@ -5273,6 +6056,18 @@ export const translations = {
           recurring_generation: "Recurring template run",
           export: "Export",
           audit_event: "Audit event",
+          invoice: "Document",
+          subject: "Customer",
+          invoice_payment: "Document payment",
+          expense_payment: "Expense payment",
+          created: "Created",
+          updated: "Updated",
+          deleted: "Deleted",
+          issued: "Issued",
+          payment_added: "Payment added",
+          payment_removed: "Payment removed",
+          cancelled: "Cancelled",
+          admin_api: "Administration"
         },
         searchableFields: {
           invoiceNumber: "Document number",
@@ -5284,7 +6079,7 @@ export const translations = {
           counterpartyName: "Counterparty",
           status: "Status",
           reason: "Reason",
-          confidence: "Confidence",
+          confidence: "Spolehlivost",
           note: "Note",
           country: "Country",
           ico: "Company ID",
@@ -5318,12 +6113,12 @@ export const translations = {
           checksum: "Checksum",
           uploadedAt: "Uploaded",
           archivedAt: "Archived",
-          rawPayload: "Raw payload",
+          rawPayload: "Technical data",
           attachmentType: "Attachment type",
           name: "Name",
           entityType: "Entity type",
-          eventType: "Event type",
-        },
+          eventType: "Event type"
+        }
       },
       voice: {
         labels: {
@@ -5349,39 +6144,149 @@ export const translations = {
           recurring: "Recurring templates",
           recurringDetail: "Recurring template detail",
           exports: "Exports",
-          audit: "Audit",
+          audit: "Audit"
         },
         aliases: {
-          dashboard: ["accounting", "accounting dashboard", "parallel accounting"],
-          documents: ["documents", "invoices", "issued documents"],
-          documentDetail: ["document detail", "invoice detail"],
-          subjects: ["customers", "subjects", "subject registry"],
-          subjectDetail: ["customer detail", "subject detail"],
-          expenses: ["expenses", "incoming documents", "costs"],
-          expenseDetail: ["expense detail", "incoming document detail"],
-          suppliers: ["suppliers", "supplier registry"],
-          supplierDetail: ["supplier detail", "supplier snapshot"],
-          bankTransactions: ["bank", "bank transactions", "statements"],
-          bankTransactionDetail: ["bank transaction detail", "bank detail"],
-          paymentMatching: ["payment matching", "matching", "match overview"],
-          reminders: ["reminders", "tasks", "upomínka"],
-          todoDetail: ["task detail", "reminder detail", "todo detail"],
-          reminderEmails: ["reminder emails", "follow-up emails", "dunning emails", "email reminder"],
-          reminderEmailDetail: ["reminder email detail", "reminder preview", "reminder history"],
-          attachments: ["attachments", "attachment", "file", "invoice attachment", "expense attachment", "attachment inbox", "unassigned file"],
-          attachmentDetail: ["attachment detail", "invoice attachment detail", "expense attachment detail", "file attachment"],
-          attachmentInbox: ["attachment inbox", "unassigned attachments", "unassigned file", "inbox", "nezařazená příloha"],
-          recurring: ["recurring templates", "recurring documents", "templates"],
-          recurringDetail: ["recurring template detail", "template detail", "recurring detail"],
-          recurringTemplate: ["recurring template", "template"],
-          recurringInvoice: ["recurring invoice", "invoice template"],
-          recurringExpense: ["recurring expense", "expense template"],
-          repeatInvoice: ["repeat invoice", "repeating invoice"],
-          scheduledInvoice: ["scheduled invoice", "planned invoice"],
-          scheduledExpense: ["scheduled expense", "planned expense"],
-          exports: ["exports", "batch exports"],
-          audit: ["audit", "audit log"],
-        },
+          dashboard: [
+            "accounting",
+            "accounting dashboard",
+            "parallel accounting"
+          ],
+          documents: [
+            "documents",
+            "invoices",
+            "issued documents"
+          ],
+          documentDetail: [
+            "document detail",
+            "invoice detail"
+          ],
+          subjects: [
+            "customers",
+            "subjects",
+            "subject registry"
+          ],
+          subjectDetail: [
+            "customer detail",
+            "subject detail"
+          ],
+          expenses: [
+            "expenses",
+            "incoming documents",
+            "costs"
+          ],
+          expenseDetail: [
+            "expense detail",
+            "incoming document detail"
+          ],
+          suppliers: [
+            "suppliers",
+            "supplier registry"
+          ],
+          supplierDetail: [
+            "supplier detail",
+            "supplier snapshot"
+          ],
+          bankTransactions: [
+            "bank",
+            "bank transactions",
+            "statements"
+          ],
+          bankTransactionDetail: [
+            "bank transaction detail",
+            "bank detail"
+          ],
+          paymentMatching: [
+            "payment matching",
+            "matching",
+            "match overview"
+          ],
+          reminders: [
+            "reminders",
+            "tasks",
+            "upomínka"
+          ],
+          todoDetail: [
+            "task detail",
+            "reminder detail",
+            "todo detail"
+          ],
+          reminderEmails: [
+            "reminder emails",
+            "follow-up emails",
+            "dunning emails",
+            "email reminder"
+          ],
+          reminderEmailDetail: [
+            "reminder email detail",
+            "reminder preview",
+            "reminder history"
+          ],
+          attachments: [
+            "attachments",
+            "attachment",
+            "file",
+            "invoice attachment",
+            "expense attachment",
+            "attachment inbox",
+            "unassigned file"
+          ],
+          attachmentDetail: [
+            "attachment detail",
+            "invoice attachment detail",
+            "expense attachment detail",
+            "file attachment"
+          ],
+          attachmentInbox: [
+            "attachment inbox",
+            "unassigned attachments",
+            "unassigned file",
+            "inbox",
+            "nezařazená příloha"
+          ],
+          recurring: [
+            "recurring templates",
+            "recurring documents",
+            "templates"
+          ],
+          recurringDetail: [
+            "recurring template detail",
+            "template detail",
+            "recurring detail"
+          ],
+          recurringTemplate: [
+            "recurring template",
+            "template"
+          ],
+          recurringInvoice: [
+            "recurring invoice",
+            "invoice template"
+          ],
+          recurringExpense: [
+            "recurring expense",
+            "expense template"
+          ],
+          repeatInvoice: [
+            "repeat invoice",
+            "repeating invoice"
+          ],
+          scheduledInvoice: [
+            "scheduled invoice",
+            "planned invoice"
+          ],
+          scheduledExpense: [
+            "scheduled expense",
+            "planned expense"
+          ],
+          exports: [
+            "exports",
+            "batch exports"
+          ],
+          audit: [
+            "audit",
+            "audit log"
+          ]
+        }
       },
       statusLabels: {
         paid: "Paid",
@@ -5408,6 +6313,10 @@ export const translations = {
         uploaded: "Uploaded",
         linked: "Linked",
         archived: "Archived",
+        closed: "Closed",
+        bank_transfer: "Bank transfer",
+        cash: "Cash",
+        card: "Card"
       },
       attachmentTypes: {
         invoice_document: "Invoice document",
@@ -5415,7 +6324,7 @@ export const translations = {
         todo_note: "Todo note",
         bank_transaction: "Bank transaction",
         payment_proof: "Payment proof",
-        other: "Other",
+        other: "Other"
       },
       documentKinds: {
         invoice: "Invoice",
@@ -5423,14 +6332,31 @@ export const translations = {
         tax_document: "Tax document",
         correction: "Correction",
         final_invoice: "Final invoice",
-        quote: "Quote",
+        quote: "Quote"
       },
       transactionDirections: {
         incoming: "Incoming",
         outgoing: "Outgoing",
         credit: "Credit",
-        debit: "Debit",
+        debit: "Debit"
       },
+      auditEventTypes: {
+        invoice: "Document",
+        subject: "Customer",
+        supplier: "Supplier",
+        expense: "Expense",
+        invoice_payment: "Document payment",
+        expense_payment: "Expense payment",
+        attachment: "Attachment",
+        created: "Created",
+        updated: "Updated",
+        deleted: "Deleted",
+        issued: "Issued",
+        payment_added: "Payment added",
+        payment_removed: "Payment removed",
+        cancelled: "Cancelled",
+        admin_api: "Administration"
+      }
     },
   },
 };

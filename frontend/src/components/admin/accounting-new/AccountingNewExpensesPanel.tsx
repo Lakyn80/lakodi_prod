@@ -159,11 +159,7 @@ export function AccountingNewExpensesPanel({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{formatAccountingNewTemplate(t.expenses.shownCount, { count: filteredExpenses.length })}</span>
               <span>·</span>
-              <span>
-                {formatAccountingNewTemplate(t.expenses.detailRouteHint, {
-                  route: "/admin/ucetnictvi-new/vydaje/[id]",
-                })}
-              </span>
+              <span>{t.expenses.detailRouteHint}</span>
             </div>
           </>
         ) : null}

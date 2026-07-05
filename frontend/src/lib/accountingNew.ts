@@ -49,7 +49,7 @@ import type {
 } from "@/types/accountingNew";
 
 export const ACCOUNTING_NEW_ROUTE = "/admin/ucetnictvi-new";
-export const ACCOUNTING_NEW_LABEL = "ÚčetnictvíNew";
+export const ACCOUNTING_NEW_LABEL = "Účetnictví";
 
 const ACCOUNTING_NEW_INVOICES_BASE = "/invoices";
 
@@ -1100,7 +1100,7 @@ function mapSupplierSummary(item: {
 }
 
 async function buildApiError(resource: string, response: Response): Promise<AccountingNewApiError> {
-  let message = `Read-only načtení selhalo (${response.status}).`;
+  let message = `Nepodařilo se načíst data (chyba ${response.status}).`;
 
   try {
     const payload = (await response.json()) as { detail?: string };
@@ -1109,14 +1109,14 @@ async function buildApiError(resource: string, response: Response): Promise<Acco
     }
   } catch {
     if (response.status === 401) {
-      message = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
+      message = "Pro zobrazení účetnictví se prosím přihlaste.";
     } else if (response.status === 404) {
-      message = "Požadovaný accounting dokument nebyl nalezen.";
+      message = "Požadovaný záznam nebyl nalezen.";
     }
   }
 
   if (response.status === 401) {
-    message = "Pro načtení read-only accounting části je nutné přihlášení do adminu.";
+    message = "Pro zobrazení účetnictví se prosím přihlaste.";
   }
 
   return {
@@ -1139,7 +1139,7 @@ function buildNetworkError(resource: string, error: unknown): AccountingNewApiEr
 
   return {
     resource,
-    message: error instanceof Error ? error.message : "Read-only načtení selhalo kvůli síťové chybě.",
+    message: error instanceof Error ? error.message : "Nepodařilo se načíst data kvůli síťové chybě.",
     status: null,
     requiresLogin: false,
   };

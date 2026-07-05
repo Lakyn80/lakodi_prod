@@ -32,6 +32,8 @@ import {
   formatAccountingNewTemplate,
   getAccountingNewTranslationValue,
   translateAccountingNewApiError,
+  translateAccountingNewAuditEvent,
+  translateAccountingNewAuditSource,
   translateAccountingNewEntityType,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 import type {
@@ -262,24 +264,13 @@ export function AccountingNewShell() {
     <div className="space-y-6">
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{t.dashboard.badges.parallelSection}</Badge>
-            <Badge variant="secondary">{t.dashboard.badges.readOnly}</Badge>
-            <Badge variant="secondary">{t.dashboard.badges.noMigration}</Badge>
-          </div>
           <div className="space-y-1">
             <CardTitle>{t.dashboard.title}</CardTitle>
             <CardDescription>{t.dashboard.description}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-            <p className="text-sm text-foreground">{t.dashboard.preservationNotice}</p>
-          </div>
-
-          <div className="rounded-lg border border-border bg-background p-4">
-            <p className="text-sm text-muted-foreground">{t.dashboard.progressNotice}</p>
-          </div>
+          <p className="text-sm text-muted-foreground">{t.dashboard.preservationNotice}</p>
         </CardContent>
       </Card>
 
@@ -470,12 +461,12 @@ export function AccountingNewShell() {
                   <div key={event.id} className="rounded-lg border border-border bg-background p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{translateAccountingNewEntityType(t, event.entityType)}</Badge>
-                      <Badge variant="secondary">{event.eventType}</Badge>
+                      <Badge variant="secondary">{translateAccountingNewAuditEvent(t, event.eventType)}</Badge>
                     </div>
                     <p className="mt-3 text-sm text-foreground">{event.message ?? t.common.noAuditMessage}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {formatAccountingNewDateTime(event.createdAt, language, t.common.noValue)} ·{" "}
-                      {formatAccountingNewTemplate(t.common.sourcePrefix, { value: event.source })}
+                      {translateAccountingNewAuditSource(t, event.source)}
                     </p>
                   </div>
                 ))}
@@ -492,8 +483,7 @@ export function AccountingNewShell() {
             <CardDescription>{t.dashboard.loadStateDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>{t.dashboard.loadStateSafeGet}</p>
-            <p>{t.dashboard.loadStateAuth}</p>
+            <p>{t.dashboard.loadStateDescription}</p>
             <p>
               {dashboard?.lastUpdatedAt
                 ? formatAccountingNewTemplate(t.dashboard.lastRefresh, {

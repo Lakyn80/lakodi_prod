@@ -248,7 +248,7 @@ export default function AdminLayoutClient({
   const navItems = [
     { href: "/admin/", label: "Zakázky" },
     { href: "/admin/invoices", label: "Faktury" },
-    { href: "/admin/ucetnictvi-new", label: "ÚčetnictvíNew" },
+    { href: "/admin/ucetnictvi-new", label: "Účetnictví" },
     { href: "/admin/kalendar", label: "Kalendář" },
   ];
 

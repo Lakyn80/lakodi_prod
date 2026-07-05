@@ -153,11 +153,7 @@ export function AccountingNewBankTransactionsPanel({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{formatAccountingNewTemplate(t.bankTransactions.shownCount, { count: filteredTransactions.length })}</span>
               <span>·</span>
-              <span>
-                {formatAccountingNewTemplate(t.bankTransactions.detailRouteHint, {
-                  route: "/admin/ucetnictvi-new/bankovni-transakce/[id]",
-                })}
-              </span>
+              <span>{t.bankTransactions.detailRouteHint}</span>
             </div>
           </>
         ) : null}

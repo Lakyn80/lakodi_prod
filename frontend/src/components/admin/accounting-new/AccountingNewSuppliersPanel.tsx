@@ -137,11 +137,7 @@ export function AccountingNewSuppliersPanel({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{formatAccountingNewTemplate(t.suppliers.shownCount, { count: filteredSuppliers.length })}</span>
               <span>·</span>
-              <span>
-                {formatAccountingNewTemplate(t.suppliers.detailRouteHint, {
-                  route: "/admin/ucetnictvi-new/dodavatele/[id]",
-                })}
-              </span>
+              <span>{t.suppliers.detailRouteHint}</span>
             </div>
           </>
         ) : null}

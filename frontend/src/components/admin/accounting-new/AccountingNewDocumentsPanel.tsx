@@ -175,11 +175,7 @@ export function AccountingNewDocumentsPanel({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{formatAccountingNewTemplate(t.documents.shownCount, { count: visibleDocuments.length })}</span>
               <span>·</span>
-              <span>
-                {formatAccountingNewTemplate(t.documents.detailRouteHint, {
-                  route: "/admin/ucetnictvi-new/doklady/[id]",
-                })}
-              </span>
+              <span>{t.documents.detailRouteHint}</span>
             </div>
 
             {hasMoreResults ? (
