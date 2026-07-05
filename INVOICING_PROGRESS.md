@@ -3671,3 +3671,29 @@
 - Backend source changes: `None`
 - Protected legacy invoice files: untouched
 - Commit message: `Clean accounting client-facing UI copy`
+
+## Batch 23C/23D Currency select attachments bank settings exports write
+
+- Date: `2026-07-05`
+- Scope:
+  - document/expense/settings currency select limited to CZK/EUR (`AccountingNewCurrencySelect`, `accountingNewCurrencies.ts`)
+  - attachments upload/link/download write UI (inbox + detail)
+  - settings panel write (issuer, defaults, payment)
+  - exports panel (CSV/XLSX outgoing + expenses)
+  - bank JSON import, match apply/reject, generate matches, ignore transaction
+  - todos generate/complete/cancel + reminder send from todo detail
+  - document email send from document actions
+  - recurring template lifecycle (generate/pause/activate/cancel)
+  - central audit panel on dashboard (`AccountingNewAuditPanel`)
+  - module registry updated for write capabilities; removed stale read-only badges on functional panels
+  - i18n blocks `bankWrite`, `todoWrite`, `reminderWrite`, `emailWrite`, `recurringWrite`, `auditPanel` (cs/ua/ru/en) via `scripts/merge-23c-i18n.mjs` + `scripts/merge-23d-i18n.mjs`
+- Backend source changes: `None` (uses existing invoice API endpoints)
+- Protected legacy invoice files: untouched
+- Tests run:
+  - `powershell -File scripts/check-accounting-i18n.ps1` -> passed
+  - `npm run build` (frontend) -> passed
+- Known follow-ups (23E):
+  - recurring template create/edit CRUD routes still deferred (lifecycle actions only)
+  - mobile/PWA acceptance pass + Docker smoke before production deploy
+  - run `pwsh -File scripts/backfill-invoice-subjects.ps1` on target DB before operator UAT
+- Commit message: `Add accounting new write flows for bank todos reminders recurring audit`

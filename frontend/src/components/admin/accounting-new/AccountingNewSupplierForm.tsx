@@ -26,6 +26,7 @@ import {
   createEmptyAccountingNewSupplierFormState,
   findAccountingNewSupplierByIco,
 } from "@/lib/accountingNewSupplierWrite";
+import { consumeAccountingNewAresDraft } from "@/lib/accountingNewAresDraft";
 import type { AccountingNewApiError, AccountingNewSupplierFormState, AccountingNewSupplierListItem } from "@/types/accountingNew";
 
 export function AccountingNewSupplierForm({
@@ -53,6 +54,23 @@ export function AccountingNewSupplierForm({
       try {
         const suppliers = await listAccountingNewSuppliers({}, { signal: controller.signal });
         setExistingSuppliers(suppliers);
+
+        if (mode === "create") {
+          const aresDraft = consumeAccountingNewAresDraft("supplier");
+          if (aresDraft) {
+            setForm((current) => ({
+              ...current,
+              name: aresDraft.name,
+              email: aresDraft.email,
+              phone: aresDraft.phone,
+              address: aresDraft.address,
+              ico: aresDraft.ico,
+              dic: aresDraft.dic,
+              dataBox: aresDraft.dataBox,
+              country: aresDraft.country || current.country,
+            }));
+          }
+        }
 
         if (mode === "edit" && supplierId) {
           const detail = await getAccountingNewSupplier(supplierId, { signal: controller.signal });
@@ -122,7 +140,7 @@ export function AccountingNewSupplierForm({
     }
   }
 
-  if (isLoading) {
+  if (isLoading && mode === "edit") {
     return <p className="text-sm text-muted-foreground">{t.supplierWrite.loading}</p>;
   }
 

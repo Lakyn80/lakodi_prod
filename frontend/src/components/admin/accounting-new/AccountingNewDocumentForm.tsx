@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { AccountingNewAresLookupSection } from "@/components/admin/accounting-new/AccountingNewAresLookupSection";
+import { AccountingNewCurrencySelect } from "@/components/admin/accounting-new/AccountingNewCurrencySelect";
 import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { AccountingNewSubjectPicker } from "@/components/admin/accounting-new/AccountingNewSubjectPicker";
@@ -26,6 +27,7 @@ import {
   createAccountingNewDocument,
   getAccountingNewDocument,
   getAccountingNewDocumentDefaults,
+  getAccountingNewSettings,
   listAccountingNewSubjects,
   updateAccountingNewDocument,
 } from "@/lib/accountingNew";
@@ -34,12 +36,13 @@ import {
   buildAccountingNewDocumentWritePayloadFromForm,
   createEmptyAccountingNewDocumentFormState,
 } from "@/lib/accountingNewDocumentWrite";
+import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
 import {
   applyAccountingNewSubjectToDocumentForm,
   buildAccountingNewCustomerInputFromDocumentForm,
   resolveOrCreateAccountingNewCustomer,
 } from "@/lib/accountingNewCustomerPersistence";
-import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
+import { normalizeAccountingNewCurrency } from "@/lib/accountingNewCurrencies";
 import type { AccountingNewApiError, AccountingNewDocumentFormState, AccountingNewSubjectSummary } from "@/types/accountingNew";
 
 const DOCUMENT_KINDS = ["invoice", "proforma", "tax_document", "correction", "final_invoice", "quote"] as const;
@@ -76,9 +79,10 @@ export function AccountingNewDocumentForm({
 
     async function loadInitialData() {
       try {
-        const [loadedSubjects, defaults] = await Promise.all([
+        const [loadedSubjects, defaults, settings] = await Promise.all([
           listAccountingNewSubjects({ signal: controller.signal }),
           getAccountingNewDocumentDefaults("invoice", { signal: controller.signal }),
+          getAccountingNewSettings({ signal: controller.signal }).catch(() => null),
         ]);
 
         setSubjects(loadedSubjects);
@@ -87,6 +91,7 @@ export function AccountingNewDocumentForm({
           setForm((current) => ({
             ...current,
             invoiceNumber: defaults.suggestedInvoiceNumber,
+            currency: normalizeAccountingNewCurrency(settings?.defaultCurrency ?? current.currency),
           }));
         }
 
@@ -430,6 +435,13 @@ export function AccountingNewDocumentForm({
                   onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))}
                 />
               </div>
+              <AccountingNewCurrencySelect
+                id="currency"
+                label={t.documentWrite.fields.currency}
+                value={form.currency}
+                onChange={(currency) => setForm((current) => ({ ...current, currency }))}
+                required
+              />
               <div className="space-y-2">
                 <Label htmlFor="businessMode">{t.documentWrite.fields.businessMode}</Label>
                 <select
@@ -463,14 +475,6 @@ export function AccountingNewDocumentForm({
                   <option value="standard">{t.documentWrite.taxModes.standard}</option>
                   <option value="reverse_charge">{t.documentWrite.taxModes.reverse_charge}</option>
                 </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency">{t.documentWrite.fields.currency}</Label>
-                <Input
-                  id="currency"
-                  value={form.currency}
-                  onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))}
-                />
               </div>
               {form.taxMode === "standard" ? (
                 <div className="space-y-2">

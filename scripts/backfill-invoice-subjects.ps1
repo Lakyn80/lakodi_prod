@@ -1,3 +1,7 @@
+# Requires PowerShell 7+ for correct UTF-8 (diacritics). On Windows use:
+#   pwsh -File .\scripts\backfill-invoice-subjects.ps1 [-DryRun]
+# Do not use `powershell -File` — that launches Windows PowerShell 5.1.
+
 param(
     [string]$BaseUrl = "http://localhost:8016",
     [string]$Email = "lakodi@seznam.cz",
@@ -52,15 +56,17 @@ function Normalize-Key([string]$Name, [string]$Email, [string]$Ico) {
         return "ico:$normalizedIco"
     }
 
-    $normalizedEmail = ($Email ?? "").Trim().ToLowerInvariant()
-    $normalizedName = ($Name ?? "").Trim().ToLowerInvariant()
+    $emailValue = if ($Email) { $Email } else { "" }
+    $nameValue = if ($Name) { $Name } else { "" }
+    $normalizedEmail = $emailValue.Trim().ToLowerInvariant()
+    $normalizedName = $nameValue.Trim().ToLowerInvariant()
     return "contact:$normalizedEmail|$normalizedName"
 }
 
 Write-Info "Logging in to $BaseUrl ..."
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $loginBody = @{ email = $Email; password = $Password }
-Invoke-ApiJson -Method "POST" -Uri "$BaseUrl/api/admin/auth/login" -Session $session -Body $loginBody | Out-Null
+Invoke-ApiJson -Method "POST" -Uri "$BaseUrl/api/admin/login" -Session $session -Body $loginBody | Out-Null
 
 $invoices = Invoke-ApiJson -Method "GET" -Uri "$BaseUrl/api/admin/invoices" -Session $session
 $existingSubjects = Invoke-ApiJson -Method "GET" -Uri "$BaseUrl/api/admin/invoices/subjects" -Session $session

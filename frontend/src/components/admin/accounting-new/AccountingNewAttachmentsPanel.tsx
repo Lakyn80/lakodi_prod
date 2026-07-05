@@ -88,7 +88,6 @@ export function AccountingNewAttachmentsPanel({
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{t.attachments.badge}</Badge>
-          <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.attachments.title}</CardTitle>

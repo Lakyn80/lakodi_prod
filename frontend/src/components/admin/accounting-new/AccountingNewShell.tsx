@@ -27,18 +27,17 @@ import { AccountingNewRecurringTemplatesPanel } from "@/components/admin/account
 import { AccountingNewAttachmentsPanel } from "@/components/admin/accounting-new/AccountingNewAttachmentsPanel";
 import { AccountingNewAttachmentInboxPanel } from "@/components/admin/accounting-new/AccountingNewAttachmentInboxPanel";
 import { AccountingNewReminderEmailsPanel } from "@/components/admin/accounting-new/AccountingNewReminderEmailsPanel";
+import { AccountingNewSettingsPanel } from "@/components/admin/accounting-new/AccountingNewSettingsPanel";
+import { AccountingNewExportsPanel } from "@/components/admin/accounting-new/AccountingNewExportsPanel";
+import { AccountingNewAuditPanel } from "@/components/admin/accounting-new/AccountingNewAuditPanel";
 import {
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
   getAccountingNewTranslationValue,
   translateAccountingNewApiError,
-  translateAccountingNewAuditEvent,
-  translateAccountingNewAuditSource,
-  translateAccountingNewEntityType,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 import type {
   AccountingNewApiError,
-  AccountingNewAuditEventSummary,
   AccountingNewDashboardData,
   AccountingNewDashboardLoadResult,
   AccountingNewModuleId,
@@ -91,39 +90,39 @@ function getModuleStats(
       }),
     },
     "bank-transactions": {
-      badge: t.common.readOnlyBadge,
+      badge: t.bankWrite.importAction,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.bankTransactions, {
         count: data.metrics.bankTransactionsLoaded,
       }),
     },
     "payment-matching": {
-      badge: t.common.readOnlyBadge,
+      badge: t.bankWrite.applyAction,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.paymentMatching, {
         matched: data.bankTransactions.filter((item) => item.status === "matched").length,
         open: data.bankTransactions.filter((item) => item.status !== "matched" && item.status !== "ignored").length,
       }),
     },
     reminders: {
-      badge: t.common.readOnlyBadge,
+      badge: t.todoWrite.generateAction,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.reminders, {
         open: data.metrics.openTodos,
         overdue: data.metrics.overdueTodos,
       }),
     },
     attachments: {
-      badge: t.common.readOnlyBadge,
+      badge: t.attachmentWrite.uploadAction,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.attachments, {
         count: data.metrics.attachmentsLoaded,
       }),
     },
     recurring: {
-      badge: t.common.readOnlyBadge,
+      badge: t.recurringWrite.generateAction,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.recurring, {
         count: data.metrics.recurringTemplatesLoaded,
       }),
     },
     exports: {
-      badge: t.common.readyBadge,
+      badge: t.exportsWrite.badge,
       detail: t.dashboard.moduleStats.exports,
     },
     audit: {
@@ -141,12 +140,6 @@ function getPrimaryError(errors: AccountingNewApiError[]): AccountingNewApiError
 
 function getResourceError(errors: AccountingNewApiError[], resource: string): AccountingNewApiError | null {
   return errors.find((error) => error.resource === resource) ?? null;
-}
-
-function getRecentAuditEvents(events: AccountingNewAuditEventSummary[]): AccountingNewAuditEventSummary[] {
-  return [...events]
-    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
-    .slice(0, 5);
 }
 
 function SummarySkeleton() {
@@ -189,6 +182,7 @@ export function AccountingNewShell() {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [state, setState] = useState<DashboardState>({ status: "loading" });
+  const [dashboardReloadKey, setDashboardReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -218,7 +212,7 @@ export function AccountingNewShell() {
     void loadDashboard();
 
     return () => controller.abort();
-  }, [t.errors.dashboardTitle]);
+  }, [t.errors.dashboardTitle, dashboardReloadKey]);
 
   const result = state.status === "ready" || state.status === "auth" ? state.result : null;
   const dashboard = result?.dashboard ?? null;
@@ -244,7 +238,6 @@ export function AccountingNewShell() {
     [dashboard?.attachments],
   );
   const moduleStats = getModuleStats(t, dashboard);
-  const recentAuditEvents = dashboard ? getRecentAuditEvents(dashboard.auditEvents) : [];
 
   const localizedModules = useMemo(
     () =>
@@ -396,6 +389,7 @@ export function AccountingNewShell() {
           isLoading={state.status === "loading"}
           authRequired={state.status === "auth"}
           error={bankTransactionsError}
+          onImported={() => setDashboardReloadKey((current) => current + 1)}
         />
 
         <AccountingNewPaymentMatchesPanel
@@ -412,6 +406,7 @@ export function AccountingNewShell() {
           isLoading={state.status === "loading"}
           authRequired={state.status === "auth"}
           error={todosError}
+          onUpdated={() => setDashboardReloadKey((current) => current + 1)}
         />
 
         <AccountingNewRecurringTemplatesPanel
@@ -427,6 +422,11 @@ export function AccountingNewShell() {
       <AccountingNewReminderEmailsPanel />
 
       <div className="grid gap-4 xl:grid-cols-2">
+        <AccountingNewSettingsPanel />
+        <AccountingNewExportsPanel />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
         <AccountingNewAttachmentsPanel
           attachments={dashboard?.attachments ?? []}
           isLoading={state.status === "loading"}
@@ -439,43 +439,12 @@ export function AccountingNewShell() {
           isLoading={state.status === "loading"}
           authRequired={state.status === "auth"}
           error={attachmentsError}
+          onUploaded={() => setDashboardReloadKey((current) => current + 1)}
         />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle>{t.dashboard.recentAuditTitle}</CardTitle>
-            <CardDescription>{t.dashboard.recentAuditDescription}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {state.status === "loading" ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Skeleton key={index} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : recentAuditEvents.length > 0 ? (
-              <div className="space-y-3">
-                {recentAuditEvents.map((event) => (
-                  <div key={event.id} className="rounded-lg border border-border bg-background p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{translateAccountingNewEntityType(t, event.entityType)}</Badge>
-                      <Badge variant="secondary">{translateAccountingNewAuditEvent(t, event.eventType)}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm text-foreground">{event.message ?? t.common.noAuditMessage}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {formatAccountingNewDateTime(event.createdAt, language, t.common.noValue)} ·{" "}
-                      {translateAccountingNewAuditSource(t, event.source)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t.empty.dashboardAudit}</p>
-            )}
-          </CardContent>
-        </Card>
+        <AccountingNewAuditPanel />
 
         <Card className="border-border bg-card">
           <CardHeader>

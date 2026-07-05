@@ -13,6 +13,8 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, AccountingNewRequestError, getAccountingNewTodo } from "@/lib/accountingNew";
 import type { AccountingNewTodoDetailState } from "@/types/accountingNew";
+import { AccountingNewReminderSendForm } from "@/components/admin/accounting-new/AccountingNewReminderSendForm";
+import { AccountingNewTodoDetailActions } from "@/components/admin/accounting-new/AccountingNewTodoActions";
 import { AccountingNewTodoStatusBadge } from "@/components/admin/accounting-new/AccountingNewTodoStatusBadge";
 import {
   formatAccountingNewDate,
@@ -44,6 +46,7 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewTodoDetailState>({ status: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,7 +92,7 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
     void loadDetail();
 
     return () => controller.abort();
-  }, [todoId, t.errors.todoDetailTitle]);
+  }, [todoId, t.errors.todoDetailTitle, reloadKey]);
 
   if (state.status === "loading") {
     return <DetailLoading />;
@@ -131,8 +134,12 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.todoDetail.backLabel}</Link>
         </Button>
         <Badge variant="outline">{t.todoDetail.badge}</Badge>
-        <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
       </div>
+
+      <AccountingNewTodoDetailActions
+        todo={detail}
+        onUpdated={(updated) => setState({ status: "ready", detail: updated })}
+      />
 
       <Card className="border-border bg-card">
         <CardHeader>
@@ -218,6 +225,22 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
               />
             </div>
           </section>
+
+          {detail.invoiceId ? (
+            <>
+              <Separator />
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t.reminderWrite.sectionTitle}
+                </h2>
+                <AccountingNewReminderSendForm
+                  invoiceId={detail.invoiceId}
+                  todoId={detail.id}
+                  onSent={() => setReloadKey((current) => current + 1)}
+                />
+              </section>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </div>

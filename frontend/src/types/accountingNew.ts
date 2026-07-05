@@ -830,3 +830,169 @@ export interface AccountingNewExpenseFormState {
   supplierDic: string;
   items: AccountingNewExpenseFormItemState[];
 }
+
+export interface AccountingNewSettings {
+  ownerEmail: string;
+  issuerName: string;
+  issuerAddress: string;
+  issuerCity: string;
+  issuerZip: string;
+  issuerIco: string;
+  issuerDic: string;
+  issuerDataBox: string | null;
+  issuerEmail: string | null;
+  issuerPhone: string | null;
+  defaultCurrency: string;
+  defaultDueDays: number;
+  defaultNote: string | null;
+  paymentMethod: string;
+  bankAccountNumber: string;
+  bankAccountPrefix: string | null;
+  bankCode: string;
+  bankIban: string;
+  accountLabel: string;
+}
+
+export interface AccountingNewSettingsFormState {
+  ownerEmail: string;
+  issuerName: string;
+  issuerAddress: string;
+  issuerCity: string;
+  issuerZip: string;
+  issuerIco: string;
+  issuerDic: string;
+  issuerDataBox: string;
+  issuerEmail: string;
+  issuerPhone: string;
+  defaultCurrency: string;
+  defaultDueDays: string;
+  defaultNote: string;
+  paymentMethod: string;
+  bankAccountNumber: string;
+  bankAccountPrefix: string;
+  bankCode: string;
+  bankIban: string;
+}
+
+export interface AccountingNewSettingsWritePayload {
+  owner_email: string;
+  issuer_name: string | null;
+  issuer_address: string | null;
+  issuer_city: string | null;
+  issuer_zip: string | null;
+  issuer_ico: string | null;
+  issuer_dic: string | null;
+  issuer_data_box: string | null;
+  issuer_email: string | null;
+  issuer_phone: string | null;
+  default_currency: string | null;
+  default_due_days: number | null;
+  default_note: string | null;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string | null;
+}
+
+export interface AccountingNewAttachmentLinkPayload {
+  invoice_id?: number;
+  expense_id?: number;
+  todo_id?: number;
+  bank_transaction_id?: number;
+}
+
+export interface AccountingNewAttachmentUploadParams {
+  file: File;
+  attachmentType?: string;
+  note?: string | null;
+  invoiceId?: number | null;
+  expenseId?: number | null;
+  todoId?: number | null;
+  bankTransactionId?: number | null;
+}
+
+export type AccountingNewExportKind = "outgoing-csv" | "outgoing-xlsx" | "expenses-csv" | "expenses-xlsx";
+
+export interface AccountingNewBankTransactionImportItem {
+  external_id?: string | null;
+  account_iban?: string | null;
+  account_number?: string | null;
+  bank_code?: string | null;
+  transaction_date: string;
+  booked_date?: string | null;
+  amount: number;
+  currency: string;
+  variable_symbol?: string | null;
+  constant_symbol?: string | null;
+  specific_symbol?: string | null;
+  counterparty_name?: string | null;
+  counterparty_account?: string | null;
+  counterparty_iban?: string | null;
+  message?: string | null;
+  direction: "incoming" | "outgoing";
+}
+
+export interface AccountingNewBankTransactionImportPayload {
+  transactions: AccountingNewBankTransactionImportItem[];
+}
+
+export interface AccountingNewBankTransactionImportResult {
+  importedCount: number;
+  skippedDuplicateCount: number;
+  importedTransactionIds: number[];
+  skippedDuplicateIdentifiers: string[];
+}
+
+export interface AccountingNewTodoCreatePayload {
+  invoice_id?: number | null;
+  expense_id?: number | null;
+  todo_type?: string;
+  status?: string;
+  title: string;
+  message?: string | null;
+  due_date: string;
+}
+
+export interface AccountingNewTodoGenerateResult {
+  generatedCount: number;
+  skippedExistingCount: number;
+  generatedIds: number[];
+}
+
+export interface AccountingNewReminderEmailPreview {
+  invoiceId: number;
+  invoiceNumber: string;
+  recipientEmail: string;
+  subject: string;
+  message: string;
+  reminderType: string;
+}
+
+export interface AccountingNewReminderEmailSendPayload {
+  to_email?: string | null;
+  todo_id?: number | null;
+  subject?: string | null;
+  message?: string | null;
+}
+
+export interface AccountingNewDocumentEmailSendPayload {
+  to_email?: string | null;
+}
+
+export interface AccountingNewDocumentEmailSendResult {
+  invoiceId: number;
+  invoiceNumber: string;
+  sentTo: string;
+  copiedTo: string[];
+}
+
+export interface AccountingNewRecurringGenerationResult {
+  id: number;
+  templateId: number;
+  generatedInvoiceId: number | null;
+  generatedExpenseId: number | null;
+  runDate: string;
+  status: string;
+  message: string | null;
+}

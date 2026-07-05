@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewBankTransactionListItem } from "@/types/accountingNew";
+import { AccountingNewBankImportForm } from "@/components/admin/accounting-new/AccountingNewBankImportForm";
 import { AccountingNewBankTransactionsTable } from "@/components/admin/accounting-new/AccountingNewBankTransactionsTable";
 import {
   formatAccountingNewTemplate,
@@ -47,11 +48,13 @@ export function AccountingNewBankTransactionsPanel({
   isLoading,
   authRequired,
   error,
+  onImported,
 }: {
   transactions: AccountingNewBankTransactionListItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  onImported?: () => void;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
@@ -85,10 +88,9 @@ export function AccountingNewBankTransactionsPanel({
   });
 
   return (
-    <Card className="border-border bg-card">
+    <Card id="bank-transactions" className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{t.common.readOnly}</Badge>
           <Badge variant="outline">{t.bankTransactions.badge}</Badge>
         </div>
         <div className="space-y-1">
@@ -110,6 +112,8 @@ export function AccountingNewBankTransactionsPanel({
             <AlertDescription>{translateAccountingNewApiError(t, error)}</AlertDescription>
           </Alert>
         ) : null}
+
+        {!authRequired ? <AccountingNewBankImportForm onImported={onImported} /> : null}
 
         {!authRequired && !error ? (
           <>

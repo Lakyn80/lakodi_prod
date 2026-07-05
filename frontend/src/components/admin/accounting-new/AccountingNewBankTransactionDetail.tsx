@@ -13,6 +13,7 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, getAccountingNewBankTransaction, listAccountingNewBankTransactionMatches } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewBankTransactionDetailState } from "@/types/accountingNew";
+import { AccountingNewBankTransactionActions } from "@/components/admin/accounting-new/AccountingNewBankTransactionActions";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMatchCandidatesList } from "@/components/admin/accounting-new/AccountingNewMatchCandidatesList";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
@@ -64,6 +65,7 @@ export function AccountingNewBankTransactionDetail({
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewBankTransactionDetailState>({ status: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -125,7 +127,7 @@ export function AccountingNewBankTransactionDetail({
     void loadDetail();
 
     return () => controller.abort();
-  }, [transactionId, t.errors.bankTransactionDetailTitle]);
+  }, [transactionId, t.errors.bankTransactionDetailTitle, reloadKey]);
 
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
@@ -183,9 +185,10 @@ export function AccountingNewBankTransactionDetail({
         <Button variant="outline" asChild>
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
-        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
         <Badge variant="outline">{t.bankTransactions.badge}</Badge>
       </div>
+
+      <AccountingNewBankTransactionActions detail={detail} onUpdated={() => setReloadKey((current) => current + 1)} />
 
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
@@ -276,7 +279,11 @@ export function AccountingNewBankTransactionDetail({
         </CardHeader>
         <CardContent>
           {matches.length > 0 ? (
-            <AccountingNewPaymentMatchesTable matches={matches} />
+            <AccountingNewPaymentMatchesTable
+              matches={matches}
+              transactionId={transactionId}
+              onMatchApplied={() => setReloadKey((current) => current + 1)}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">{t.empty.bankTransactionMatches}</p>
           )}

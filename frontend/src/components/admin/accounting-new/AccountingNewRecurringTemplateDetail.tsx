@@ -29,6 +29,7 @@ import type {
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
 import { AccountingNewRecurringGenerationsTable } from "@/components/admin/accounting-new/AccountingNewRecurringGenerationsTable";
 import { AccountingNewRecurringStatusBadge } from "@/components/admin/accounting-new/AccountingNewRecurringStatusBadge";
+import { AccountingNewRecurringTemplateActions } from "@/components/admin/accounting-new/AccountingNewRecurringTemplateActions";
 import {
   formatAccountingNewDate,
   formatAccountingNewDateTime,
@@ -235,15 +236,18 @@ export function AccountingNewRecurringTemplateDetail({
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="outline">{t.recurringDetail.badge}</Badge>
-        <Badge variant="secondary">{t.common.readOnlyDetail}</Badge>
       </div>
+
+      <AccountingNewRecurringTemplateActions
+        template={detail}
+        onUpdated={(updated) => setState((current) => (current.status === "ready" ? { ...current, detail: updated } : current))}
+      />
 
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <AccountingNewRecurringStatusBadge label={detail.status} />
             <Badge variant="outline">{translateAccountingNewRecurringKind(t, detail.templateType)}</Badge>
-            <Badge variant="secondary">{t.common.withoutWriteActions}</Badge>
           </div>
           <div className="space-y-1">
             <CardTitle>{detail.name}</CardTitle>
@@ -415,18 +419,6 @@ export function AccountingNewRecurringTemplateDetail({
               label={t.recurringDetail.fields.oldInvoicesNote}
               value={<span className="text-muted-foreground">{t.recurringDetail.oldInvoicesDescription}</span>}
             />
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle>{t.recurringDetail.operationsTitle}</CardTitle>
-            <CardDescription>{t.recurringDetail.operationsDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>{t.recurringDetail.operationsItemOne}</p>
-            <p>{t.recurringDetail.operationsItemTwo}</p>
-            <p>{t.recurringDetail.operationsItemThree}</p>
           </CardContent>
         </Card>
       </div>

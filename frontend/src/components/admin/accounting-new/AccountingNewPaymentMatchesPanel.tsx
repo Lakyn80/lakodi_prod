@@ -34,7 +34,6 @@ export function AccountingNewPaymentMatchesPanel({
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{t.common.readOnly}</Badge>
           <Badge variant="outline">{t.paymentMatching.badge}</Badge>
         </div>
         <div className="space-y-1">
@@ -72,10 +71,6 @@ export function AccountingNewPaymentMatchesPanel({
                 <p className="text-sm text-muted-foreground">{t.paymentMatching.openTitle}</p>
                 <p className="mt-2 text-2xl font-semibold text-foreground">{isLoading ? "…" : openCount}</p>
               </div>
-            </div>
-
-            <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
-              {t.paymentMatching.apiNote}
             </div>
 
             <AccountingNewMatchCandidatesList deferredNote={t.paymentMatching.deferredDescription} />

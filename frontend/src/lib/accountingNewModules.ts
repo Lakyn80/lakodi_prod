@@ -280,15 +280,16 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     { canUpdate: true },
   ),
-  createRegistryEntry({
+  createRegistryEntry(
+    {
     id: "bank-transactions",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#bank-transactions`,
     labelKey: "moduleRegistry.bankTransactions.label",
     descriptionKey: "moduleRegistry.bankTransactions.description",
     entityType: "bank_transaction",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "bank_transaction",
       labelKey: "rag.entityTypes.bank_transaction",
@@ -304,16 +305,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["bank-transaction-detail", "payment-matching"],
     gridModuleId: "bank-transactions",
-  }),
-  createRegistryEntry({
+  },
+    { canImport: true, canGenerate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "bank-transaction-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/bankovni-transakce/[id]`,
     labelKey: "moduleRegistry.bankTransactionDetail.label",
     descriptionKey: "moduleRegistry.bankTransactionDetail.description",
     entityType: "bank_transaction",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "bank_transaction",
       labelKey: "rag.entityTypes.bank_transaction",
@@ -328,16 +332,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.bankTransactionDetail"],
     },
     relatedModuleIds: ["bank-transactions", "payment-matching"],
-  }),
-  createRegistryEntry({
+  },
+    { canApply: true },
+  ),
+  createRegistryEntry(
+    {
     id: "payment-matching",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#payment-matching`,
     labelKey: "moduleRegistry.paymentMatching.label",
     descriptionKey: "moduleRegistry.paymentMatching.description",
     entityType: "payment_match",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "payment_match",
       labelKey: "rag.entityTypes.payment_match",
@@ -353,16 +360,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["bank-transactions", "bank-transaction-detail", "documents", "expenses"],
     gridModuleId: "payment-matching",
-  }),
-  createRegistryEntry({
+  },
+    { canApply: true },
+  ),
+  createRegistryEntry(
+    {
     id: "reminders",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#reminders`,
     labelKey: "moduleRegistry.reminders.label",
     descriptionKey: "moduleRegistry.reminders.description",
     entityType: "todo",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "todo",
       labelKey: "rag.entityTypes.todo",
@@ -380,16 +390,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["todo-detail", "dashboard", "documents", "expenses"],
     gridModuleId: "reminders",
-  }),
-  createRegistryEntry({
+  },
+    { canGenerate: true, canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "todo-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/ukoly/[id]`,
     labelKey: "moduleRegistry.todoDetail.label",
     descriptionKey: "moduleRegistry.todoDetail.description",
     entityType: "todo",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "todo",
       labelKey: "rag.entityTypes.todo",
@@ -405,7 +418,9 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.todoDetail"],
     },
     relatedModuleIds: ["reminders", "documents", "expenses"],
-  }),
+  },
+    { canUpdate: true, canSend: true },
+  ),
   createRegistryEntry({
     id: "reminder-emails",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#reminder-emails`,
@@ -460,15 +475,16 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["reminder-emails", "documents", "reminders"],
   }),
-  createRegistryEntry({
+  createRegistryEntry(
+    {
     id: "attachments",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#attachments`,
     labelKey: "moduleRegistry.attachments.label",
     descriptionKey: "moduleRegistry.attachments.description",
     entityType: "attachment",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "attachment",
       labelKey: "rag.entityTypes.attachment",
@@ -489,16 +505,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["attachment-detail", "attachment-inbox", "documents", "expenses"],
     gridModuleId: "attachments",
-  }),
-  createRegistryEntry({
+  },
+    { canUpload: true, canLink: true },
+  ),
+  createRegistryEntry(
+    {
     id: "attachment-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/prilohy/[id]`,
     labelKey: "moduleRegistry.attachmentDetail.label",
     descriptionKey: "moduleRegistry.attachmentDetail.description",
     entityType: "attachment",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "attachment",
       labelKey: "rag.entityTypes.attachment",
@@ -514,16 +533,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.attachmentDetail"],
     },
     relatedModuleIds: ["attachments", "attachment-inbox", "documents", "expenses"],
-  }),
-  createRegistryEntry({
+  },
+    { canLink: true, canExport: true },
+  ),
+  createRegistryEntry(
+    {
     id: "attachment-inbox",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#attachment-inbox`,
     labelKey: "moduleRegistry.attachmentInbox.label",
     descriptionKey: "moduleRegistry.attachmentInbox.description",
     entityType: "attachment_inbox_item",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "attachment_inbox_item",
       labelKey: "rag.entityTypes.attachment_inbox_item",
@@ -540,16 +562,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       aliasKeys: ["voice.aliases.attachmentInbox"],
     },
     relatedModuleIds: ["attachments", "attachment-detail"],
-  }),
-  createRegistryEntry({
+  },
+    { canUpload: true },
+  ),
+  createRegistryEntry(
+    {
     id: "recurring",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#recurring`,
     labelKey: "moduleRegistry.recurring.label",
     descriptionKey: "moduleRegistry.recurring.description",
     entityType: "recurring_template",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "recurring_template",
       labelKey: "rag.entityTypes.recurring_template",
@@ -586,16 +611,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["recurring-detail", "dashboard", "documents", "expenses", "suppliers"],
     gridModuleId: "recurring",
-  }),
-  createRegistryEntry({
+  },
+    { canGenerate: true, canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "recurring-detail",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}/opakovane/[id]`,
     labelKey: "moduleRegistry.recurringDetail.label",
     descriptionKey: "moduleRegistry.recurringDetail.description",
     entityType: "recurring_template",
     readAvailability: "read-only",
-    writeEnabled: false,
-    featureStatus: "implemented-read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "recurring_generation",
       labelKey: "rag.entityTypes.recurring_generation",
@@ -619,16 +647,19 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
       ],
     },
     relatedModuleIds: ["recurring", "documents", "expenses", "suppliers"],
-  }),
-  createRegistryEntry({
+  },
+    { canGenerate: true, canUpdate: true },
+  ),
+  createRegistryEntry(
+    {
     id: "exports",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#exports`,
     labelKey: "moduleRegistry.exports.label",
     descriptionKey: "moduleRegistry.exports.description",
     entityType: "export",
-    readAvailability: "placeholder",
-    writeEnabled: false,
-    featureStatus: "future",
+    readAvailability: "read-only",
+    writeEnabled: true,
+    featureStatus: "implemented-write",
     rag: {
       entityType: "export",
       labelKey: "rag.entityTypes.export",
@@ -643,16 +674,18 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["dashboard", "audit"],
     gridModuleId: "exports",
-  }),
+  },
+    { canExport: true },
+  ),
   createRegistryEntry({
     id: "audit",
     route: `${ACCOUNTING_NEW_BASE_ROUTE}#audit`,
     labelKey: "moduleRegistry.audit.label",
     descriptionKey: "moduleRegistry.audit.description",
     entityType: "audit_event",
-    readAvailability: "placeholder",
+    readAvailability: "read-only",
     writeEnabled: false,
-    featureStatus: "deferred",
+    featureStatus: "implemented-read-only",
     rag: {
       entityType: "audit_event",
       labelKey: "rag.entityTypes.audit_event",

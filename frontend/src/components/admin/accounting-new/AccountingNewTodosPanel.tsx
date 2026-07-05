@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewTodoListItem } from "@/types/accountingNew";
+import { AccountingNewTodoGenerateButton } from "@/components/admin/accounting-new/AccountingNewTodoActions";
 import { AccountingNewTodosTable } from "@/components/admin/accounting-new/AccountingNewTodosTable";
 import {
   formatAccountingNewTemplate,
@@ -38,11 +39,13 @@ export function AccountingNewTodosPanel({
   isLoading,
   authRequired,
   error,
+  onUpdated,
 }: {
   todos: AccountingNewTodoListItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  onUpdated?: () => void;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
@@ -80,7 +83,6 @@ export function AccountingNewTodosPanel({
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{t.todos.badge}</Badge>
-          <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.todos.title}</CardTitle>
@@ -88,7 +90,9 @@ export function AccountingNewTodosPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t.todos.readOnlyNote}</p>
+        <p className="text-sm text-muted-foreground">{t.todos.description}</p>
+
+        {!authRequired ? <AccountingNewTodoGenerateButton onGenerated={onUpdated} /> : null}
 
         {authRequired ? (
           <Alert>

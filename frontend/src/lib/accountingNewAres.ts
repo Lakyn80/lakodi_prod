@@ -15,6 +15,17 @@ export interface AccountingNewAresCompanyLookup {
   source: "ares" | "mock_ares";
 }
 
+export interface AccountingNewAresFieldValues {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  ico: string;
+  dic: string;
+  dataBox: string;
+  country: string;
+}
+
 const ARES_SOURCE_LABELS = {
   ares: "ARES",
   mock_ares: "mock ARES",

@@ -15,6 +15,7 @@ import {
   downloadAccountingNewDocumentPdf,
   finalizeAccountingNewDocument,
   listAccountingNewSubjects,
+  sendAccountingNewDocumentEmail,
 } from "@/lib/accountingNew";
 import {
   buildAccountingNewCustomerInputFromDocumentDetail,
@@ -37,7 +38,9 @@ export function AccountingNewDocumentActions({
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [issueOpen, setIssueOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [isIssuing, setIsIssuing] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [mutationError, setMutationError] = useState<AccountingNewApiError | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -125,6 +128,34 @@ export function AccountingNewDocumentActions({
     }
   }
 
+  async function handleSendEmail() {
+    setIsSendingEmail(true);
+    setMutationError(null);
+    setSuccessMessage(null);
+
+    try {
+      const result = await sendAccountingNewDocumentEmail(detail.id, {
+        to_email: detail.customerEmail,
+      });
+      setSuccessMessage(`${t.emailWrite.sendSuccess} (${result.sentTo})`);
+      setEmailOpen(false);
+    } catch (error) {
+      if (error instanceof AccountingNewRequestError) {
+        setMutationError(error.apiError);
+      } else {
+        setMutationError({
+          resource: "document-email",
+          message: t.errors.actionFailed,
+          status: null,
+          requiresLogin: false,
+        });
+      }
+      setEmailOpen(false);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  }
+
   async function handleDownloadPdf() {
     setIsDownloading(true);
     setMutationError(null);
@@ -168,9 +199,24 @@ export function AccountingNewDocumentActions({
         <Button variant="outline" onClick={() => void handleDownloadPdf()} disabled={isDownloading}>
           {t.documentWrite.actions.downloadPdf}
         </Button>
+
+        {detail.status !== "draft" ? (
+          <Button variant="outline" onClick={() => setEmailOpen(true)} disabled={isSendingEmail}>
+            {t.emailWrite.sendAction}
+          </Button>
+        ) : null}
       </div>
 
-      <p className="text-sm text-muted-foreground">{t.documentWrite.emailDeferred}</p>
+      <AccountingNewConfirmDialog
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        title={t.emailWrite.sendConfirmTitle}
+        description={t.emailWrite.sendConfirmDescription}
+        confirmLabel={t.emailWrite.sendAction}
+        cancelLabel={t.documentWrite.confirm.cancel}
+        isPending={isSendingEmail}
+        onConfirm={() => void handleSendEmail()}
+      />
 
       <AccountingNewConfirmDialog
         open={issueOpen}

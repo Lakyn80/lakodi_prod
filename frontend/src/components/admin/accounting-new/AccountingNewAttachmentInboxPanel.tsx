@@ -11,6 +11,7 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewAttachmentInboxItem } from "@/types/accountingNew";
 import { AccountingNewAttachmentInboxTable } from "@/components/admin/accounting-new/AccountingNewAttachmentInboxTable";
+import { AccountingNewAttachmentUploadForm } from "@/components/admin/accounting-new/AccountingNewAttachmentUploadForm";
 import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
@@ -38,11 +39,13 @@ export function AccountingNewAttachmentInboxPanel({
   isLoading,
   authRequired,
   error,
+  onUploaded,
 }: {
   attachments: AccountingNewAttachmentInboxItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  onUploaded?: () => void;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
@@ -59,7 +62,6 @@ export function AccountingNewAttachmentInboxPanel({
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{t.attachmentInbox.badge}</Badge>
-          <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.attachmentInbox.title}</CardTitle>
@@ -67,8 +69,9 @@ export function AccountingNewAttachmentInboxPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t.attachmentInbox.readOnlyNote}</p>
         <p className="text-sm text-muted-foreground">{t.attachmentInbox.apiNote}</p>
+
+        {!authRequired ? <AccountingNewAttachmentUploadForm onUploaded={onUploaded} /> : null}
 
         {authRequired ? (
           <Alert>

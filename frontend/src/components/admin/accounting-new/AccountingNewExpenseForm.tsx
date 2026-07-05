@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import { AccountingNewAresLookupSection } from "@/components/admin/accounting-new/AccountingNewAresLookupSection";
+import { AccountingNewCurrencySelect } from "@/components/admin/accounting-new/AccountingNewCurrencySelect";
 import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { AccountingNewPaymentMethodSelect } from "@/components/admin/accounting-new/AccountingNewPaymentMethodSelect";
@@ -264,18 +265,13 @@ export function AccountingNewExpenseForm({
                   setForm((current) => ({ ...current, paymentMethod: value }))
                 }
               />
-              <div className="space-y-2">
-                <Label htmlFor="currency">{t.expenseWrite.fields.currency}</Label>
-                <select
-                  id="currency"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={form.currency}
-                  onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))}
-                >
-                  <option value="CZK">CZK</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
+              <AccountingNewCurrencySelect
+                id="currency"
+                label={t.expenseWrite.fields.currency}
+                value={form.currency}
+                onChange={(currency) => setForm((current) => ({ ...current, currency }))}
+                required
+              />
               <div className="space-y-2">
                 <Label htmlFor="vatRate">{t.expenseWrite.fields.vatRate}</Label>
                 <Input

@@ -120,7 +120,6 @@ export function AccountingNewRecurringTemplatesPanel({
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{t.recurring.badge}</Badge>
-          <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.recurring.title}</CardTitle>
@@ -128,9 +127,6 @@ export function AccountingNewRecurringTemplatesPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t.recurring.readOnlyNote}</p>
-        <p className="text-sm text-muted-foreground">{t.recurring.deferredFieldsNote}</p>
-
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.recurringTitle}</AlertTitle>

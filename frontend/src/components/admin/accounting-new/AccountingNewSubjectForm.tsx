@@ -26,6 +26,7 @@ import {
   createEmptyAccountingNewSubjectFormState,
   findAccountingNewSubjectByIco,
 } from "@/lib/accountingNewSubjectWrite";
+import { consumeAccountingNewAresDraft } from "@/lib/accountingNewAresDraft";
 import type { AccountingNewApiError, AccountingNewSubjectFormState, AccountingNewSubjectSummary } from "@/types/accountingNew";
 
 export function AccountingNewSubjectForm({
@@ -53,6 +54,23 @@ export function AccountingNewSubjectForm({
       try {
         const subjects = await listAccountingNewSubjects({ signal: controller.signal });
         setExistingSubjects(subjects);
+
+        if (mode === "create") {
+          const aresDraft = consumeAccountingNewAresDraft("subject");
+          if (aresDraft) {
+            setForm((current) => ({
+              ...current,
+              name: aresDraft.name,
+              email: aresDraft.email,
+              phone: aresDraft.phone,
+              address: aresDraft.address,
+              ico: aresDraft.ico,
+              dic: aresDraft.dic,
+              dataBox: aresDraft.dataBox,
+              country: aresDraft.country || current.country,
+            }));
+          }
+        }
 
         if (mode === "edit" && subjectId) {
           const detail = await getAccountingNewSubject(subjectId, { signal: controller.signal });
@@ -122,7 +140,7 @@ export function AccountingNewSubjectForm({
     }
   }
 
-  if (isLoading) {
+  if (isLoading && mode === "edit") {
     return <p className="text-sm text-muted-foreground">{t.subjectWrite.loading}</p>;
   }
 

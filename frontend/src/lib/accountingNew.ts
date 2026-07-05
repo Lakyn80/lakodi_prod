@@ -37,6 +37,21 @@ import type {
   AccountingNewReminderEmailDetail,
   AccountingNewReminderEmailFilters,
   AccountingNewReminderEmailListItem,
+  AccountingNewAttachmentLinkPayload,
+  AccountingNewAttachmentUploadParams,
+  AccountingNewBankTransactionImportPayload,
+  AccountingNewBankTransactionImportResult,
+  AccountingNewDocumentEmailSendPayload,
+  AccountingNewDocumentEmailSendResult,
+  AccountingNewExportKind,
+  AccountingNewReminderEmailPreview,
+  AccountingNewReminderEmailSendPayload,
+  AccountingNewRecurringGenerationResult,
+  AccountingNewSettings,
+  AccountingNewSettingsWritePayload,
+  AccountingNewTodoCreatePayload,
+  AccountingNewTodoGenerateResult,
+  AccountingNewTodoSummary,
   AccountingNewSubjectSummary,
   AccountingNewSubjectWritePayload,
   AccountingNewSupplierDetail,
@@ -45,7 +60,6 @@ import type {
   AccountingNewSupplierWritePayload,
   AccountingNewTodoDetail,
   AccountingNewTodoFilters,
-  AccountingNewTodoSummary,
 } from "@/types/accountingNew";
 
 export const ACCOUNTING_NEW_ROUTE = "/admin/ucetnictvi-new";
@@ -2841,4 +2855,477 @@ export async function addAccountingNewExpensePayment(
     params.signal,
   );
   return mapExpenseDetail(data);
+}
+
+type AccountingNewSettingsApi = {
+  owner_email: string;
+  issuer_name: string;
+  issuer_address: string;
+  issuer_city: string;
+  issuer_zip: string;
+  issuer_ico: string;
+  issuer_dic: string;
+  issuer_data_box: string | null;
+  issuer_email: string | null;
+  issuer_phone: string | null;
+  default_currency: string;
+  default_due_days: number;
+  default_note: string | null;
+  payment_method: string;
+  bank_account_number: string;
+  bank_account_prefix: string | null;
+  bank_code: string;
+  bank_iban: string;
+  account_label: string;
+};
+
+function mapSettings(item: AccountingNewSettingsApi): AccountingNewSettings {
+  return {
+    ownerEmail: item.owner_email,
+    issuerName: item.issuer_name,
+    issuerAddress: item.issuer_address,
+    issuerCity: item.issuer_city,
+    issuerZip: item.issuer_zip,
+    issuerIco: item.issuer_ico,
+    issuerDic: item.issuer_dic,
+    issuerDataBox: item.issuer_data_box,
+    issuerEmail: item.issuer_email,
+    issuerPhone: item.issuer_phone,
+    defaultCurrency: item.default_currency,
+    defaultDueDays: item.default_due_days,
+    defaultNote: item.default_note,
+    paymentMethod: item.payment_method,
+    bankAccountNumber: item.bank_account_number,
+    bankAccountPrefix: item.bank_account_prefix,
+    bankCode: item.bank_code,
+    bankIban: item.bank_iban,
+    accountLabel: item.account_label,
+  };
+}
+
+export async function getAccountingNewSettings(params: AccountingNewListParams = {}): Promise<AccountingNewSettings> {
+  const data = await fetchAccountingNewJson<AccountingNewSettingsApi>("settings", "/settings", params.signal);
+  return mapSettings(data);
+}
+
+export async function updateAccountingNewSettings(
+  payload: AccountingNewSettingsWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewSettings> {
+  const data = await mutateAccountingNewJson<AccountingNewSettingsApi>(
+    "settings-update",
+    "/settings",
+    "PUT",
+    payload,
+    params.signal,
+  );
+  return mapSettings(data);
+}
+
+export async function uploadAccountingNewAttachment(
+  upload: AccountingNewAttachmentUploadParams,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAttachmentSummary> {
+  const formData = new FormData();
+  formData.append("file", upload.file);
+  formData.append("attachment_type", upload.attachmentType ?? "other");
+  if (upload.note?.trim()) {
+    formData.append("note", upload.note.trim());
+  }
+  if (upload.invoiceId) {
+    formData.append("invoice_id", String(upload.invoiceId));
+  }
+  if (upload.expenseId) {
+    formData.append("expense_id", String(upload.expenseId));
+  }
+  if (upload.todoId) {
+    formData.append("todo_id", String(upload.todoId));
+  }
+  if (upload.bankTransactionId) {
+    formData.append("bank_transaction_id", String(upload.bankTransactionId));
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(adminApiUrl(`${ACCOUNTING_NEW_INVOICES_BASE}/attachments`), {
+      ...apiFetchOptions,
+      method: "POST",
+      cache: "no-store",
+      signal: params.signal,
+      body: formData,
+    });
+  } catch (error) {
+    throw new AccountingNewRequestError(buildNetworkError("attachment-upload", error));
+  }
+
+  if (!response.ok) {
+    throw new AccountingNewRequestError(await buildApiError("attachment-upload", response));
+  }
+
+  const data = (await response.json()) as Parameters<typeof mapAttachmentSummary>[0];
+  return mapAttachmentSummary(data);
+}
+
+export async function linkAccountingNewAttachment(
+  attachmentId: number | string,
+  payload: AccountingNewAttachmentLinkPayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewAttachmentSummary> {
+  const normalizedId = Number.parseInt(String(attachmentId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapAttachmentSummary>[0]>(
+    "attachment-link",
+    `/attachments/${normalizedId}/link`,
+    "POST",
+    payload,
+    params.signal,
+  );
+  return mapAttachmentSummary(data);
+}
+
+export async function downloadAccountingNewAttachment(
+  attachmentId: number | string,
+  fallbackFilename = "priloha",
+): Promise<void> {
+  const normalizedId = Number.parseInt(String(attachmentId), 10);
+  const response = await fetch(adminApiUrl(`${ACCOUNTING_NEW_INVOICES_BASE}/attachments/${normalizedId}/download`), {
+    ...apiFetchOptions,
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw new AccountingNewRequestError(await buildApiError("attachment-download", response));
+  }
+
+  const blob = await response.blob();
+  const filename = extractPdfFilename(response.headers.get("content-disposition"), fallbackFilename);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function applyAccountingNewBankTransactionMatch(
+  transactionId: number | string,
+  matchId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewPaymentMatchListItem> {
+  const normalizedTransactionId = Number.parseInt(String(transactionId), 10);
+  const normalizedMatchId = Number.parseInt(String(matchId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapPaymentMatchSummary>[0]>(
+    "bank-match-apply",
+    `/bank-transactions/${normalizedTransactionId}/matches/${normalizedMatchId}/apply`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapPaymentMatchSummary(data);
+}
+
+const EXPORT_PATHS: Record<AccountingNewExportKind, string> = {
+  "outgoing-csv": "/exports/outgoing.csv",
+  "outgoing-xlsx": "/exports/outgoing.xlsx",
+  "expenses-csv": "/exports/expenses.csv",
+  "expenses-xlsx": "/exports/expenses.xlsx",
+};
+
+const EXPORT_FALLBACK_NAMES: Record<AccountingNewExportKind, string> = {
+  "outgoing-csv": "vydane-doklady.csv",
+  "outgoing-xlsx": "vydane-doklady.xlsx",
+  "expenses-csv": "vydaje.csv",
+  "expenses-xlsx": "vydaje.xlsx",
+};
+
+export async function downloadAccountingNewExport(kind: AccountingNewExportKind): Promise<void> {
+  const path = EXPORT_PATHS[kind];
+  const response = await fetch(adminApiUrl(`${ACCOUNTING_NEW_INVOICES_BASE}${path}`), {
+    ...apiFetchOptions,
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw new AccountingNewRequestError(await buildApiError(`export-${kind}`, response));
+  }
+
+  const blob = await response.blob();
+  const filename = extractPdfFilename(response.headers.get("content-disposition"), EXPORT_FALLBACK_NAMES[kind]);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function importAccountingNewBankTransactions(
+  payload: AccountingNewBankTransactionImportPayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewBankTransactionImportResult> {
+  const data = await mutateAccountingNewJson<{
+    imported_count: number;
+    skipped_duplicate_count: number;
+    imported_transaction_ids: number[];
+    skipped_duplicate_identifiers: string[];
+  }>("bank-import", "/bank-transactions/import", "POST", payload, params.signal);
+
+  return {
+    importedCount: data.imported_count,
+    skippedDuplicateCount: data.skipped_duplicate_count,
+    importedTransactionIds: data.imported_transaction_ids,
+    skippedDuplicateIdentifiers: data.skipped_duplicate_identifiers,
+  };
+}
+
+export async function ignoreAccountingNewBankTransaction(
+  transactionId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewBankTransactionListItem> {
+  const normalizedId = Number.parseInt(String(transactionId), 10);
+  await mutateAccountingNewJson<{ ok: true; transaction_id: number; status: string }>(
+    "bank-ignore",
+    `/bank-transactions/${normalizedId}/ignore`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return getAccountingNewBankTransaction(normalizedId, params);
+}
+
+export async function generateAccountingNewBankTransactionMatches(
+  transactionId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewPaymentMatchListItem[]> {
+  const normalizedId = Number.parseInt(String(transactionId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapPaymentMatchSummary>[0][]>(
+    "bank-match-generate",
+    `/bank-transactions/${normalizedId}/matches/generate`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return data.map(mapPaymentMatchSummary);
+}
+
+export async function rejectAccountingNewBankTransactionMatch(
+  transactionId: number | string,
+  matchId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewPaymentMatchListItem> {
+  const normalizedTransactionId = Number.parseInt(String(transactionId), 10);
+  const normalizedMatchId = Number.parseInt(String(matchId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapPaymentMatchSummary>[0]>(
+    "bank-match-reject",
+    `/bank-transactions/${normalizedTransactionId}/matches/${normalizedMatchId}/reject`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapPaymentMatchSummary(data);
+}
+
+export async function createAccountingNewTodo(
+  payload: AccountingNewTodoCreatePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewTodoSummary> {
+  const data = await mutateAccountingNewJson<Parameters<typeof mapTodoSummary>[0]>(
+    "todo-create",
+    "/todos",
+    "POST",
+    payload,
+    params.signal,
+  );
+  return mapTodoSummary(data);
+}
+
+export async function completeAccountingNewTodo(
+  todoId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewTodoSummary> {
+  const normalizedId = Number.parseInt(String(todoId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapTodoSummary>[0]>(
+    "todo-complete",
+    `/todos/${normalizedId}/complete`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapTodoSummary(data);
+}
+
+export async function cancelAccountingNewTodo(
+  todoId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewTodoSummary> {
+  const normalizedId = Number.parseInt(String(todoId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapTodoSummary>[0]>(
+    "todo-cancel",
+    `/todos/${normalizedId}/cancel`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapTodoSummary(data);
+}
+
+export async function generateAccountingNewTodos(
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewTodoGenerateResult> {
+  const data = await mutateAccountingNewJson<{
+    generated_count: number;
+    skipped_existing_count: number;
+    generated_ids: number[];
+  }>("todo-generate", "/todos/generate", "POST", undefined, params.signal);
+  return {
+    generatedCount: data.generated_count,
+    skippedExistingCount: data.skipped_existing_count,
+    generatedIds: data.generated_ids,
+  };
+}
+
+export async function previewAccountingNewReminderEmail(
+  invoiceId: number | string,
+  params: AccountingNewListParams & { toEmail?: string | null; todoId?: number | null } = {},
+): Promise<AccountingNewReminderEmailPreview> {
+  const normalizedId = Number.parseInt(String(invoiceId), 10);
+  const search = new URLSearchParams();
+  if (params.toEmail?.trim()) {
+    search.set("to_email", params.toEmail.trim());
+  }
+  if (params.todoId) {
+    search.set("todo_id", String(params.todoId));
+  }
+  const suffix = search.size > 0 ? `?${search.toString()}` : "";
+  const data = await fetchAccountingNewJson<{
+    invoice_id: number;
+    invoice_number: string;
+    recipient_email: string;
+    subject: string;
+    message: string;
+    reminder_type: string;
+  }>("reminder-preview", `/${normalizedId}/reminder-email/preview${suffix}`, params.signal);
+
+  return {
+    invoiceId: data.invoice_id,
+    invoiceNumber: data.invoice_number,
+    recipientEmail: data.recipient_email,
+    subject: data.subject,
+    message: data.message,
+    reminderType: data.reminder_type,
+  };
+}
+
+export async function sendAccountingNewReminderEmail(
+  invoiceId: number | string,
+  payload: AccountingNewReminderEmailSendPayload = {},
+  params: AccountingNewListParams = {},
+): Promise<{ reminderEmailId: number; sentTo: string; status: string }> {
+  const normalizedId = Number.parseInt(String(invoiceId), 10);
+  const data = await mutateAccountingNewJson<{
+    reminder_email_id: number;
+    sent_to: string;
+    status: string;
+  }>("reminder-send", `/${normalizedId}/reminder-email/send`, "POST", payload, params.signal);
+
+  return {
+    reminderEmailId: data.reminder_email_id,
+    sentTo: data.sent_to,
+    status: data.status,
+  };
+}
+
+export async function sendAccountingNewDocumentEmail(
+  documentId: number | string,
+  payload: AccountingNewDocumentEmailSendPayload = {},
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewDocumentEmailSendResult> {
+  const normalizedId = Number.parseInt(String(documentId), 10);
+  const data = await mutateAccountingNewJson<{
+    invoice_id: number;
+    invoice_number: string;
+    sent_to: string;
+    copied_to: string[];
+  }>("document-email-send", `/${normalizedId}/send-email`, "POST", payload, params.signal);
+
+  return {
+    invoiceId: data.invoice_id,
+    invoiceNumber: data.invoice_number,
+    sentTo: data.sent_to,
+    copiedTo: data.copied_to,
+  };
+}
+
+export async function generateAccountingNewRecurringTemplate(
+  templateId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringGenerationResult> {
+  const normalizedId = Number.parseInt(String(templateId), 10);
+  const data = await mutateAccountingNewJson<{
+    id: number;
+    template_id: number;
+    generated_invoice_id: number | null;
+    generated_expense_id: number | null;
+    run_date: string;
+    status: string;
+    message: string | null;
+  }>("recurring-generate", `/recurring-templates/${normalizedId}/generate`, "POST", undefined, params.signal);
+
+  return {
+    id: data.id,
+    templateId: data.template_id,
+    generatedInvoiceId: data.generated_invoice_id,
+    generatedExpenseId: data.generated_expense_id,
+    runDate: data.run_date,
+    status: data.status,
+    message: data.message,
+  };
+}
+
+export async function pauseAccountingNewRecurringTemplate(
+  templateId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringTemplateSummary> {
+  const normalizedId = Number.parseInt(String(templateId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapRecurringTemplateSummary>[0]>(
+    "recurring-pause",
+    `/recurring-templates/${normalizedId}/pause`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapRecurringTemplateSummary(data);
+}
+
+export async function activateAccountingNewRecurringTemplate(
+  templateId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringTemplateSummary> {
+  const normalizedId = Number.parseInt(String(templateId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapRecurringTemplateSummary>[0]>(
+    "recurring-activate",
+    `/recurring-templates/${normalizedId}/activate`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapRecurringTemplateSummary(data);
+}
+
+export async function cancelAccountingNewRecurringTemplate(
+  templateId: number | string,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringTemplateSummary> {
+  const normalizedId = Number.parseInt(String(templateId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapRecurringTemplateSummary>[0]>(
+    "recurring-cancel",
+    `/recurring-templates/${normalizedId}/cancel`,
+    "POST",
+    undefined,
+    params.signal,
+  );
+  return mapRecurringTemplateSummary(data);
 }

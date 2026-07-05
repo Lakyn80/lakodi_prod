@@ -7,8 +7,11 @@ import smtplib
 import ssl
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from email.message import EmailMessage
 from email.utils import parseaddr
+from html import escape
+from typing import Mapping
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 FROM_EMAIL = os.getenv("ADMIN_FROM_EMAIL", "Lakodi <onboarding@resend.dev>")
@@ -180,6 +183,94 @@ def send_booking_confirmation_email(to_email: str, name: str, zakazka_id: int) -
     <p>— Lakodi autoservis</p>
     """
     return send_html_email(to_email, f"Potvrzení poptávky #{zakazka_id}", html)
+
+
+def _resolve_booking_notification_email() -> str:
+    explicit = os.getenv("BOOKING_NOTIFICATION_EMAIL", "").strip().lower()
+    if explicit:
+        return explicit
+    fallback = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    if fallback:
+        return fallback
+    return "lakodi@seznam.cz"
+
+
+def _resolve_booking_admin_base_url() -> str:
+    return (os.getenv("BOOKING_ADMIN_BASE_URL", "").strip() or RECOVERY_BASE_URL.strip()).rstrip("/")
+
+
+def _format_booking_datetime(value: datetime | None) -> str:
+    if value is None:
+        return "—"
+    return value.strftime("%d.%m.%Y %H:%M")
+
+
+def _to_html_text(value: str | None) -> str:
+    cleaned = str(value or "").strip()
+    if not cleaned:
+        return "—"
+    return escape(cleaned).replace("\n", "<br>")
+
+
+def _format_booking_answers_html(answers: Mapping[str, object] | None) -> str:
+    items: list[str] = []
+    for key, value in (answers or {}).items():
+        answer = str(value or "").strip()
+        if not answer:
+            continue
+        items.append(f"<li><strong>{escape(str(key))}:</strong> {escape(answer)}</li>")
+    if not items:
+        return "<li>—</li>"
+    return "".join(items)
+
+
+def send_booking_owner_notification_email(
+    *,
+    zakazka_id: int,
+    category: str,
+    name: str,
+    email: str | None,
+    phone: str,
+    description: str,
+    answers: Mapping[str, object] | None = None,
+    callback_requested: bool = False,
+    created_at: datetime | None = None,
+    photos_count: int = 0,
+) -> bool:
+    to_email = _resolve_booking_notification_email()
+    if not to_email:
+        return False
+
+    base_url = _resolve_booking_admin_base_url()
+    detail_url = f"{base_url}/admin/zakazky/{zakazka_id}" if base_url else ""
+
+    actions: list[str] = []
+    if detail_url:
+        actions.append(
+            f'<a href="{escape(detail_url, quote=True)}" '
+            'style="display:inline-block;padding:10px 14px;border-radius:8px;'
+            'background:#111827;color:#ffffff;text-decoration:none;font-weight:600;">'
+            "Otevřít v adminu</a>"
+        )
+    actions_html = "&nbsp;".join(actions) if actions else ""
+
+    html = f"""
+    <p>Dorazila nová poptávka do adminu Lakodi.</p>
+    <p><strong>Přijato:</strong> {_format_booking_datetime(created_at)}</p>
+    <p><strong>ID:</strong> #{zakazka_id}</p>
+    <p><strong>Kategorie:</strong> {escape(category)}</p>
+    <p><strong>Jméno:</strong> {escape(name)}</p>
+    <p><strong>Email:</strong> {_to_html_text(email)}</p>
+    <p><strong>Telefon:</strong> {escape(phone)}</p>
+    <p><strong>Zpětné volání:</strong> {"Ano" if callback_requested else "Ne"}</p>
+    <p><strong>Počet fotek:</strong> {photos_count}</p>
+    <p><strong>Popis:</strong><br>{_to_html_text(description)}</p>
+    <p><strong>Doplňující odpovědi:</strong></p>
+    <ul>{_format_booking_answers_html(answers)}</ul>
+    {f"<p>{actions_html}</p>" if actions_html else ""}
+    <p>— Lakodi autoservis</p>
+    """
+    return send_html_email(to_email, f"Nová poptávka #{zakazka_id} – {name}", html)
 
 
 def send_booking_update_email(

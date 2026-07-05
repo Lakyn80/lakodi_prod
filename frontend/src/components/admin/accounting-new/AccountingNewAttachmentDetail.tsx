@@ -14,11 +14,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ACCOUNTING_NEW_ROUTE,
   AccountingNewRequestError,
+  downloadAccountingNewAttachment,
   getAccountingNewAttachment,
   getAccountingNewAttachmentAuditEvents,
 } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewAttachmentDetailState } from "@/types/accountingNew";
 import { AccountingNewAttachmentStatusBadge } from "@/components/admin/accounting-new/AccountingNewAttachmentStatusBadge";
+import { AccountingNewAttachmentLinkForm } from "@/components/admin/accounting-new/AccountingNewAttachmentLinkForm";
 import {
   formatAccountingNewDateTime,
   formatAccountingNewFileSize,
@@ -56,6 +58,9 @@ export function AccountingNewAttachmentDetail({ attachmentId }: { attachmentId: 
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [state, setState] = useState<AccountingNewAttachmentDetailState>({ status: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<AccountingNewApiError | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -117,7 +122,31 @@ export function AccountingNewAttachmentDetail({ attachmentId }: { attachmentId: 
     void loadDetail();
 
     return () => controller.abort();
-  }, [attachmentId, t.errors.attachmentDetailTitle]);
+  }, [attachmentId, t.errors.attachmentDetailTitle, reloadKey]);
+
+  async function handleDownload() {
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    try {
+      const filename =
+        state.status === "ready" ? state.detail.originalFilename : t.attachmentWrite.downloadAction;
+      await downloadAccountingNewAttachment(attachmentId, filename);
+    } catch (error) {
+      setDownloadError(
+        error instanceof AccountingNewRequestError
+          ? error.apiError
+          : {
+              resource: "attachment-download",
+              message: error instanceof Error ? error.message : t.errors.actionFailed,
+              status: null,
+              requiresLogin: false,
+            },
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  }
 
   if (state.status === "loading") {
     return <DetailLoading />;
@@ -160,7 +189,6 @@ export function AccountingNewAttachmentDetail({ attachmentId }: { attachmentId: 
           <Link href={ACCOUNTING_NEW_ROUTE}>{t.attachmentDetail.backLabel}</Link>
         </Button>
         <Badge variant="outline">{t.attachmentDetail.badge}</Badge>
-        <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
       </div>
 
       {partialError ? (
@@ -276,13 +304,19 @@ export function AccountingNewAttachmentDetail({ attachmentId }: { attachmentId: 
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {t.attachmentDetail.sections.operations}
             </h2>
-            <p className="text-sm text-muted-foreground">{t.attachmentDetail.operationsDescription}</p>
-            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-              <li>{t.attachmentDetail.operationsItemOne}</li>
-              <li>{t.attachmentDetail.operationsItemTwo}</li>
-              <li>{t.attachmentDetail.operationsItemThree}</li>
-            </ul>
-            <p className="text-sm text-muted-foreground">{t.attachmentDetail.oldInvoicesDescription}</p>
+            {downloadError ? (
+              <Alert variant="destructive">
+                <AlertTitle>{t.documentWrite.mutation.errorTitle}</AlertTitle>
+                <AlertDescription>{translateAccountingNewApiError(t, downloadError)}</AlertDescription>
+              </Alert>
+            ) : null}
+            <Button type="button" variant="outline" disabled={isDownloading} onClick={() => void handleDownload()}>
+              {t.attachmentWrite.downloadAction}
+            </Button>
+            <AccountingNewAttachmentLinkForm
+              attachmentId={detail.id}
+              onLinked={() => setReloadKey((current) => current + 1)}
+            />
           </section>
 
           {auditEvents.length > 0 ? (
