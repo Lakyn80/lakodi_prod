@@ -52,7 +52,8 @@ export function AccountingNewRecurringTemplatesTable({
   const t = translations[language].accountingNew;
 
   return (
-    <Table>
+    <div className="overflow-x-auto">
+      <Table>
       <TableHeader>
         <TableRow>
           <TableHead>{t.recurring.table.name}</TableHead>
@@ -108,5 +109,6 @@ export function AccountingNewRecurringTemplatesTable({
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }

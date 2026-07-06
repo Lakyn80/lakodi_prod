@@ -129,10 +129,11 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
         entityType: "document",
         labelKey: "rag.entityTypes.document",
         searchableFields: [
-          { field: "customerName", labelKey: "rag.searchableFields.customerName", weight: 5 },
+          { field: "name", labelKey: "rag.searchableFields.name", weight: 5 },
+          { field: "email", labelKey: "rag.searchableFields.email", weight: 4 },
           { field: "ico", labelKey: "rag.searchableFields.ico", weight: 4 },
-          { field: "dic", labelKey: "rag.searchableFields.dic", weight: 4 },
-          { field: "email", labelKey: "rag.searchableFields.email", weight: 3 },
+          { field: "dic", labelKey: "rag.searchableFields.dic", weight: 3 },
+          { field: "country", labelKey: "rag.searchableFields.country", weight: 2 },
         ],
       },
       voice: {
@@ -612,7 +613,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     relatedModuleIds: ["recurring-detail", "dashboard", "documents", "expenses", "suppliers"],
     gridModuleId: "recurring",
   },
-    { canGenerate: true, canUpdate: true },
+    { canCreate: true, canGenerate: true, canUpdate: true },
   ),
   createRegistryEntry(
     {
@@ -648,7 +649,36 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     },
     relatedModuleIds: ["recurring", "documents", "expenses", "suppliers"],
   },
-    { canGenerate: true, canUpdate: true },
+    { canGenerate: true, canUpdate: true, canCreate: true },
+  ),
+  createRegistryEntry(
+    {
+      id: "settings",
+      route: `${ACCOUNTING_NEW_BASE_ROUTE}#settings`,
+      labelKey: "moduleRegistry.settings.label",
+      descriptionKey: "moduleRegistry.settings.description",
+      entityType: "settings",
+      readAvailability: "read-only",
+      writeEnabled: true,
+      featureStatus: "implemented-write",
+      rag: {
+        entityType: "settings",
+        labelKey: "rag.entityTypes.settings",
+        searchableFields: [
+          { field: "name", labelKey: "rag.searchableFields.issuerName", weight: 5 },
+          { field: "ico", labelKey: "rag.searchableFields.ico", weight: 4 },
+          { field: "currency", labelKey: "rag.searchableFields.defaultCurrency", weight: 4 },
+          { field: "paymentMethod", labelKey: "rag.searchableFields.paymentMethod", weight: 3 },
+        ],
+      },
+      voice: {
+        labelKey: "voice.labels.settings",
+        aliasKeys: ["voice.aliases.settings"],
+      },
+      relatedModuleIds: ["documents", "exports", "dashboard"],
+      gridModuleId: "settings",
+    },
+    { canUpdate: true },
   ),
   createRegistryEntry(
     {
@@ -715,6 +745,7 @@ export const accountingNewGridModuleIds: AccountingNewModuleId[] = [
   "reminders",
   "attachments",
   "recurring",
+  "settings",
   "exports",
   "audit",
 ];

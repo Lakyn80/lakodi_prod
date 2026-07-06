@@ -3329,3 +3329,33 @@ export async function cancelAccountingNewRecurringTemplate(
   );
   return mapRecurringTemplateSummary(data);
 }
+
+export async function createAccountingNewRecurringTemplate(
+  payload: import("@/types/accountingNew").AccountingNewRecurringTemplateWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringTemplateSummary> {
+  const data = await mutateAccountingNewJson<Parameters<typeof mapRecurringTemplateSummary>[0]>(
+    "recurring-create",
+    "/recurring-templates",
+    "POST",
+    payload,
+    params.signal,
+  );
+  return mapRecurringTemplateSummary(data);
+}
+
+export async function updateAccountingNewRecurringTemplate(
+  templateId: number | string,
+  payload: import("@/types/accountingNew").AccountingNewRecurringTemplateWritePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecurringTemplateSummary> {
+  const normalizedId = Number.parseInt(String(templateId), 10);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapRecurringTemplateSummary>[0]>(
+    "recurring-update",
+    `/recurring-templates/${normalizedId}`,
+    "PUT",
+    payload,
+    params.signal,
+  );
+  return mapRecurringTemplateSummary(data);
+}

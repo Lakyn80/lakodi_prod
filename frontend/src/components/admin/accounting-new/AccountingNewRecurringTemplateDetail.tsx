@@ -30,6 +30,7 @@ import { AccountingNewMoney } from "@/components/admin/accounting-new/Accounting
 import { AccountingNewRecurringGenerationsTable } from "@/components/admin/accounting-new/AccountingNewRecurringGenerationsTable";
 import { AccountingNewRecurringStatusBadge } from "@/components/admin/accounting-new/AccountingNewRecurringStatusBadge";
 import { AccountingNewRecurringTemplateActions } from "@/components/admin/accounting-new/AccountingNewRecurringTemplateActions";
+import { canAccountingNewRecurringTemplateEdit } from "@/lib/accountingNewRecurringWrite";
 import {
   formatAccountingNewDate,
   formatAccountingNewDateTime,
@@ -242,6 +243,12 @@ export function AccountingNewRecurringTemplateDetail({
         template={detail}
         onUpdated={(updated) => setState((current) => (current.status === "ready" ? { ...current, detail: updated } : current))}
       />
+
+      {canAccountingNewRecurringTemplateEdit(detail) ? (
+        <Button variant="outline" asChild className="min-h-11">
+          <Link href={`${ACCOUNTING_NEW_ROUTE}/opakovane/${detail.id}/upravit`}>{t.recurringForm.editAction}</Link>
+        </Button>
+      ) : null}
 
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">

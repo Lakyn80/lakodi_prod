@@ -3697,3 +3697,19 @@
   - mobile/PWA acceptance pass + Docker smoke before production deploy
   - run `pwsh -File scripts/backfill-invoice-subjects.ps1` on target DB before operator UAT
 - Commit message: `Add accounting new write flows for bank todos reminders recurring audit`
+
+## Batch 23E Recurring CRUD RAG metadata production hardening
+
+- Date: `2026-07-06`
+- Scope:
+  - recurring template create/edit routes (`/opakovane/novy`, `/opakovane/[id]/upravit`) + `AccountingNewRecurringTemplateForm`
+  - API `createAccountingNewRecurringTemplate`, `updateAccountingNewRecurringTemplate`
+  - RAG catalog export `getAccountingNewRagModuleCatalog` in `accountingNewRag.ts` with action safety (confirm-required for write/send/apply/generate)
+  - settings module in registry + grid; extended subject RAG searchable fields
+  - removed stale read-only copy from attachments/reminder emails panels
+  - mobile: sticky save footer + overflow-x on recurring table
+  - i18n `recurringForm`, `rag.actions`, `moduleRegistry.settings` (cs/ua/ru/en) via `scripts/merge-23e-i18n.mjs`
+- Tests run:
+  - `scripts/check-accounting-i18n.ps1` -> passed
+  - `npm run build` -> pending verification after type fixes
+- Commit message: `Complete accounting recurring CRUD and RAG metadata for production`

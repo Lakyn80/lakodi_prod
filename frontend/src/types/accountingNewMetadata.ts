@@ -23,6 +23,7 @@ export type AccountingNewModuleId =
   | "recurring"
   | "recurring-detail"
   | "exports"
+  | "settings"
   | "audit";
 
 export type AccountingNewEntityType =
@@ -47,7 +48,8 @@ export type AccountingNewEntityType =
   | "recurring_template"
   | "recurringGeneration"
   | "recurring_generation"
-  | "export";
+  | "export"
+  | "settings";
 
 export type AccountingNewFeatureStatus = "implemented-read-only" | "implemented-write" | "deferred" | "future";
 
@@ -105,7 +107,10 @@ export type AccountingNewSearchableField =
   | "attachmentType"
   | "name"
   | "entityType"
-  | "eventType";
+  | "eventType"
+  | "issuerName"
+  | "defaultCurrency"
+  | "paymentMethod";
 
 export interface AccountingNewSearchableFieldMetadata {
   field: AccountingNewSearchableField;
@@ -122,6 +127,27 @@ export interface AccountingNewRagMetadata {
 export interface AccountingNewVoiceMetadata {
   labelKey: string;
   aliasKeys: string[];
+}
+
+export type AccountingNewActionKind =
+  | "read"
+  | "create"
+  | "update"
+  | "delete"
+  | "send"
+  | "export"
+  | "import"
+  | "apply"
+  | "generate"
+  | "upload"
+  | "link"
+  | "archive";
+
+export interface AccountingNewActionMetadata {
+  id: string;
+  labelKey: string;
+  kind: AccountingNewActionKind;
+  confirmRequired: boolean;
 }
 
 export interface AccountingNewCapabilityFlags {

@@ -125,6 +125,10 @@ function getModuleStats(
       badge: t.exportsWrite.badge,
       detail: t.dashboard.moduleStats.exports,
     },
+    settings: {
+      badge: t.settingsWrite.badge,
+      detail: t.settingsWrite.title,
+    },
     audit: {
       badge: t.common.readyBadge,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.audit, {

@@ -10,6 +10,7 @@ export type AccountingNewModuleId =
   | "recurring"
   | "attachments"
   | "exports"
+  | "settings"
   | "audit";
 
 export type AccountingNewModuleAvailability = "placeholder" | "read-only";
@@ -995,4 +996,60 @@ export interface AccountingNewRecurringGenerationResult {
   runDate: string;
   status: string;
   message: string | null;
+}
+
+export interface AccountingNewRecurringTemplateFormItem {
+  description: string;
+  quantity: string;
+  unitPrice: string;
+}
+
+export interface AccountingNewRecurringTemplateFormState {
+  templateType: "invoice" | "expense";
+  documentKind: string;
+  name: string;
+  status: string;
+  recurrenceInterval: string;
+  recurrenceCount: string;
+  nextRunDate: string;
+  businessMode: string;
+  taxMode: string;
+  currency: string;
+  vatRate: string;
+  note: string;
+  subjectId: string;
+  supplierId: string;
+  paymentMethod: string;
+  bankAccountNumber: string;
+  bankAccountPrefix: string;
+  bankCode: string;
+  bankIban: string;
+  items: AccountingNewRecurringTemplateFormItem[];
+}
+
+export interface AccountingNewRecurringTemplateWritePayload {
+  template_type: "invoice" | "expense";
+  document_kind?: string | null;
+  subject_id?: number | null;
+  supplier_id?: number | null;
+  name: string;
+  status: string;
+  recurrence_interval: string;
+  recurrence_count: number;
+  next_run_date: string;
+  business_mode?: string | null;
+  tax_mode?: string | null;
+  currency: string;
+  vat_rate?: number | null;
+  note?: string | null;
+  payment_method?: string | null;
+  bank_account_number?: string | null;
+  bank_account_prefix?: string | null;
+  bank_code?: string | null;
+  bank_iban?: string | null;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+  }>;
 }

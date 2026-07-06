@@ -130,7 +130,6 @@ export function AccountingNewReminderEmailsPanel() {
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{t.reminderEmails.badge}</Badge>
-          <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.reminderEmails.title}</CardTitle>
@@ -138,9 +137,6 @@ export function AccountingNewReminderEmailsPanel() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t.reminderEmails.readOnlyNote}</p>
-        <p className="text-sm text-muted-foreground">{t.reminderEmails.aggregationNote}</p>
-
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.reminderEmailsTitle}</AlertTitle>

@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +18,7 @@ import type {
   AccountingNewSupplierSummary,
 } from "@/types/accountingNew";
 import { AccountingNewRecurringTemplatesTable } from "@/components/admin/accounting-new/AccountingNewRecurringTemplatesTable";
+import { ACCOUNTING_NEW_ROUTE } from "@/lib/accountingNew";
 import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
@@ -127,6 +130,12 @@ export function AccountingNewRecurringTemplatesPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {!authRequired ? (
+          <Button asChild className="min-h-11">
+            <Link href={`${ACCOUNTING_NEW_ROUTE}/opakovane/novy`}>{t.recurringForm.createAction}</Link>
+          </Button>
+        ) : null}
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.recurringTitle}</AlertTitle>

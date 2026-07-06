@@ -1266,6 +1266,10 @@ export const translations = {
         audit: {
           label: "Audit",
           description: "Historie změn v účetnictví."
+        },
+        settings: {
+          label: "Nastavení",
+          description: "Údaje vystavitele, výchozí měna a platební údaje pro nové doklady."
         }
       },
       rag: {
@@ -1302,7 +1306,8 @@ export const translations = {
           payment_added: "Přidána platba",
           payment_removed: "Odebrána platba",
           cancelled: "Zrušeno",
-          admin_api: "Administrace"
+          admin_api: "Administrace",
+          settings: "Nastavení účetnictví"
         },
         searchableFields: {
           invoiceNumber: "Číslo dokladu",
@@ -1352,7 +1357,24 @@ export const translations = {
           attachmentType: "Typ přílohy",
           name: "Název",
           entityType: "Typ entity",
-          eventType: "Typ události"
+          eventType: "Typ události",
+          issuerName: "Název vystavitele",
+          defaultCurrency: "Výchozí měna",
+          paymentMethod: "Způsob platby"
+        },
+        actions: {
+          read: "Zobrazit",
+          create: "Vytvořit",
+          update: "Upravit",
+          delete: "Smazat",
+          send: "Odeslat",
+          export: "Exportovat",
+          import: "Importovat",
+          apply: "Přiřadit",
+          generate: "Vygenerovat",
+          upload: "Nahrát",
+          link: "Přiřadit vazbu",
+          archive: "Archivovat"
         }
       },
       voice: {
@@ -1379,7 +1401,8 @@ export const translations = {
           recurring: "Opakované šablony",
           recurringDetail: "Detail opakované šablony",
           exports: "Exporty",
-          audit: "Audit"
+          audit: "Audit",
+          settings: "Nastavení účetnictví"
         },
         aliases: {
           dashboard: [
@@ -1520,6 +1543,11 @@ export const translations = {
           audit: [
             "audit",
             "auditní log"
+          ],
+          settings: [
+            "nastavení účetnictví",
+            "nastavení faktur",
+            "issuer settings"
           ]
         }
       },
@@ -1741,6 +1769,58 @@ export const translations = {
       auditPanel: {
         title: "Auditní události",
         description: "Poslední změny a operace v modulu Účetnictví."
+      },
+      recurringForm: {
+        createTitle: "Nová opakovaná šablona",
+        editTitle: "Upravit opakovanou šablonu",
+        description: "Nastavte pravidelné vystavování dokladů nebo výdajů.",
+        createAction: "Nová šablona",
+        editAction: "Upravit šablonu",
+        saveAction: "Uložit šablonu",
+        saving: "Ukládám…",
+        loading: "Načítám šablonu…",
+        itemsTitle: "Položky šablony",
+        addItem: "Přidat položku",
+        templateTypes: {
+          invoice: "Vydaný doklad",
+          expense: "Výdaj"
+        },
+        placeholders: {
+          supplier: "Vyberte dodavatele"
+        },
+        fields: {
+          templateType: "Typ šablony",
+          name: "Název šablony",
+          documentKind: "Druh dokladu",
+          status: "Stav",
+          recurrenceInterval: "Interval",
+          recurrenceCount: "Počet intervalů",
+          nextRunDate: "Další běh",
+          currency: "Měna",
+          businessMode: "Obchodní režim",
+          taxMode: "Daňový režim",
+          vatRate: "Sazba DPH",
+          subject: "Odběratel",
+          supplier: "Dodavatel",
+          paymentMethod: "Způsob platby",
+          bankAccountNumber: "Číslo účtu",
+          bankCode: "Kód banky",
+          bankIban: "IBAN",
+          note: "Poznámka",
+          itemDescription: "Popis",
+          itemQuantity: "Množství",
+          itemUnitPrice: "Jednotková cena"
+        },
+        validation: {
+          title: "Formulář nelze uložit",
+          nameRequired: "Název šablony je povinný.",
+          nextRunDateRequired: "Datum dalšího běhu je povinné.",
+          subjectRequired: "Vyberte odběratele.",
+          supplierRequired: "Vyberte dodavatele.",
+          paymentRequired: "Vyplňte platební údaje výdaje.",
+          itemsRequired: "Přidejte alespoň jednu položku.",
+          itemNumbers: "Množství musí být větší než nula."
+        }
       }
     },
   },
@@ -3011,6 +3091,10 @@ export const translations = {
         audit: {
           label: "Audit",
           description: "Accounting change history."
+        },
+        settings: {
+          label: "Налаштування",
+          description: "Дані постачальника послуг, валюта за замовчуванням і платіжні реквізити."
         }
       },
       rag: {
@@ -3047,7 +3131,8 @@ export const translations = {
           payment_added: "Payment added",
           payment_removed: "Payment removed",
           cancelled: "Cancelled",
-          admin_api: "Administration"
+          admin_api: "Administration",
+          settings: "Налаштування бухгалтерії"
         },
         searchableFields: {
           invoiceNumber: "Document number",
@@ -3097,7 +3182,24 @@ export const translations = {
           attachmentType: "Attachment type",
           name: "Name",
           entityType: "Entity type",
-          eventType: "Event type"
+          eventType: "Event type",
+          issuerName: "Назва постачальника послуг",
+          defaultCurrency: "Валюта за замовчуванням",
+          paymentMethod: "Спосіб оплати"
+        },
+        actions: {
+          read: "Переглянути",
+          create: "Створити",
+          update: "Редагувати",
+          delete: "Видалити",
+          send: "Надіслати",
+          export: "Експортувати",
+          import: "Імпортувати",
+          apply: "Призначити",
+          generate: "Згенерувати",
+          upload: "Завантажити",
+          link: "Прив'язати",
+          archive: "Архівувати"
         }
       },
       voice: {
@@ -3124,7 +3226,8 @@ export const translations = {
           recurring: "Recurring templates",
           recurringDetail: "Recurring template detail",
           exports: "Exports",
-          audit: "Audit"
+          audit: "Audit",
+          settings: "Налаштування бухгалтерії"
         },
         aliases: {
           dashboard: [
@@ -3265,6 +3368,11 @@ export const translations = {
           audit: [
             "audit",
             "audit log"
+          ],
+          settings: [
+            "налаштування бухгалтерії",
+            "налаштування рахунків",
+            "issuer settings"
           ]
         }
       },
@@ -3486,6 +3594,58 @@ export const translations = {
       auditPanel: {
         title: "Audit-події",
         description: "Останні зміни та операції в модулі бухгалтерії."
+      },
+      recurringForm: {
+        createTitle: "Новий повторюваний шаблон",
+        editTitle: "Редагувати повторюваний шаблон",
+        description: "Налаштуйте регулярне виставлення документів або витрат.",
+        createAction: "Новий шаблон",
+        editAction: "Редагувати шаблон",
+        saveAction: "Зберегти шаблон",
+        saving: "Зберігаю…",
+        loading: "Завантаження шаблону…",
+        itemsTitle: "Позиції шаблону",
+        addItem: "Додати позицію",
+        templateTypes: {
+          invoice: "Виданий документ",
+          expense: "Витрата"
+        },
+        placeholders: {
+          supplier: "Оберіть постачальника"
+        },
+        fields: {
+          templateType: "Тип шаблону",
+          name: "Назва шаблону",
+          documentKind: "Тип документа",
+          status: "Стан",
+          recurrenceInterval: "Інтервал",
+          recurrenceCount: "Кількість інтервалів",
+          nextRunDate: "Наступний запуск",
+          currency: "Валюта",
+          businessMode: "Бізнес-режим",
+          taxMode: "Податковий режим",
+          vatRate: "Ставка ПДВ",
+          subject: "Одержувач",
+          supplier: "Постачальник",
+          paymentMethod: "Спосіб оплати",
+          bankAccountNumber: "Номер рахунку",
+          bankCode: "Код банку",
+          bankIban: "IBAN",
+          note: "Примітка",
+          itemDescription: "Опис",
+          itemQuantity: "Кількість",
+          itemUnitPrice: "Ціна за одиницю"
+        },
+        validation: {
+          title: "Форму не можна зберегти",
+          nameRequired: "Назва шаблону обов'язкова.",
+          nextRunDateRequired: "Дата наступного запуску обов'язкова.",
+          subjectRequired: "Оберіть одержувача.",
+          supplierRequired: "Оберіть постачальника.",
+          paymentRequired: "Заповніть платіжні реквізити витрати.",
+          itemsRequired: "Додайте принаймні одну позицію.",
+          itemNumbers: "Кількість має бути більша за нуль."
+        }
       }
     },
   },
@@ -4756,6 +4916,10 @@ export const translations = {
         audit: {
           label: "Audit",
           description: "История изменений в бухгалтерии."
+        },
+        settings: {
+          label: "Настройки",
+          description: "Данные поставщика услуг, валюта по умолчанию и платёжные реквизиты."
         }
       },
       rag: {
@@ -4792,7 +4956,8 @@ export const translations = {
           payment_added: "Добавлен платёж",
           payment_removed: "Платёж удалён",
           cancelled: "Отменено",
-          admin_api: "Администрирование"
+          admin_api: "Администрирование",
+          settings: "Настройки бухгалтерии"
         },
         searchableFields: {
           invoiceNumber: "Номер документа",
@@ -4842,7 +5007,24 @@ export const translations = {
           attachmentType: "Тип вложения",
           name: "Название",
           entityType: "Тип сущности",
-          eventType: "Тип события"
+          eventType: "Тип события",
+          issuerName: "Название поставщика услуг",
+          defaultCurrency: "Валюта по умолчанию",
+          paymentMethod: "Способ оплаты"
+        },
+        actions: {
+          read: "Просмотреть",
+          create: "Создать",
+          update: "Редактировать",
+          delete: "Удалить",
+          send: "Отправить",
+          export: "Экспортировать",
+          import: "Импортировать",
+          apply: "Назначить",
+          generate: "Сгенерировать",
+          upload: "Загрузить",
+          link: "Связать",
+          archive: "Архивировать"
         }
       },
       voice: {
@@ -4869,7 +5051,8 @@ export const translations = {
           recurring: "Повторяющиеся шаблоны",
           recurringDetail: "Детали повторяющегося шаблона",
           exports: "Экспорты",
-          audit: "Аудит"
+          audit: "Аудит",
+          settings: "Настройки бухгалтерии"
         },
         aliases: {
           dashboard: [
@@ -5010,6 +5193,11 @@ export const translations = {
           audit: [
             "аудит",
             "audit log"
+          ],
+          settings: [
+            "настройки бухгалтерии",
+            "настройки счетов",
+            "issuer settings"
           ]
         }
       },
@@ -5231,6 +5419,58 @@ export const translations = {
       auditPanel: {
         title: "Audit-события",
         description: "Последние изменения и операции в модуле бухгалтерии."
+      },
+      recurringForm: {
+        createTitle: "Новый повторяющийся шаблон",
+        editTitle: "Редактировать шаблон",
+        description: "Настройте регулярное выставление документов или расходов.",
+        createAction: "Новый шаблон",
+        editAction: "Редактировать шаблон",
+        saveAction: "Сохранить шаблон",
+        saving: "Сохраняю…",
+        loading: "Загрузка шаблона…",
+        itemsTitle: "Позиции шаблона",
+        addItem: "Добавить позицию",
+        templateTypes: {
+          invoice: "Выставленный документ",
+          expense: "Расход"
+        },
+        placeholders: {
+          supplier: "Выберите поставщика"
+        },
+        fields: {
+          templateType: "Тип шаблона",
+          name: "Название шаблона",
+          documentKind: "Тип документа",
+          status: "Статус",
+          recurrenceInterval: "Интервал",
+          recurrenceCount: "Количество интервалов",
+          nextRunDate: "Следующий запуск",
+          currency: "Валюта",
+          businessMode: "Бизнес-режим",
+          taxMode: "Налоговый режим",
+          vatRate: "Ставка НДС",
+          subject: "Получатель",
+          supplier: "Поставщик",
+          paymentMethod: "Способ оплаты",
+          bankAccountNumber: "Номер счёта",
+          bankCode: "Код банка",
+          bankIban: "IBAN",
+          note: "Примечание",
+          itemDescription: "Описание",
+          itemQuantity: "Количество",
+          itemUnitPrice: "Цена за единицу"
+        },
+        validation: {
+          title: "Форму нельзя сохранить",
+          nameRequired: "Название шаблона обязательно.",
+          nextRunDateRequired: "Дата следующего запуска обязательна.",
+          subjectRequired: "Выберите получателя.",
+          supplierRequired: "Выберите поставщика.",
+          paymentRequired: "Заполните платёжные реквизиты расхода.",
+          itemsRequired: "Добавьте хотя бы одну позицию.",
+          itemNumbers: "Количество должно быть больше нуля."
+        }
       }
     },
   },
@@ -6501,6 +6741,10 @@ export const translations = {
         audit: {
           label: "Audit",
           description: "Accounting change history."
+        },
+        settings: {
+          label: "Settings",
+          description: "Issuer details, default currency, and payment details for new documents."
         }
       },
       rag: {
@@ -6537,7 +6781,8 @@ export const translations = {
           payment_added: "Payment added",
           payment_removed: "Payment removed",
           cancelled: "Cancelled",
-          admin_api: "Administration"
+          admin_api: "Administration",
+          settings: "Accounting settings"
         },
         searchableFields: {
           invoiceNumber: "Document number",
@@ -6587,7 +6832,24 @@ export const translations = {
           attachmentType: "Attachment type",
           name: "Name",
           entityType: "Entity type",
-          eventType: "Event type"
+          eventType: "Event type",
+          issuerName: "Issuer name",
+          defaultCurrency: "Default currency",
+          paymentMethod: "Payment method"
+        },
+        actions: {
+          read: "View",
+          create: "Create",
+          update: "Update",
+          delete: "Delete",
+          send: "Send",
+          export: "Export",
+          import: "Import",
+          apply: "Apply",
+          generate: "Generate",
+          upload: "Upload",
+          link: "Link",
+          archive: "Archive"
         }
       },
       voice: {
@@ -6614,7 +6876,8 @@ export const translations = {
           recurring: "Recurring templates",
           recurringDetail: "Recurring template detail",
           exports: "Exports",
-          audit: "Audit"
+          audit: "Audit",
+          settings: "Accounting settings"
         },
         aliases: {
           dashboard: [
@@ -6755,6 +7018,11 @@ export const translations = {
           audit: [
             "audit",
             "audit log"
+          ],
+          settings: [
+            "accounting settings",
+            "invoice settings",
+            "issuer settings"
           ]
         }
       },
@@ -6976,6 +7244,58 @@ export const translations = {
       auditPanel: {
         title: "Audit events",
         description: "Recent changes and operations in Accounting."
+      },
+      recurringForm: {
+        createTitle: "New recurring template",
+        editTitle: "Edit recurring template",
+        description: "Configure recurring document or expense generation.",
+        createAction: "New template",
+        editAction: "Edit template",
+        saveAction: "Save template",
+        saving: "Saving…",
+        loading: "Loading template…",
+        itemsTitle: "Template items",
+        addItem: "Add item",
+        templateTypes: {
+          invoice: "Issued document",
+          expense: "Expense"
+        },
+        placeholders: {
+          supplier: "Select supplier"
+        },
+        fields: {
+          templateType: "Template type",
+          name: "Template name",
+          documentKind: "Document kind",
+          status: "Status",
+          recurrenceInterval: "Interval",
+          recurrenceCount: "Interval count",
+          nextRunDate: "Next run date",
+          currency: "Currency",
+          businessMode: "Business mode",
+          taxMode: "Tax mode",
+          vatRate: "VAT rate",
+          subject: "Customer",
+          supplier: "Supplier",
+          paymentMethod: "Payment method",
+          bankAccountNumber: "Account number",
+          bankCode: "Bank code",
+          bankIban: "IBAN",
+          note: "Note",
+          itemDescription: "Description",
+          itemQuantity: "Quantity",
+          itemUnitPrice: "Unit price"
+        },
+        validation: {
+          title: "Form cannot be saved",
+          nameRequired: "Template name is required.",
+          nextRunDateRequired: "Next run date is required.",
+          subjectRequired: "Select a customer.",
+          supplierRequired: "Select a supplier.",
+          paymentRequired: "Fill in expense payment details.",
+          itemsRequired: "Add at least one item.",
+          itemNumbers: "Quantity must be greater than zero."
+        }
       }
     },
   },
