@@ -1,4 +1,4 @@
-const CACHE_NAME = "lakodi-shell-v2";
+const CACHE_NAME = "lakodi-shell-v3";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
@@ -50,7 +50,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const cacheableDestinations = new Set(["style", "script", "image", "font"]);
+  // Avoid caching Next.js scripts/styles so a new build cannot mix with stale chunks.
+  const cacheableDestinations = new Set(["image", "font"]);
   const isCacheableAsset =
     cacheableDestinations.has(event.request.destination) ||
     requestUrl.pathname === "/manifest.webmanifest";

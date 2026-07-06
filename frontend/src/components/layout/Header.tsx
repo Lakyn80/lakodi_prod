@@ -20,8 +20,13 @@ export default function Header() {
   const t = translations[language];
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [desktopHomeHref, setDesktopHomeHref] = useState("/");
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     const checkAdmin = () => {
@@ -147,47 +152,53 @@ export default function Header() {
           </div>
 
           {/* Mobile hamburger */}
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-72 border-border bg-card">
-              <nav className="mt-8 flex flex-col gap-2">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`rounded-md px-4 py-3 text-base font-medium transition-colors ${
-                      isActive(item.href)
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-              <div className="mt-6 flex flex-col gap-3 px-4">
-                <Button
-                  className="w-full gap-2"
-                  size="lg"
-                  onClick={() => { openChatbot(); setOpen(false); }}
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  {t.hero.cta.chat}
+          {hasMounted ? (
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild className="lg:hidden">
+                <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+                  <Menu className="h-5 w-5" />
                 </Button>
-                <a href={CONTACT.getPhoneUrl()}>
-                  <Button variant="outline" className="w-full gap-2" size="lg">
-                    <Phone className="h-5 w-5" />
-                    {t.hero.cta.call}
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72 border-border bg-card">
+                <nav className="mt-8 flex flex-col gap-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`rounded-md px-4 py-3 text-base font-medium transition-colors ${
+                        isActive(item.href)
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+                <div className="mt-6 flex flex-col gap-3 px-4">
+                  <Button
+                    className="w-full gap-2"
+                    size="lg"
+                    onClick={() => { openChatbot(); setOpen(false); }}
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    {t.hero.cta.chat}
                   </Button>
-                </a>
-              </div>
-            </SheetContent>
-          </Sheet>
+                  <a href={CONTACT.getPhoneUrl()}>
+                    <Button variant="outline" className="w-full gap-2" size="lg">
+                      <Phone className="h-5 w-5" />
+                      {t.hero.cta.call}
+                    </Button>
+                  </a>
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu">
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
     </header>

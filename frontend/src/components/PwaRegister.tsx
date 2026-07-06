@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ADMIN_HOSTNAME, normalizeHostname } from "@/lib/hosts";
-import { shouldRegisterPublicPwa, unregisterServiceWorkers } from "@/lib/pwa";
+import { disableAppPwa, shouldRegisterPublicPwa, unregisterServiceWorkers } from "@/lib/pwa";
 
 export default function PwaRegister() {
   useEffect(() => {
@@ -16,9 +15,7 @@ export default function PwaRegister() {
       const currentLocation = window.location;
 
       if (!shouldRegisterPublicPwa(currentLocation)) {
-        if (normalizeHostname(currentLocation.hostname) === ADMIN_HOSTNAME) {
-          await unregisterServiceWorkers((scopePathname) => scopePathname === "/");
-        }
+        await disableAppPwa();
         return;
       }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "lakodi-admin-shell-v1";
+const CACHE_NAME = "lakodi-admin-shell-v2";
 const PRECACHE_URLS = [
   "/admin/login",
   "/admin/",
@@ -61,8 +61,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache static assets: scripts, styles, images, fonts, admin manifest
-  const cacheableDestinations = new Set(["style", "script", "image", "font"]);
+  // Avoid caching Next.js scripts/styles so a new build cannot mix with stale chunks.
+  const cacheableDestinations = new Set(["image", "font"]);
   const isCacheableAsset =
     cacheableDestinations.has(event.request.destination) ||
     requestUrl.pathname === "/admin/manifest.webmanifest";

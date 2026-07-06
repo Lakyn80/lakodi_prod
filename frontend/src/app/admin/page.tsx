@@ -90,6 +90,19 @@ const initialFilters: Filters = {
 const formatCzk = (value: number) =>
   new Intl.NumberFormat("cs-CZ", { style: "currency", currency: "CZK", maximumFractionDigits: 0 }).format(value);
 
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("cs-CZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 const contains = (value: string | null | undefined, query: string) => {
   if (!query.trim()) return true;
   return String(value ?? "")
@@ -575,6 +588,7 @@ export default function AdminPage() {
                   <p className="font-medium text-foreground">{z.name}</p>
                   <p className="text-sm text-muted-foreground">{z.category}</p>
                   <p className="text-xs text-muted-foreground">Číslo objednávky: {getDisplayOrderNumber(z)}</p>
+                  <p className="text-xs text-muted-foreground">Přijato: {formatDateTime(z.created_at)}</p>
                   <p className="text-xs text-muted-foreground">Stav: {z.status}</p>
                 </Link>
               ))
@@ -601,6 +615,7 @@ export default function AdminPage() {
                   <p className="font-medium text-foreground">{z.name}</p>
                   <p className="text-sm text-muted-foreground">{z.category}</p>
                   <p className="text-xs text-muted-foreground">Číslo objednávky: {getDisplayOrderNumber(z)}</p>
+                  <p className="text-xs text-muted-foreground">Přijato: {formatDateTime(z.created_at)}</p>
                   <p className="text-xs text-muted-foreground">Stav: {z.status}</p>
                 </Link>
               ))

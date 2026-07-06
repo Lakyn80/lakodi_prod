@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from backend.app.db import get_db
 from backend.app.modules.admin.email_service import (
     send_booking_confirmation_email,
+    send_booking_owner_notification_email,
     send_booking_update_email,
 )
 from backend.app.modules.admin.router import require_admin
@@ -198,6 +199,7 @@ def create_zakazka(
     db.commit()
     db.refresh(z)
 
+    answers_obj = _load_answers_obj(z)
     whatsapp_message = _build_whatsapp_message(z)
     whatsapp_url = _build_whatsapp_url(whatsapp_message)
     confirmation_email_sent = (
@@ -209,6 +211,18 @@ def create_zakazka(
         if z.email
         else False
     )
+    owner_notification_email_sent = send_booking_owner_notification_email(
+        zakazka_id=z.id,
+        category=z.category,
+        name=z.name,
+        email=z.email,
+        phone=z.phone,
+        description=z.description,
+        answers=answers_obj,
+        callback_requested=z.callback_requested,
+        created_at=z.created_at,
+        photos_count=len(photo_paths),
+    )
 
     return {
         "id": z.id,
@@ -216,6 +230,7 @@ def create_zakazka(
         "whatsapp_message": whatsapp_message,
         "whatsapp_url": whatsapp_url,
         "confirmation_email_sent": confirmation_email_sent,
+        "owner_notification_email_sent": owner_notification_email_sent,
     }
 
 

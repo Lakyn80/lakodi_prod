@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Phone, Check, ImagePlus, ChevronLeft, Send } from "lucide-react";
+import { Phone, Check, ImagePlus, ChevronLeft, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,8 +18,6 @@ type Step = "category" | "form" | "success";
 
 interface SubmitResult {
   id: number;
-  whatsapp_message: string;
-  whatsapp_url?: string;
 }
 
 interface BookingFlowProps {
@@ -76,10 +74,8 @@ export default function BookingFlow({ onClose, compact, requireTerm = false }: B
       };
   const uiCopy = language === "cs"
     ? {
-        savedBookingInfo:
-          "Objednávka je uložena v adminu. WhatsApp se otevřel s předvyplněnou zprávou - stačí kliknout Odeslat, aby to došlo majiteli. Nebo nám zavolejte.",
-        savedInquiryInfo:
-          "Poptávka je uložena v adminu. WhatsApp se otevřel s předvyplněnou zprávou - stačí kliknout Odeslat, aby to došlo majiteli. Nebo nám zavolejte.",
+        notificationDelivered:
+          "Poptávka je uložená. Potvrzení jsme poslali na zadaný e-mail a my jsme dostali upozornění.",
         close: "Zavřít",
         backToCategory: "Zpět na výběr kategorie",
         emailInvalid: "Zadejte platný email",
@@ -92,10 +88,8 @@ export default function BookingFlow({ onClose, compact, requireTerm = false }: B
       }
     : language === "ua"
     ? {
-        savedBookingInfo:
-          "Запис збережено в адмінці. WhatsApp відкрився з готовим повідомленням - натисніть Надіслати, щоб воно дійшло власнику. Або зателефонуйте нам.",
-        savedInquiryInfo:
-          "Запит збережено в адмінці. WhatsApp відкрився з готовим повідомленням - натисніть Надіслати, щоб воно дійшло власнику. Або зателефонуйте нам.",
+        notificationDelivered:
+          "Запит збережено. Підтвердження надіслано на вказаний e-mail, а ми отримали сповіщення.",
         close: "Закрити",
         backToCategory: "Назад до вибору категорії",
         emailInvalid: "Введіть коректний email",
@@ -108,10 +102,8 @@ export default function BookingFlow({ onClose, compact, requireTerm = false }: B
       }
     : language === "ru"
     ? {
-        savedBookingInfo:
-          "Запись сохранена в админке. WhatsApp открылся с готовым сообщением - нажмите Отправить, чтобы оно дошло владельцу. Или позвоните нам.",
-        savedInquiryInfo:
-          "Запрос сохранен в админке. WhatsApp открылся с готовым сообщением - нажмите Отправить, чтобы оно дошло владельцу. Или позвоните нам.",
+        notificationDelivered:
+          "Заявка сохранена. Подтверждение отправлено на указанный e-mail, а мы получили уведомление.",
         close: "Закрыть",
         backToCategory: "Назад к выбору категории",
         emailInvalid: "Введите корректный email",
@@ -123,10 +115,8 @@ export default function BookingFlow({ onClose, compact, requireTerm = false }: B
         sending: "Отправляю…",
       }
     : {
-        savedBookingInfo:
-          "The booking is saved in admin. WhatsApp opened with a prefilled message - just click Send to deliver it to the owner. Or call us.",
-        savedInquiryInfo:
-          "The inquiry is saved in admin. WhatsApp opened with a prefilled message - just click Send to deliver it to the owner. Or call us.",
+        notificationDelivered:
+          "Your inquiry has been saved. We sent a confirmation to your email and we received the notification.",
         close: "Close",
         backToCategory: "Back to category selection",
         emailInvalid: "Enter a valid email",
@@ -197,9 +187,6 @@ export default function BookingFlow({ onClose, compact, requireTerm = false }: B
       setResult(data);
       setStep("success");
       toast({ title: flowSuccess });
-      // Automaticky otevřít WhatsApp – zpráva připravena k odeslání majiteli
-      const whatsappUrl = data.whatsapp_url || CONTACT.getWhatsAppUrl(data.whatsapp_message);
-      window.open(whatsappUrl, "_blank", "noopener");
     } catch {
       toast({ title: t.booking.errorSubmit, variant: "destructive" });
     } finally {
@@ -222,22 +209,8 @@ export default function BookingFlow({ onClose, compact, requireTerm = false }: B
               <Check className="h-8 w-8 text-primary" />
             </div>
             <h3 className="mb-2 text-xl font-bold text-foreground">{flowSuccess}</h3>
-            <p className="mb-6 text-sm text-muted-foreground">
-              {requireTerm
-                ? uiCopy.savedBookingInfo
-                : uiCopy.savedInquiryInfo}
-            </p>
+            <p className="mb-6 text-sm text-muted-foreground">{uiCopy.notificationDelivered}</p>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <a
-                href={result.whatsapp_url || CONTACT.getWhatsAppUrl(result.whatsapp_message)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button className="w-full gap-2 sm:w-auto" size="lg">
-                  <MessageCircle className="h-5 w-5" />
-                  {t.booking.sendWhatsApp}
-                </Button>
-              </a>
               <a href={CONTACT.getPhoneUrl()}>
                 <Button variant="outline" className="w-full gap-2 sm:w-auto" size="lg">
                   <Phone className="h-5 w-5" />

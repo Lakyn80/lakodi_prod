@@ -28,6 +28,18 @@ interface Zakazka {
 const STATUS_OPTIONS = ["poptávka", "odeslaná nabídka", "potvrzená objednávka", "hotovo"] as const;
 const getAnswerValue = (answers: Record<string, string> | undefined, key: string) =>
   String(answers?.[key] ?? "");
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("cs-CZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
 
 export default function ZakazkaDetailPage() {
   const params = useParams();
@@ -207,6 +219,10 @@ export default function ZakazkaDetailPage() {
             </dd>
           </div>
           <div>
+            <dt className="text-sm font-medium text-muted-foreground">Přijato</dt>
+            <dd className="text-foreground">{formatDateTime(zakazka.created_at)}</dd>
+          </div>
+          <div>
             <dt className="text-sm font-medium text-muted-foreground">Původní popis</dt>
             <dd className="whitespace-pre-wrap text-foreground">{zakazka.description}</dd>
           </div>
@@ -283,7 +299,7 @@ export default function ZakazkaDetailPage() {
 
         {zakazka.completed_at && (
           <p className="mt-3 text-sm text-muted-foreground">
-            Dokončeno: {new Date(zakazka.completed_at).toLocaleString("cs-CZ")}
+            Dokončeno: {formatDateTime(zakazka.completed_at)}
           </p>
         )}
 
