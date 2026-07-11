@@ -8,7 +8,6 @@ on:
       - completed
     branches:
       - develop
-      - main
 
 permissions:
   contents: read
@@ -154,6 +153,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=
             API_INTERNAL_URL=http://lakodi-backend:8016
+            NEXT_PUBLIC_ACCOUNTING_NEW_ENABLED=false
           platforms: linux/amd64
           push: true
           tags: ${{ steps.frontend-meta.outputs.tags }}

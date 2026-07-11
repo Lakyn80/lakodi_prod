@@ -79,6 +79,12 @@ previous_tag="$(read_env_value "${ENV_FILE}" "IMAGE_TAG")"
 backend_health_url="$(read_env_value "${ENV_FILE}" "BACKEND_HEALTHCHECK_URL")"
 frontend_health_url="$(read_env_value "${ENV_FILE}" "FRONTEND_HEALTHCHECK_URL")"
 
+if [[ -f "data/app.db" ]]; then
+  backup_stamp="$(date +%Y%m%d-%H%M%S)"
+  cp "data/app.db" "data/app.db.bak-${backup_stamp}"
+  echo "Záloha databáze: data/app.db.bak-${backup_stamp}"
+fi
+
 cp "${ENV_FILE}" "${ENV_FILE}.bak"
 update_env_value "${ENV_FILE}" "PREVIOUS_IMAGE_TAG" "${previous_tag}"
 update_env_value "${ENV_FILE}" "IMAGE_TAG" "${NEW_IMAGE_TAG}"

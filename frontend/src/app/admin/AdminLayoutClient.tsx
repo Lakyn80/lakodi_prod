@@ -1,5 +1,7 @@
 "use client";
 
+import { isAccountingNewEnabled } from "@/lib/accountingNewFeature";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -248,7 +250,7 @@ export default function AdminLayoutClient({
   const navItems = [
     { href: "/admin/", label: "Zakázky" },
     { href: "/admin/invoices", label: "Faktury" },
-    { href: "/admin/ucetnictvi-new", label: "Účetnictví" },
+    ...(isAccountingNewEnabled() ? [{ href: "/admin/ucetnictvi-new", label: "Účetnictví" }] : []),
     { href: "/admin/kalendar", label: "Kalendář" },
   ];
 
