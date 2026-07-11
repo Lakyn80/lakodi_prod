@@ -35,6 +35,9 @@ dist/
 data/app.db
 data/redis/
 data/uploads/
+backend/storage/
+
+in
 
 # Local temp and scratch files
 cookies.txt

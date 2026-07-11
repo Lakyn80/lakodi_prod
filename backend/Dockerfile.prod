@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir \
     resend \
     passlib \
     redis \
+    openpyxl \
     "bcrypt==4.0.1"
 
 EXPOSE 8016

@@ -3713,3 +3713,26 @@
   - `scripts/check-accounting-i18n.ps1` -> passed
   - `npm run build` -> pending verification after type fixes
 - Commit message: `Complete accounting recurring CRUD and RAG metadata for production`
+
+## Batch 23F Expense payment UX supplier picker XLSX export
+
+- Date: `2026-07-11`
+- Scope:
+  - expense detail amounts card shows `total_paid` and `remaining_amount` (parity with document detail)
+  - expense payment form prefills remaining balance after partial payment
+  - expense create: bank fields from settings + frontend validation (fixes HTTP 422)
+  - supplier picker for expense/recurring forms with snapshot prefill (`AccountingNewSupplierPicker`)
+  - document email i18n fallback; FastAPI validation error parsing in `accountingNew.ts`
+  - dev Docker base `python:3.11-slim-bookworm`; added `openpyxl` to backend Docker images for XLSX exports
+  - live QA script `scripts/test-accounting-new-qa-live.ps1`
+  - gitignore: `backend/storage/`, QA artifact `in`
+- Backend source changes: `None` (Docker/runtime only for openpyxl)
+- Protected legacy invoice files: untouched
+- Tests run:
+  - operator UAT expense detail breakdown -> passed
+  - `pytest backend/tests/test_invoices.py` -> pending
+  - `npm run build` -> pending
+  - `scripts/lakodi-docker-dev.ps1 smoke` -> pending
+- Commit messages:
+  - `Fix accounting expense payments, supplier picker, and dev Docker build.`
+  - `Enable XLSX accounting exports in backend Docker images`
