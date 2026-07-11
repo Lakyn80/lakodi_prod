@@ -146,14 +146,16 @@ export function AccountingNewExpenseDetail({
   const partialError = state.status === "ready" ? getFirstError(state.partialErrors) : null;
 
   function handleDetailUpdated(updatedDetail: AccountingNewExpenseDetail) {
-    if (state.status !== "ready") {
-      return;
-    }
+    setState((current) => {
+      if (current.status !== "ready") {
+        return current;
+      }
 
-    setState({
-      ...state,
-      detail: updatedDetail,
-      payments: updatedDetail.payments,
+      return {
+        ...current,
+        detail: updatedDetail,
+        payments: updatedDetail.payments,
+      };
     });
   }
 
@@ -355,6 +357,11 @@ export function AccountingNewExpenseDetail({
             <MetaRow
               label={t.expenseDetail.fields.total}
               value={<AccountingNewMoney amount={detail.total} currency={detail.currency} className="font-semibold" />}
+            />
+            <MetaRow label={t.expenseDetail.fields.totalPaid} value={<AccountingNewMoney amount={detail.totalPaid} currency={detail.currency} />} />
+            <MetaRow
+              label={t.expenseDetail.fields.remainingAmount}
+              value={<AccountingNewMoney amount={detail.remainingAmount} currency={detail.currency} className="font-semibold" />}
             />
             <MetaRow label={t.expenseDetail.fields.vatRate} value={detail.vatRate !== null ? `${detail.vatRate} %` : t.common.noValue} />
           </CardContent>

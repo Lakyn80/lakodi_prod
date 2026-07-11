@@ -9,7 +9,8 @@ import { AccountingNewCurrencySelect } from "@/components/admin/accounting-new/A
 import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { AccountingNewPaymentMethodSelect } from "@/components/admin/accounting-new/AccountingNewPaymentMethodSelect";
-import { translateAccountingNewStatus } from "@/components/admin/accounting-new/accountingNewFormat";
+import { AccountingNewSupplierPicker } from "@/components/admin/accounting-new/AccountingNewSupplierPicker";
+import { formatAccountingNewTemplate, translateAccountingNewStatus } from "@/components/admin/accounting-new/accountingNewFormat";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,15 +24,21 @@ import {
   AccountingNewRequestError,
   createAccountingNewExpense,
   getAccountingNewExpense,
+  getAccountingNewSettings,
   listAccountingNewSuppliers,
   updateAccountingNewExpense,
 } from "@/lib/accountingNew";
 import {
   ACCOUNTING_NEW_EXPENSE_STORED_STATUS_IDS,
+  applyAccountingNewSettingsToExpenseForm,
   buildAccountingNewExpenseFormStateFromDetail,
   buildAccountingNewExpenseWritePayloadFromForm,
   createEmptyAccountingNewExpenseFormState,
 } from "@/lib/accountingNewExpenseWrite";
+import {
+  applyAccountingNewSupplierToExpenseForm,
+  clearAccountingNewSupplierFromExpenseForm,
+} from "@/lib/accountingNewSupplierWrite";
 import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
 import type { AccountingNewPaymentMethodId } from "@/lib/accountingNewPaymentMethods";
 import type { AccountingNewApiError, AccountingNewExpenseFormState, AccountingNewSupplierListItem } from "@/types/accountingNew";
@@ -62,13 +69,30 @@ export function AccountingNewExpenseForm({
     [form.supplierId, suppliers],
   );
 
+  function handleSupplierSelect(supplier: AccountingNewSupplierListItem) {
+    setForm((current) => applyAccountingNewSupplierToExpenseForm(current, supplier));
+  }
+
+  function handleSupplierClear() {
+    setForm((current) => clearAccountingNewSupplierFromExpenseForm(current));
+  }
+
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadInitialData() {
       try {
-        const loadedSuppliers = await listAccountingNewSuppliers({}, { signal: controller.signal });
+        const [loadedSuppliers, settings] = await Promise.all([
+          listAccountingNewSuppliers({}, { signal: controller.signal }),
+          mode === "create"
+            ? getAccountingNewSettings({ signal: controller.signal }).catch(() => null)
+            : Promise.resolve(null),
+        ]);
         setSuppliers(loadedSuppliers);
+
+        if (mode === "create" && settings) {
+          setForm((current) => applyAccountingNewSettingsToExpenseForm(current, settings));
+        }
 
         if (mode === "edit" && expenseId) {
           const detail = await getAccountingNewExpense(expenseId, { signal: controller.signal });
@@ -113,6 +137,10 @@ export function AccountingNewExpenseForm({
 
     if (form.items.some((item) => !parseAccountingNewMoneyInput(item.unitPrice, form.currency).ok)) {
       return t.money.invalidFormat;
+    }
+
+    if (!form.bankAccountNumber.trim() || !form.bankCode.trim()) {
+      return t.expenseWrite.validation.bankAccountRequired;
     }
 
     return null;
@@ -318,36 +346,17 @@ export function AccountingNewExpenseForm({
               <div>
                 <h2 className="text-lg font-semibold">{t.expenseDetail.supplierTitle}</h2>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="supplierId">{t.expenseWrite.fields.supplier}</Label>
-                <select
-                  id="supplierId"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={form.supplierId}
-                  onChange={(event) => setForm((current) => ({ ...current, supplierId: event.target.value }))}
-                >
-                  <option value="">{t.expenseWrite.fields.supplierNone}</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {!selectedSupplier ? (
-                <p className="text-sm text-muted-foreground">{t.expenseWrite.fields.supplierNone}</p>
-              ) : (
+              <AccountingNewSupplierPicker
+                suppliers={suppliers}
+                selectedSupplierId={form.supplierId}
+                onSelect={handleSupplierSelect}
+                onClear={handleSupplierClear}
+              />
+              {selectedSupplier ? (
                 <p className="text-sm text-muted-foreground">
-                  {selectedSupplier.name}{" "}
-                  <button
-                    type="button"
-                    className="font-medium text-primary underline-offset-4 hover:underline"
-                    onClick={() => setForm((current) => ({ ...current, supplierId: "" }))}
-                  >
-                    {t.aresWrite.clearSubjectLink}
-                  </button>
+                  {formatAccountingNewTemplate(t.supplierPersistence.supplierSelectedHint, { name: selectedSupplier.name })}
                 </p>
-              )}
+              ) : null}
               <AccountingNewAresLookupSection
                 values={{
                   name: form.supplierName,

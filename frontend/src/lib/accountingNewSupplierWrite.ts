@@ -1,4 +1,6 @@
 import type {
+  AccountingNewExpenseFormState,
+  AccountingNewRecurringTemplateFormState,
   AccountingNewSupplierDetail,
   AccountingNewSupplierFormState,
   AccountingNewSupplierSummary,
@@ -53,6 +55,47 @@ export function buildAccountingNewSupplierFormStateFromDetail(
     dataBox: detail.dataBox ?? "",
     country: detail.country ?? "CZ",
     note: detail.note ?? "",
+  };
+}
+
+export function applyAccountingNewSupplierToExpenseForm(
+  form: AccountingNewExpenseFormState,
+  supplier: AccountingNewSupplierSummary,
+): AccountingNewExpenseFormState {
+  return {
+    ...form,
+    supplierId: String(supplier.id),
+    supplierName: supplier.name,
+    supplierEmail: supplier.email,
+    supplierPhone: supplier.phone ?? "",
+    supplierAddress: supplier.address,
+    supplierIco: supplier.ico ?? "",
+    supplierDic: supplier.dic ?? "",
+  };
+}
+
+export function clearAccountingNewSupplierFromExpenseForm(
+  form: AccountingNewExpenseFormState,
+): AccountingNewExpenseFormState {
+  return {
+    ...form,
+    supplierId: "",
+    supplierName: "",
+    supplierEmail: "",
+    supplierPhone: "",
+    supplierAddress: "",
+    supplierIco: "",
+    supplierDic: "",
+  };
+}
+
+export function applyAccountingNewSupplierToRecurringTemplateForm(
+  form: AccountingNewRecurringTemplateFormState,
+  supplier: AccountingNewSupplierSummary,
+): AccountingNewRecurringTemplateFormState {
+  return {
+    ...form,
+    supplierId: String(supplier.id),
   };
 }
 

@@ -47,6 +47,13 @@ export function AccountingNewDocumentActions({
 
   const canEdit = canAccountingNewDocumentEdit(detail);
   const canIssue = canAccountingNewDocumentIssue(detail);
+  const emailT = t.documentWrite.email ??
+    t.emailWrite ?? {
+      sendAction: "Odeslat doklad e-mailem",
+      sendConfirmTitle: "Potvrdit odeslání dokladu",
+      sendConfirmDescription: "Doklad se odešle na e-mail odběratele.",
+      sendSuccess: "Doklad byl odeslán",
+    };
 
   async function handleIssue() {
     setIsIssuing(true);
@@ -137,7 +144,7 @@ export function AccountingNewDocumentActions({
       const result = await sendAccountingNewDocumentEmail(detail.id, {
         to_email: detail.customerEmail,
       });
-      setSuccessMessage(`${t.emailWrite.sendSuccess} (${result.sentTo})`);
+      setSuccessMessage(`${emailT.sendSuccess} (${result.sentTo})`);
       setEmailOpen(false);
     } catch (error) {
       if (error instanceof AccountingNewRequestError) {
@@ -202,7 +209,7 @@ export function AccountingNewDocumentActions({
 
         {detail.status !== "draft" ? (
           <Button variant="outline" onClick={() => setEmailOpen(true)} disabled={isSendingEmail}>
-            {t.emailWrite.sendAction}
+            {emailT.sendAction}
           </Button>
         ) : null}
       </div>
@@ -210,9 +217,9 @@ export function AccountingNewDocumentActions({
       <AccountingNewConfirmDialog
         open={emailOpen}
         onOpenChange={setEmailOpen}
-        title={t.emailWrite.sendConfirmTitle}
-        description={t.emailWrite.sendConfirmDescription}
-        confirmLabel={t.emailWrite.sendAction}
+        title={emailT.sendConfirmTitle}
+        description={emailT.sendConfirmDescription}
+        confirmLabel={emailT.sendAction}
         cancelLabel={t.documentWrite.confirm.cancel}
         isPending={isSendingEmail}
         onConfirm={() => void handleSendEmail()}

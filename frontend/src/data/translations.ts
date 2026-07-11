@@ -425,6 +425,12 @@ export const translations = {
             note: "Poznámka"
           }
         },
+        email: {
+          sendAction: "Odeslat doklad e-mailem",
+          sendConfirmTitle: "Potvrdit odeslání dokladu",
+          sendConfirmDescription: "Doklad se odešle na e-mail odběratele.",
+          sendSuccess: "Doklad byl odeslán"
+        },
         mutation: {
           successTitle: "Akce dokončena",
           errorTitle: "Akce se nezdařila",
@@ -528,6 +534,16 @@ export const translations = {
         pickerDescription: "Vyberte existujícího odběratele nebo vyplňte údaje ručně / z ARES.",
         validationMissingCompanyName: "Vyplňte název firmy odběratele.",
         validationMissingIco: "Pro jednoznačné párování doporučujeme vyplnit IČO."
+      },
+      supplierPersistence: {
+        searchSuppliers: "Hledat dodavatele",
+        showSuppliers: "Zobrazit dodavatele",
+        hideSuppliers: "Skrýt dodavatele",
+        pickerDescription: "Vyberte existujícího dodavatele nebo vyplňte údaje ručně / z ARES.",
+        supplierSelectedHint: "Použit dodavatel: {name}",
+        noSuppliersFound: "Žádní dodavatelé neodpovídají hledání.",
+        limitedResultsShown: "Zobrazeno jen prvních 20 výsledků — upřesněte hledání.",
+        clearSupplierLink: "Zrušit výběr dodavatele"
       },
       money: {
         invalidFormat: "Zadejte částku například ve formátu 925,55."
@@ -648,7 +664,8 @@ export const translations = {
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula."
+          itemNumbers: "Množství musí být větší než nula.",
+          bankAccountRequired: "Vyplňte číslo účtu a kód banky (nebo je nastavte v Nastavení účetnictví)."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -2250,6 +2267,12 @@ export const translations = {
             note: "Note"
           }
         },
+        email: {
+          sendAction: "Email document",
+          sendConfirmTitle: "Confirm document email",
+          sendConfirmDescription: "The document will be sent to the customer's email address.",
+          sendSuccess: "Document sent"
+        },
         mutation: {
           successTitle: "Action completed",
           errorTitle: "Action failed",
@@ -2353,6 +2376,16 @@ export const translations = {
         pickerDescription: "Select an existing customer or fill details manually / from ARES.",
         validationMissingCompanyName: "Enter the customer company name.",
         validationMissingIco: "For reliable matching, we recommend entering the company ID."
+      },
+      supplierPersistence: {
+        searchSuppliers: "Search suppliers",
+        showSuppliers: "Show suppliers",
+        hideSuppliers: "Hide suppliers",
+        pickerDescription: "Select an existing supplier or fill in details manually / from ARES.",
+        supplierSelectedHint: "Supplier selected: {name}",
+        noSuppliersFound: "No suppliers match your search.",
+        limitedResultsShown: "Only the first 20 results are shown — refine your search.",
+        clearSupplierLink: "Clear supplier selection"
       },
       money: {
         invalidFormat: "Enter an amount such as 925.55."
@@ -2473,7 +2506,8 @@ export const translations = {
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula."
+          itemNumbers: "Množství musí být větší než nula.",
+          bankAccountRequired: "Vyplňte číslo účtu a kód banky (nebo je nastavte v Nastavení účetnictví)."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -4075,6 +4109,12 @@ export const translations = {
             note: "Примечание"
           }
         },
+        email: {
+          sendAction: "Отправить документ по e-mail",
+          sendConfirmTitle: "Подтвердить отправку документа",
+          sendConfirmDescription: "Документ будет отправлен на e-mail заказчика.",
+          sendSuccess: "Документ отправлен"
+        },
         mutation: {
           successTitle: "Действие выполнено",
           errorTitle: "Действие не выполнено",
@@ -4178,6 +4218,16 @@ export const translations = {
         pickerDescription: "Выберите существующего заказчика или заполните данные вручную / из ARES.",
         validationMissingCompanyName: "Заполните название компании заказчика.",
         validationMissingIco: "Для однозначного сопоставления рекомендуем заполнить IČO."
+      },
+      supplierPersistence: {
+        searchSuppliers: "Искать поставщиков",
+        showSuppliers: "Показать поставщиков",
+        hideSuppliers: "Скрыть поставщиков",
+        pickerDescription: "Выберите существующего поставщика или заполните данные вручную / из ARES.",
+        supplierSelectedHint: "Выбран поставщик: {name}",
+        noSuppliersFound: "Нет поставщиков по вашему запросу.",
+        limitedResultsShown: "Показаны только первые 20 результатов — уточните поиск.",
+        clearSupplierLink: "Снять выбор поставщика"
       },
       money: {
         invalidFormat: "Введите сумму, например 925,55."
@@ -4298,7 +4348,8 @@ export const translations = {
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula."
+          itemNumbers: "Množství musí být větší než nula.",
+          bankAccountRequired: "Vyplňte číslo účtu a kód banky (nebo je nastavte v Nastavení účetnictví)."
         },
         fields: {
           expenseNumber: "Číslo výdaje",
@@ -5900,6 +5951,12 @@ export const translations = {
             note: "Note"
           }
         },
+        email: {
+          sendAction: "Email document",
+          sendConfirmTitle: "Confirm document email",
+          sendConfirmDescription: "The document will be sent to the customer's email address.",
+          sendSuccess: "Document sent"
+        },
         mutation: {
           successTitle: "Action completed",
           errorTitle: "Action failed",
@@ -6003,6 +6060,16 @@ export const translations = {
         pickerDescription: "Select an existing customer or fill details manually / from ARES.",
         validationMissingCompanyName: "Enter the customer company name.",
         validationMissingIco: "For reliable matching, we recommend entering the company ID."
+      },
+      supplierPersistence: {
+        searchSuppliers: "Search suppliers",
+        showSuppliers: "Show suppliers",
+        hideSuppliers: "Hide suppliers",
+        pickerDescription: "Select an existing supplier or fill in details manually / from ARES.",
+        supplierSelectedHint: "Supplier selected: {name}",
+        noSuppliersFound: "No suppliers match your search.",
+        limitedResultsShown: "Only the first 20 results are shown — refine your search.",
+        clearSupplierLink: "Clear supplier selection"
       },
       money: {
         invalidFormat: "Enter an amount such as 925.55."
@@ -6123,7 +6190,8 @@ export const translations = {
           requiredDates: "Vyplňte všechna data.",
           supplierRequired: "Vyberte dodavatele nebo vyplňte snapshot dodavatele.",
           itemsRequired: "Výdaj musí obsahovat alespoň jednu položku.",
-          itemNumbers: "Množství musí být větší než nula."
+          itemNumbers: "Množství musí být větší než nula.",
+          bankAccountRequired: "Vyplňte číslo účtu a kód banky (nebo je nastavte v Nastavení účetnictví)."
         },
         fields: {
           expenseNumber: "Číslo výdaje",

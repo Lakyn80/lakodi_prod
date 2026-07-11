@@ -3,11 +3,16 @@ import {
   minorUnitsToApiDecimal,
   parseAccountingNewMoneyInput,
 } from "@/lib/accountingNewMoney";
-import { resolveAccountingNewPaymentMethodForApi } from "@/lib/accountingNewPaymentMethods";
+import { normalizeAccountingNewCurrency } from "@/lib/accountingNewCurrencies";
+import {
+  backendPaymentMethodToId,
+  resolveAccountingNewPaymentMethodForApi,
+} from "@/lib/accountingNewPaymentMethods";
 import type {
   AccountingNewExpenseDetail,
   AccountingNewExpenseFormState,
   AccountingNewExpenseWritePayload,
+  AccountingNewSettings,
 } from "@/types/accountingNew";
 
 export const ACCOUNTING_NEW_EXPENSE_STORED_STATUS_IDS = ["open", "cancelled"] as const;
@@ -50,6 +55,21 @@ export function createEmptyAccountingNewExpenseFormState(): AccountingNewExpense
     supplierIco: "",
     supplierDic: "",
     items: [{ description: "", quantity: "1", unitPrice: "0" }],
+  };
+}
+
+export function applyAccountingNewSettingsToExpenseForm(
+  form: AccountingNewExpenseFormState,
+  settings: AccountingNewSettings,
+): AccountingNewExpenseFormState {
+  return {
+    ...form,
+    currency: normalizeAccountingNewCurrency(settings.defaultCurrency || form.currency),
+    paymentMethod: backendPaymentMethodToId(settings.paymentMethod),
+    bankAccountNumber: settings.bankAccountNumber.trim() || form.bankAccountNumber,
+    bankAccountPrefix: settings.bankAccountPrefix?.trim() || form.bankAccountPrefix,
+    bankCode: settings.bankCode.trim() || form.bankCode,
+    bankIban: settings.bankIban.trim() || form.bankIban,
   };
 }
 

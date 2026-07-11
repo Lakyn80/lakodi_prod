@@ -9,6 +9,7 @@ import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/Accou
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { AccountingNewPaymentMethodSelect } from "@/components/admin/accounting-new/AccountingNewPaymentMethodSelect";
 import { AccountingNewSubjectPicker } from "@/components/admin/accounting-new/AccountingNewSubjectPicker";
+import { AccountingNewSupplierPicker } from "@/components/admin/accounting-new/AccountingNewSupplierPicker";
 import { translateAccountingNewRecurringFrequency } from "@/components/admin/accounting-new/accountingNewFormat";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
   buildAccountingNewRecurringTemplateWritePayloadFromForm,
   createEmptyAccountingNewRecurringTemplateFormState,
 } from "@/lib/accountingNewRecurringWrite";
+import { applyAccountingNewSupplierToRecurringTemplateForm } from "@/lib/accountingNewSupplierWrite";
 import type {
   AccountingNewApiError,
   AccountingNewRecurringTemplateFormState,
@@ -341,22 +343,14 @@ export function AccountingNewRecurringTemplateForm({
               ) : null}
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label htmlFor="supplier-id">{t.recurringForm.fields.supplier}</Label>
-              <select
-                id="supplier-id"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.supplierId}
-                onChange={(event) => setForm((current) => ({ ...current, supplierId: event.target.value }))}
-              >
-                <option value="">{t.recurringForm.placeholders.supplier}</option>
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <AccountingNewSupplierPicker
+              suppliers={suppliers}
+              selectedSupplierId={form.supplierId}
+              onSelect={(supplier) =>
+                setForm((current) => applyAccountingNewSupplierToRecurringTemplateForm(current, supplier))
+              }
+              onClear={() => setForm((current) => ({ ...current, supplierId: "" }))}
+            />
           )}
 
           <div className="grid gap-4 md:grid-cols-2">

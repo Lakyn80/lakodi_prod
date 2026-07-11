@@ -1113,13 +1113,38 @@ function mapSupplierSummary(item: {
   };
 }
 
+function formatFastApiErrorDetail(detail: unknown): string | null {
+  if (typeof detail === "string") {
+    const trimmed = detail.trim();
+    return trimmed || null;
+  }
+
+  if (!Array.isArray(detail)) {
+    return null;
+  }
+
+  const messages = detail
+    .map((item) => {
+      if (!item || typeof item !== "object" || !("msg" in item)) {
+        return null;
+      }
+
+      const msg = String((item as { msg: unknown }).msg).trim();
+      return msg || null;
+    })
+    .filter((message): message is string => Boolean(message));
+
+  return messages.length > 0 ? messages.join(" ") : null;
+}
+
 async function buildApiError(resource: string, response: Response): Promise<AccountingNewApiError> {
   let message = `Nepodařilo se načíst data (chyba ${response.status}).`;
 
   try {
-    const payload = (await response.json()) as { detail?: string };
-    if (typeof payload.detail === "string" && payload.detail.trim()) {
-      message = payload.detail;
+    const payload = (await response.json()) as { detail?: unknown };
+    const formattedDetail = formatFastApiErrorDetail(payload.detail);
+    if (formattedDetail) {
+      message = formattedDetail;
     }
   } catch {
     if (response.status === 401) {

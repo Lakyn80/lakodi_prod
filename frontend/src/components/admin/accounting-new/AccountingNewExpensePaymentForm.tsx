@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { AccountingNewConfirmDialog } from "@/components/admin/accounting-new/AccountingNewConfirmDialog";
 import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
@@ -13,6 +13,7 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AccountingNewRequestError, addAccountingNewExpensePayment } from "@/lib/accountingNew";
 import {
+  formatAccountingNewMoneyInputFromApiDecimal,
   minorUnitsToApiDecimal,
   parseAccountingNewMoneyInput,
 } from "@/lib/accountingNewMoney";
@@ -41,6 +42,12 @@ export function AccountingNewExpensePaymentForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<AccountingNewApiError | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAmount(
+      detail.remainingAmount > 0 ? formatAccountingNewMoneyInputFromApiDecimal(detail.remainingAmount) : "",
+    );
+  }, [detail.id, detail.remainingAmount]);
 
   async function submitPayment() {
     setIsSubmitting(true);
