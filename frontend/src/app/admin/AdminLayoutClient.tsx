@@ -1,6 +1,7 @@
 "use client";
 
 import { isAccountingNewEnabled } from "@/lib/accountingNewFeature";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -247,10 +248,12 @@ export default function AdminLayoutClient({
     );
   }
 
+  const accountingRoute = isAccountingNewEnabled() ? getAccountingNewModuleRoute("documents") : "/admin/invoices";
+  const accountingLabel = isAccountingNewEnabled() ? "Účetnictví" : "Faktury";
+
   const navItems = [
     { href: "/admin/", label: "Zakázky" },
-    { href: "/admin/invoices", label: "Faktury" },
-    ...(isAccountingNewEnabled() ? [{ href: "/admin/ucetnictvi-new", label: "Účetnictví" }] : []),
+    { href: accountingRoute, label: accountingLabel },
     { href: "/admin/kalendar", label: "Kalendář" },
   ];
 
@@ -266,7 +269,11 @@ export default function AdminLayoutClient({
         </div>
         <nav className="mb-4 flex flex-wrap gap-2 sm:mb-6">
           {navItems.map((item) => {
-            const active = pathname === item.href || (item.href === "/admin/" && pathname === "/admin");
+            const active =
+              pathname === item.href ||
+              (item.href === "/admin/" && pathname === "/admin") ||
+              (item.href === getAccountingNewModuleRoute("documents") &&
+                pathname.startsWith("/admin/ucetnictvi-new"));
             return (
               <Link
                 key={item.href}

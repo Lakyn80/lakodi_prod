@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { zakazkyUrl, apiFetchOptions } from "@/lib/api";
+import { isAccountingNewEnabled } from "@/lib/accountingNewFeature";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 
 interface Zakazka {
   id: number;
@@ -181,6 +183,8 @@ function Pagination({
 }
 
 export default function AdminPage() {
+  const accountingRoute = isAccountingNewEnabled() ? getAccountingNewModuleRoute("documents") : "/admin/invoices";
+  const accountingLabel = isAccountingNewEnabled() ? "Účetnictví" : "Fakturace";
   const [zakazky, setZakazky] = useState<Zakazka[]>([]);
   const [stats, setStats] = useState<Stats>({
     daily_revenue: 0,
@@ -344,10 +348,10 @@ export default function AdminPage() {
         <h1 className="text-3xl font-bold text-foreground">Administrace</h1>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/admin/invoices"
+            href={accountingRoute}
             className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:border-primary/50"
           >
-            Fakturace
+            {accountingLabel}
           </Link>
           <Link
             href="/admin/kalendar"
