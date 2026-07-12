@@ -1,20 +1,93 @@
 {
+  "prevodovky::automaticke-prevodovky": [
+    "service-gallery/prevodovky/automaticke-prevodovky/45909daf94a440bba895f1e1b2ec796b.webp",
+    "service-gallery/prevodovky/automaticke-prevodovky/8024e509547046b8b43c4c3edbcdc912.webp",
+    "service-gallery/prevodovky/automaticke-prevodovky/1785af8d0953463ea66a1cf653b412fa.webp"
+  ],
   "prevodovky::go-prevodovky": [],
+  "prevodovky::repas-prevodovky": [
+    "service-gallery/prevodovky/repas-prevodovky/d0d7c8d66ac14a7da3b029866ee3ce16.webp",
+    "service-gallery/prevodovky/repas-prevodovky/8c7ae8a85dcd4891b6a80f68866bbab5.webp",
+    "service-gallery/prevodovky/repas-prevodovky/0209a4ee45f541378aca6691ea2fe3d2.webp",
+    "service-gallery/prevodovky/repas-prevodovky/565a5ad737794db9aa50a3e41ae01064.webp",
+    "service-gallery/prevodovky/repas-prevodovky/aae7fa1535ba473f952687746a9c3482.webp",
+    "service-gallery/prevodovky/repas-prevodovky/3d9c32cabc3e4fdaa3bda55621e33768.webp",
+    "service-gallery/prevodovky/repas-prevodovky/3034773d232643b59d1e1ac795538985.webp",
+    "service-gallery/prevodovky/repas-prevodovky/599630524fb443cc8459fa9bb191f8fa.webp",
+    "service-gallery/prevodovky/repas-prevodovky/7679e291c38946f1800901d4001f4ee9.webp",
+    "service-gallery/prevodovky/repas-prevodovky/d5569ad3cf9f460a975960de7ee29674.webp",
+    "service-gallery/prevodovky/repas-prevodovky/5d2df89f01f64cfb97edb979b1d87a18.webp",
+    "service-gallery/prevodovky/repas-prevodovky/9733a0c826244a04a9db549d2b9e3433.webp"
+  ],
+  "prevodovky::manualni-prevodovky": [],
   "motory::go-motoru": [
-    "/services/motory/go-motoru-01.webp",
-    "/services/motory/go-motoru-02.webp",
-    "/services/motory/go-motoru-03.webp",
-    "/services/motory/go-motoru-04.webp",
-    "/services/motory/go-motoru-05.webp",
-    "/services/motory/go-motoru-06.webp",
-    "/services/motory/go-motoru-07.webp",
-    "/services/motory/go-motoru-08.webp",
-    "/services/motory/go-motoru-09.webp",
-    "/services/motory/go-motoru-10.webp",
-    "/services/motory/go-motoru-11.webp",
-    "/services/motory/go-motoru-12.webp",
-    "/services/motory/go-motoru-13.webp",
-    "/services/motory/go-motoru-14.webp",
-    "/services/motory/go-motoru-15.webp"
+    "service-gallery/motory/go-motoru/02d2d908a91243499950e797ee50187a.webp",
+    "service-gallery/motory/go-motoru/2f1888dc6a3d4f68a9fb13bcd4e22f6d.webp",
+    "service-gallery/motory/go-motoru/2caf459f463442fe82394e1b90968376.webp",
+    "service-gallery/motory/go-motoru/0f8afc582ac240eeab735b60f8ad0ee2.webp",
+    "service-gallery/motory/go-motoru/f01167ca740d4118ab246ed7be8c06da.webp",
+    "service-gallery/motory/go-motoru/8a52049f2295410e8de86147b29a89dc.webp"
+  ],
+  "motory::repas-motoru": [
+    "service-gallery/motory/repas-motoru/52890fdecff44f609aaf492db6b77f15.webp",
+    "service-gallery/motory/repas-motoru/9f0597e19b004d20b249a75871e67e32.webp",
+    "service-gallery/motory/repas-motoru/49848e10c5c14d38a14f0b849a739b1e.webp",
+    "service-gallery/motory/repas-motoru/75fbc27aeea34b0cb6226d0c086a6c91.webp",
+    "service-gallery/motory/repas-motoru/f2b453d9541341d9abdc8759e846e96c.webp",
+    "service-gallery/motory/repas-motoru/d2f3dfb643164cf4886835077d488f00.webp",
+    "service-gallery/motory/repas-motoru/a2f151a35caf4b9eb7e38d327e560e78.webp",
+    "service-gallery/motory/repas-motoru/cda3a19edd354b05b708f5d59b13486e.webp",
+    "service-gallery/motory/repas-motoru/85553a3f15af4e478b12d55d1e45fa54.webp",
+    "service-gallery/motory/repas-motoru/eb2f4ac34cdd44f8bec2c0154e463bcf.webp"
+  ],
+  "motory::benzinove-motory": [
+    "service-gallery/motory/benzinove-motory/8cdfefaef3664598a15121b8519347de.webp",
+    "service-gallery/motory/benzinove-motory/e478583a2ec24b08872fc02623e66548.webp",
+    "service-gallery/motory/benzinove-motory/19284aab410f4396b1806b18d155f7ba.webp"
+  ],
+  "motory::dieselove-motory": [],
+  "karoserie-lakovani::karoserie": [
+    "service-gallery/karoserie-lakovani/karoserie/2276749603dd430ea9b71a3f5a796bdc.webp",
+    "service-gallery/karoserie-lakovani/karoserie/92e526f63e574c40a783d5aba371d56e.webp",
+    "service-gallery/karoserie-lakovani/karoserie/92af4f22377b4f09aadcd33ea8f0b57a.webp",
+    "service-gallery/karoserie-lakovani/karoserie/87db77c8ed644a98aa209b68624924ea.webp",
+    "service-gallery/karoserie-lakovani/karoserie/1f7c5a70dcf9460685c03e1b663ad6d1.webp",
+    "service-gallery/karoserie-lakovani/karoserie/6c9bb33042bd47039f3ffc453805dbee.webp"
+  ],
+  "karoserie-lakovani::lakovani": [
+    "service-gallery/karoserie-lakovani/lakovani/f91465bdd0574b189dd9068ed0c37f9b.webp",
+    "service-gallery/karoserie-lakovani/lakovani/fa0b1f123fc34e41baa8132e485be8f7.webp",
+    "service-gallery/karoserie-lakovani/lakovani/7aebd2fcdca340fc88f741235af9791a.webp"
+  ],
+  "karoserie-lakovani::lesteni": [],
+  "renovace-veteranu::renovace-veteranu-komplet": [
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/913e1c6e609349208407a3d2c7633663.mp4",
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/5b5f376673444e748d962e0cd77c208a.webp",
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/882c8141596f4be38f5caa35a0e3c1d3.webp",
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/42f9721611dd457ab5a37b64b3e8bf11.webp",
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/e57a6af2e1164930b83518d6e81ba422.webp",
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/683b5cae3b134eab9a9404063e15977e.webp",
+    "service-gallery/renovace-veteranu/renovace-veteranu-komplet/b3a321017f834ca1948360f36478d122.mp4"
+  ],
+  "kodovani::kodovani-klicu": [],
+  "kodovani::ridici-jednotky": [],
+  "geometrie::3d-nastaveni-geometrie-kol": [
+    "service-gallery/geometrie/3d-nastaveni-geometrie-kol/4c3932e5466c47aeb8a005bb2d772c60.webp",
+    "service-gallery/geometrie/3d-nastaveni-geometrie-kol/83be22da00d140968b48ccaf5f10cec3.webp",
+    "service-gallery/geometrie/3d-nastaveni-geometrie-kol/e72ff22d0fbd4e18b764055fc006098e.webp",
+    "service-gallery/geometrie/3d-nastaveni-geometrie-kol/d541716b1cce47e2b961156a7a021015.webp",
+    "service-gallery/geometrie/3d-nastaveni-geometrie-kol/86b1b0f1b470407394c43d1b1badae7c.webp"
+  ],
+  "autoelektrika-diagnostika::diagnostika": [
+    "service-gallery/autoelektrika-diagnostika/diagnostika/ea63eb8cf4b441a58a3788ee6d1e8f7f.mp4"
+  ],
+  "autoelektrika-diagnostika::autoelektrika": [
+    "service-gallery/autoelektrika-diagnostika/autoelektrika/a3b9366527b64548adf4e576bc07e3ce.webp",
+    "service-gallery/autoelektrika-diagnostika/autoelektrika/d3ec0a0c01e043409a04f02095255e5d.webp",
+    "service-gallery/autoelektrika-diagnostika/autoelektrika/831bb369367d4b5f9cae697b82f35791.webp",
+    "service-gallery/autoelektrika-diagnostika/autoelektrika/d5fcb404425345f3b7760d10d9002e63.webp"
+  ],
+  "autoelektrika-diagnostika::online-diagnostika": [
+    "service-gallery/autoelektrika-diagnostika/online-diagnostika/f784d4e93288493fb1694b8025f55853.webp"
   ]
 }
