@@ -8,6 +8,7 @@ on:
       - completed
     branches:
       - develop
+      - main
 
 permissions:
   contents: read
