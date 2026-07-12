@@ -32,12 +32,12 @@ export function AccountingNewRecurringGenerationsTable({
       <TableBody>
         {generations.map((generation) => (
           <TableRow key={generation.id}>
-            <TableCell>{formatAccountingNewDate(generation.runDate, language, t.common.noValue)}</TableCell>
-            <TableCell>{formatAccountingNewDateTime(generation.generatedAt, language, t.common.noValue)}</TableCell>
-            <TableCell>
+            <TableCell data-label={t.recurringDetail.fields.runDate}>{formatAccountingNewDate(generation.runDate, language, t.common.noValue)}</TableCell>
+            <TableCell data-label={t.recurringDetail.fields.generatedAt}>{formatAccountingNewDateTime(generation.generatedAt, language, t.common.noValue)}</TableCell>
+            <TableCell className="max-md:text-left" data-label={t.recurringDetail.fields.generationStatus}>
               <AccountingNewRecurringStatusBadge label={generation.status} />
             </TableCell>
-            <TableCell>
+            <TableCell className="max-md:text-left" data-label={t.recurringDetail.fields.generatedDocument}>
               {generation.generatedInvoiceId ? (
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/doklady/${generation.generatedInvoiceId}`}
@@ -51,7 +51,7 @@ export function AccountingNewRecurringGenerationsTable({
                 t.recurringDetail.generatedDocumentMissing
               )}
             </TableCell>
-            <TableCell>
+            <TableCell className="max-md:text-left" data-label={t.recurringDetail.fields.generatedExpense}>
               {generation.generatedExpenseId ? (
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/vydaje/${generation.generatedExpenseId}`}

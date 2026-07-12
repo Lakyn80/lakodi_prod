@@ -30,7 +30,7 @@ export function AccountingNewSuppliersTable({
       <TableBody>
         {suppliers.map((supplier) => (
           <TableRow key={supplier.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.suppliers.table.supplier}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/dodavatele/${supplier.id}`}
@@ -41,15 +41,15 @@ export function AccountingNewSuppliersTable({
                 <p className="text-xs text-muted-foreground">{t.suppliers.table.detail}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{supplier.ico ?? t.common.noValue}</TableCell>
-            <TableCell className="align-top">{supplier.dic ?? t.common.noValue}</TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.suppliers.table.ico}>{supplier.ico ?? t.common.noValue}</TableCell>
+            <TableCell className="align-top" data-label={t.suppliers.table.dic}>{supplier.dic ?? t.common.noValue}</TableCell>
+            <TableCell className="align-top max-md:text-left" data-label={t.suppliers.table.contact}>
               <div className="space-y-1">
                 <p>{supplier.email}</p>
                 <p className="text-xs text-muted-foreground">{supplier.phone ?? t.common.noPhone}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{supplier.country ?? t.common.noValue}</TableCell>
+            <TableCell className="align-top" data-label={t.suppliers.table.country}>{supplier.country ?? t.common.noValue}</TableCell>
           </TableRow>
         ))}
       </TableBody>

@@ -35,7 +35,7 @@ export function AccountingNewExpensesTable({
       <TableBody>
         {expenses.map((expense) => (
           <TableRow key={expense.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.expenses.table.expense}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/vydaje/${expense.id}`}
@@ -48,14 +48,14 @@ export function AccountingNewExpensesTable({
                 </p>
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.expenses.table.supplier}>
               <div className="space-y-1">
                 <p className="font-medium text-foreground">{expense.supplierName}</p>
                 <p className="text-xs text-muted-foreground">{expense.supplierEmail}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(expense.issueDate, language, t.common.noValue)}</TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.expenses.table.issueDate}>{formatAccountingNewDate(expense.issueDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="align-top" data-label={t.expenses.table.receivedAndTaxable}>
               <div className="space-y-1">
                 <p>{formatAccountingNewDate(expense.receivedDate, language, t.common.noValue)}</p>
                 <p className="text-xs text-muted-foreground">
@@ -63,14 +63,14 @@ export function AccountingNewExpensesTable({
                 </p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(expense.dueDate, language, t.common.noValue)}</TableCell>
-            <TableCell className="text-right align-top">
+            <TableCell className="align-top" data-label={t.expenses.table.dueDate}>{formatAccountingNewDate(expense.dueDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="text-right align-top" data-label={t.expenses.table.total}>
               <div className="space-y-1">
                 <AccountingNewMoney amount={expense.total} currency={expense.currency} className="font-medium text-foreground" />
                 <p className="text-xs text-muted-foreground">{expense.currency}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.expenses.table.statuses}>
               <div className="flex flex-wrap gap-2">
                 <AccountingNewDocumentStatusBadge label={expense.paymentStatus} />
                 <AccountingNewDocumentStatusBadge label={expense.status} />

@@ -231,7 +231,7 @@ export function AccountingNewModulePageShell({ moduleId }: { moduleId: Accountin
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <Button asChild variant="outline" size="sm">

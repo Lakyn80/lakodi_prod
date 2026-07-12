@@ -53,7 +53,7 @@ function MetaRow({
   return (
     <div className="space-y-1">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="text-sm text-foreground">{value}</div>
+      <div className="break-words text-sm text-foreground">{value}</div>
     </div>
   );
 }

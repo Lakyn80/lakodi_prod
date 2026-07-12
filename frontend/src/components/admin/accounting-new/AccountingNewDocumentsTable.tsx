@@ -40,7 +40,7 @@ export function AccountingNewDocumentsTable({
       <TableBody>
         {documents.map((document) => (
           <TableRow key={document.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.documents.table.document}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/doklady/${document.id}`}
@@ -53,24 +53,24 @@ export function AccountingNewDocumentsTable({
                 </p>
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.documents.table.kind}>
               <Badge variant="outline">{translateAccountingNewDocumentKind(t, document.documentKind)}</Badge>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.documents.table.customer}>
               <div className="space-y-1">
                 <p className="font-medium text-foreground">{document.customerName}</p>
                 <p className="text-xs text-muted-foreground">{document.customerEmail}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(document.issueDate, language, t.common.noValue)}</TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(document.dueDate, language, t.common.noValue)}</TableCell>
-            <TableCell className="text-right align-top">
+            <TableCell className="align-top" data-label={t.documents.table.issueDate}>{formatAccountingNewDate(document.issueDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="align-top" data-label={t.documents.table.dueDate}>{formatAccountingNewDate(document.dueDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="text-right align-top" data-label={t.documents.table.total}>
               <div className="space-y-1">
                 <AccountingNewMoney amount={document.total} currency={document.currency} className="font-medium text-foreground" />
                 <p className="text-xs text-muted-foreground">{document.currency}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.documents.table.statuses}>
               <div className="flex flex-wrap gap-2">
                 <AccountingNewDocumentStatusBadge label={document.paymentStatus} />
                 <AccountingNewDocumentStatusBadge label={document.effectiveStatus} />

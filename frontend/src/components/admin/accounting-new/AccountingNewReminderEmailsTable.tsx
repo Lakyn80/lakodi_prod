@@ -35,7 +35,7 @@ export function AccountingNewReminderEmailsTable({
       <TableBody>
         {emails.map((email) => (
           <TableRow key={email.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.reminderEmails.table.recipient}>
               <Link
                 href={`${ACCOUNTING_NEW_ROUTE}/upominky-emaily/${email.id}?invoiceId=${email.invoiceId}`}
                 className="font-medium text-foreground underline underline-offset-4"
@@ -43,13 +43,13 @@ export function AccountingNewReminderEmailsTable({
                 {email.recipientEmail}
               </Link>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.reminderEmails.table.subject}>
               <div className="space-y-1">
                 <p className="font-medium text-foreground">{email.subject}</p>
                 <p className="text-xs text-muted-foreground line-clamp-2">{email.message}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.reminderEmails.table.relatedDocument}>
               {email.invoiceNumber ? (
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/doklady/${email.invoiceId}`}
@@ -61,13 +61,13 @@ export function AccountingNewReminderEmailsTable({
                 formatAccountingNewTemplate(t.reminderEmails.table.invoiceMissing, { id: email.invoiceId })
               )}
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.reminderEmails.table.status}>
               <div className="flex flex-wrap gap-2">
                 <AccountingNewTodoStatusBadge label={email.status} />
                 <AccountingNewTodoStatusBadge label={email.reminderType} />
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.reminderEmails.table.sentAt}>
               <div className="space-y-1">
                 <p>{formatAccountingNewDateTime(email.sentAt ?? email.createdAt, language, t.common.noValue)}</p>
                 <p className="text-xs text-muted-foreground">

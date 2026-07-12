@@ -182,7 +182,7 @@ export function AccountingNewPaymentMatchesTable({
               <TableRow key={match.id}>
                 {showTransactionContext && dashboardMatch ? (
                   <>
-                    <TableCell className="align-top">
+                    <TableCell className="align-top max-md:text-left" data-label={t.paymentMatching.table.transactionDate}>
                       <Link
                         href={`${ACCOUNTING_NEW_ROUTE}/bankovni-transakce/${dashboardMatch.bankTransaction.id}`}
                         className="font-medium text-foreground underline underline-offset-4"
@@ -194,36 +194,36 @@ export function AccountingNewPaymentMatchesTable({
                         )}
                       </Link>
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.amount}>
                       <AccountingNewMoney
                         amount={dashboardMatch.bankTransaction.amount}
                         currency={dashboardMatch.bankTransaction.currency}
                         className="font-medium text-foreground"
                       />
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.direction}>
                       {translateAccountingNewTransactionDirection(t, dashboardMatch.bankTransaction.direction)}
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.variableSymbol}>
                       {dashboardMatch.bankTransaction.variableSymbol ?? t.common.noVariableSymbol}
                     </TableCell>
                   </>
                 ) : showTransactionContext ? (
                   <>
-                    <TableCell className="align-top">{t.common.noValue}</TableCell>
-                    <TableCell className="align-top">{t.common.noValue}</TableCell>
-                    <TableCell className="align-top">{t.common.noValue}</TableCell>
-                    <TableCell className="align-top">{t.common.noValue}</TableCell>
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.transactionDate}>{t.common.noValue}</TableCell>
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.amount}>{t.common.noValue}</TableCell>
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.direction}>{t.common.noValue}</TableCell>
+                    <TableCell className="align-top" data-label={t.paymentMatching.table.variableSymbol}>{t.common.noValue}</TableCell>
                   </>
                 ) : null}
-                <TableCell className="align-top">{match.matchType}</TableCell>
-                <TableCell className="align-top">{renderCandidateLink(match)}</TableCell>
-                <TableCell className="align-top">{match.confidence}</TableCell>
-                <TableCell className="align-top">
+                <TableCell className="align-top" data-label={t.paymentMatching.table.type}>{match.matchType}</TableCell>
+                <TableCell className="align-top max-md:text-left" data-label={t.paymentMatching.table.link}>{renderCandidateLink(match)}</TableCell>
+                <TableCell className="align-top" data-label={t.paymentMatching.table.confidence}>{match.confidence}</TableCell>
+                <TableCell className="align-top max-md:text-left" data-label={t.paymentMatching.table.status}>
                   <AccountingNewDocumentStatusBadge label={match.status} />
                 </TableCell>
-                <TableCell className="align-top">{match.reason ?? t.common.noReason}</TableCell>
-                <TableCell className="align-top">
+                <TableCell className="align-top max-md:text-left" data-label={t.paymentMatching.table.reason}>{match.reason ?? t.common.noReason}</TableCell>
+                <TableCell className="align-top" data-label={t.paymentMatching.table.createdAt}>
                   <div className="space-y-1">
                     <p>{formatAccountingNewDateTime(match.createdAt, language, t.common.noValue)}</p>
                     <p className="text-xs text-muted-foreground">
@@ -236,8 +236,8 @@ export function AccountingNewPaymentMatchesTable({
                   </div>
                 </TableCell>
                 {showActions ? (
-                  <TableCell className="align-top">
-                    <div className="flex flex-wrap gap-2">
+                  <TableCell className="align-top max-md:text-left" data-label={t.bankWrite.actionsColumn}>
+                    <div className="flex flex-wrap gap-2 max-md:flex-col">
                       {canApply ? (
                         <Button
                           type="button"

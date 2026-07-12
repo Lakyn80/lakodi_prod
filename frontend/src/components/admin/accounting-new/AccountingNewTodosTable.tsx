@@ -60,7 +60,7 @@ export function AccountingNewTodosTable({ todos }: { todos: AccountingNewTodoLis
       <TableBody>
         {todos.map((todo) => (
           <TableRow key={todo.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.todos.table.title}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/ukoly/${todo.id}`}
@@ -71,15 +71,15 @@ export function AccountingNewTodosTable({ todos }: { todos: AccountingNewTodoLis
                 {todo.message ? <p className="text-xs text-muted-foreground line-clamp-2">{todo.message}</p> : null}
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.todos.table.status}>
               <AccountingNewTodoStatusBadge label={todo.status} />
             </TableCell>
-            <TableCell className="align-top text-sm text-foreground">
+            <TableCell className="align-top text-sm text-foreground" data-label={t.todos.table.type}>
               {translateAccountingNewTodoType(t, todo.todoType)}
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(todo.dueDate, language, t.common.noValue)}</TableCell>
-            <TableCell className="align-top">{renderRelatedLink(todo, t)}</TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.todos.table.dueDate}>{formatAccountingNewDate(todo.dueDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="align-top max-md:text-left" data-label={t.todos.table.relatedDocument}>{renderRelatedLink(todo, t)}</TableCell>
+            <TableCell className="align-top" data-label={t.todos.table.createdAt}>
               <div className="space-y-1">
                 <p>{formatAccountingNewDateTime(todo.createdAt, language, t.common.noValue)}</p>
                 {todo.completedAt ? (

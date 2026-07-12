@@ -26,7 +26,7 @@ export function AccountingNewSubjectsTable({ subjects }: { subjects: AccountingN
       <TableBody>
         {subjects.map((subject) => (
           <TableRow key={subject.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.subjects.table.subject}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/odberatele/${subject.id}`}
@@ -37,15 +37,15 @@ export function AccountingNewSubjectsTable({ subjects }: { subjects: AccountingN
                 <p className="text-xs text-muted-foreground">{t.subjects.table.detail}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{subject.ico ?? t.common.noValue}</TableCell>
-            <TableCell className="align-top">{subject.dic ?? t.common.noValue}</TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.subjects.table.ico}>{subject.ico ?? t.common.noValue}</TableCell>
+            <TableCell className="align-top" data-label={t.subjects.table.dic}>{subject.dic ?? t.common.noValue}</TableCell>
+            <TableCell className="align-top max-md:text-left" data-label={t.subjects.table.contact}>
               <div className="space-y-1">
                 <p>{subject.email}</p>
                 <p className="text-xs text-muted-foreground">{subject.phone ?? t.common.noPhone}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top">{subject.country ?? t.common.noValue}</TableCell>
+            <TableCell className="align-top" data-label={t.subjects.table.country}>{subject.country ?? t.common.noValue}</TableCell>
           </TableRow>
         ))}
       </TableBody>

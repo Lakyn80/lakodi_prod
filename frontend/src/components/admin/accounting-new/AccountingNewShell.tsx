@@ -219,7 +219,7 @@ export function AccountingNewShell() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
       <AccountingNewHashRedirect />
 
       <Card className="border-border bg-card">

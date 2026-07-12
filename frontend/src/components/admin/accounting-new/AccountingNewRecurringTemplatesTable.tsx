@@ -52,8 +52,7 @@ export function AccountingNewRecurringTemplatesTable({
   const t = translations[language].accountingNew;
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
+    <Table>
       <TableHeader>
         <TableRow>
           <TableHead>{t.recurring.table.name}</TableHead>
@@ -69,7 +68,7 @@ export function AccountingNewRecurringTemplatesTable({
       <TableBody>
         {templates.map((template) => (
           <TableRow key={template.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.recurring.table.name}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/opakovane/${template.id}`}
@@ -82,7 +81,7 @@ export function AccountingNewRecurringTemplatesTable({
                 </p>
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.recurring.table.kind}>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{translateAccountingNewRecurringKind(t, template.templateType)}</Badge>
                 {template.documentKind ? (
@@ -90,25 +89,24 @@ export function AccountingNewRecurringTemplatesTable({
                 ) : null}
               </div>
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.recurring.table.status}>
               <AccountingNewRecurringStatusBadge label={template.status} />
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top" data-label={t.recurring.table.schedule}>
               {formatAccountingNewTemplate(t.recurring.frequencyWithCount, {
                 frequency: translateAccountingNewRecurringFrequency(t, template.recurrenceInterval),
                 count: template.recurrenceCount,
               })}
             </TableCell>
-            <TableCell className="align-top">{getRelatedPartyLabel(template, t, subjectLabels, supplierLabels)}</TableCell>
-            <TableCell className="text-right align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.recurring.table.relatedParty}>{getRelatedPartyLabel(template, t, subjectLabels, supplierLabels)}</TableCell>
+            <TableCell className="text-right align-top" data-label={t.recurring.table.amount}>
               <AccountingNewMoney amount={getRecurringTemplateTotal(template)} currency={template.currency} className="font-medium text-foreground" />
             </TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(template.nextRunDate, language, t.common.noValue)}</TableCell>
-            <TableCell className="align-top">{formatAccountingNewDate(template.lastRunDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="align-top" data-label={t.recurring.table.nextRun}>{formatAccountingNewDate(template.nextRunDate, language, t.common.noValue)}</TableCell>
+            <TableCell className="align-top" data-label={t.recurring.table.lastRun}>{formatAccountingNewDate(template.lastRunDate, language, t.common.noValue)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
-    </div>
   );
 }

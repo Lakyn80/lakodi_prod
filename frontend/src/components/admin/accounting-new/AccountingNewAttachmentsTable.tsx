@@ -84,7 +84,7 @@ export function AccountingNewAttachmentsTable({
       <TableBody>
         {attachments.map((attachment) => (
           <TableRow key={attachment.id}>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.attachments.table.fileName}>
               <div className="space-y-1">
                 <Link
                   href={`${ACCOUNTING_NEW_ROUTE}/prilohy/${attachment.id}`}
@@ -95,17 +95,17 @@ export function AccountingNewAttachmentsTable({
                 <p className="text-xs text-muted-foreground">{attachment.contentType}</p>
               </div>
             </TableCell>
-            <TableCell className="align-top text-sm text-foreground">
+            <TableCell className="align-top text-sm text-foreground" data-label={t.attachments.table.type}>
               {translateAccountingNewAttachmentType(t, attachment.attachmentType)}
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.attachments.table.size}>
               {formatAccountingNewFileSize(attachment.sizeBytes, language, t.common.noValue)}
             </TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.attachments.table.status}>
               <AccountingNewAttachmentStatusBadge label={attachment.status} />
             </TableCell>
-            <TableCell className="align-top">{renderRelatedLink(attachment, t)}</TableCell>
-            <TableCell className="align-top">
+            <TableCell className="align-top max-md:text-left" data-label={t.attachments.table.relatedEntity}>{renderRelatedLink(attachment, t)}</TableCell>
+            <TableCell className="align-top" data-label={t.attachments.table.createdAt}>
               {formatAccountingNewDateTime(attachment.createdAt, language, t.common.noValue)}
             </TableCell>
           </TableRow>
