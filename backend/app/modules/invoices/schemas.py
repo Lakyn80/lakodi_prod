@@ -697,32 +697,36 @@ class InvoiceBankTransactionIgnoreResponse(BaseModel):
     status: BankTransactionStatus
 
 
-class InvoiceBankTransactionAssignInvoiceRequest(BaseModel):
-    invoice_number: str = Field(min_length=1, max_length=64)
+class PayableInvoiceForBankMatchingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("invoice_number")
-    @classmethod
-    def normalize_invoice_number_value(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("Číslo faktury je povinné.")
-        return cleaned
+    id: int
+    invoice_number: str
+    document_kind: str
+    customer_name: str
+    issue_date: date
+    due_date: date
+    currency: str
+    total: Decimal
+    remaining_amount: Decimal
+    payment_status: InvoicePaymentStatus
+    effective_status: EffectiveInvoiceStatus
+
+    @field_serializer("total", "remaining_amount", when_used="json")
+    def serialize_decimal(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoiceBankTransactionAssignInvoiceRequest(BaseModel):
+    invoice_id: int = Field(gt=0)
 
 
 class InvoiceBankTransactionRecordInvoicePaymentRequest(BaseModel):
-    invoice_number: str = Field(min_length=1, max_length=64)
+    invoice_id: int = Field(gt=0)
     transaction_date: date
     amount: Decimal | None = None
     message: str | None = Field(default=None, max_length=4000)
     counterparty_name: str | None = Field(default=None, max_length=256)
-
-    @field_validator("invoice_number")
-    @classmethod
-    def normalize_invoice_number_value(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("Číslo faktury je povinné.")
-        return cleaned
 
     @field_validator("amount")
     @classmethod

@@ -90,7 +90,7 @@ function getModuleStats(
       }),
     },
     "bank-transactions": {
-      badge: t.bankWrite.importAction,
+      badge: t.voice.labels.bankTransactions,
       detail: formatAccountingNewTemplate(t.dashboard.moduleStats.bankTransactions, {
         count: data.metrics.bankTransactionsLoaded,
       }),

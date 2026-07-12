@@ -57,6 +57,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpenseUpdate,
     InvoicePaymentMatchResponse,
     InvoicePaymentMatchListItemResponse,
+    PayableInvoiceForBankMatchingResponse,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
     InvoiceRecurringGenerationResponse,
@@ -104,7 +105,8 @@ from backend.app.modules.invoices.service import (
     InvoiceTodoNotFoundError,
     InvoiceValidationError,
     apply_invoice_payment_match,
-    assign_bank_transaction_to_invoice_by_number,
+    assign_bank_transaction_to_invoice,
+    list_payable_invoices_for_bank_matching,
     add_invoice_expense_payment,
     add_invoice_payment,
     activate_invoice_recurring_template,
@@ -943,6 +945,21 @@ def admin_import_invoice_bank_transactions(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get(
+    "/bank-transactions/payable-invoices",
+    response_model=list[PayableInvoiceForBankMatchingResponse],
+)
+def admin_list_payable_invoices_for_bank_matching(
+    currency: str | None = Query(default=None, max_length=8),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_payable_invoices_for_bank_matching(db, currency=currency)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post(
     "/bank-transactions/record-invoice-payment",
     response_model=InvoiceBankTransactionRecordInvoicePaymentResponse,
@@ -1012,7 +1029,7 @@ def admin_assign_invoice_bank_transaction(
     _: None = Depends(require_admin),
 ):
     try:
-        return assign_bank_transaction_to_invoice_by_number(db, transaction_id, body.invoice_number)
+        return assign_bank_transaction_to_invoice(db, transaction_id, body.invoice_id)
     except InvoiceBankTransactionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceNotFoundError as exc:

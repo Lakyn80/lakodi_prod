@@ -987,8 +987,22 @@ export interface AccountingNewBankTransactionImportResult {
   skippedDuplicateIdentifiers: string[];
 }
 
+export interface AccountingNewPayableInvoiceListItem {
+  id: number;
+  invoiceNumber: string;
+  documentKind: string;
+  customerName: string;
+  issueDate: string;
+  dueDate: string;
+  currency: string;
+  total: number;
+  remainingAmount: number;
+  paymentStatus: string;
+  effectiveStatus: string;
+}
+
 export interface AccountingNewRecordInvoiceBankPaymentPayload {
-  invoice_number: string;
+  invoice_id: number;
   transaction_date: string;
   amount?: number;
   message?: string | null;
@@ -1007,7 +1021,7 @@ export interface AccountingNewRecordInvoiceBankPaymentResult {
 }
 
 export interface AccountingNewAssignBankTransactionInvoicePayload {
-  invoice_number: string;
+  invoice_id: number;
 }
 
 export interface AccountingNewTodoCreatePayload {

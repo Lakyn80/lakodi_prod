@@ -1258,29 +1258,20 @@ def reject_invoice_payment_match(db: Session, transaction_id: int, match_id: int
     return _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
 
 
-def _resolve_payable_invoice_by_number(db: Session, invoice_number: str) -> Invoice:
-    cleaned = invoice_number.strip()
-    if not cleaned:
-        raise InvoiceValidationError("Číslo faktury je povinné.")
+def _is_invoice_payable_for_bank_matching(invoice: Invoice) -> bool:
+    if _normalize_invoice_status(invoice.status) != "issued":
+        return False
+    if not get_document_kind_metadata(invoice.document_kind).allows_payment_tracking:
+        return False
+    if getattr(invoice, "effective_status", None) == "cancelled":
+        return False
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    return remaining_amount > Decimal("0.00")
 
-    lookup_numbers = {cleaned}
-    try:
-        normalized = normalize_invoice_number(cleaned)
-        if normalized is not None:
-            lookup_numbers.add(normalized)
-    except InvoiceNumberingError:
-        pass
 
-    invoice_row = (
-        db.query(Invoice)
-        .filter(Invoice.invoice_number.in_(sorted(lookup_numbers)))
-        .order_by(Invoice.id.desc())
-        .first()
-    )
-    if invoice_row is None:
-        raise InvoiceNotFoundError(f"Faktura č. {cleaned} nebyla nalezena.")
-
-    invoice = get_invoice_detail(db, invoice_row.id)
+def _assert_invoice_payable_for_bank_matching(invoice: Invoice) -> None:
+    if _normalize_invoice_status(invoice.status) != "issued":
+        raise InvoiceValidationError("Lze párovat pouze vystavené doklady.")
     if not get_document_kind_metadata(invoice.document_kind).allows_payment_tracking:
         raise InvoiceValidationError("Tento typ dokladu nelze párovat s bankovní platbou.")
     if getattr(invoice, "effective_status", None) == "cancelled":
@@ -1288,7 +1279,38 @@ def _resolve_payable_invoice_by_number(db: Session, invoice_number: str) -> Invo
     remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
     if remaining_amount <= Decimal("0.00"):
         raise InvoiceValidationError("Faktura je již uhrazena.")
+
+
+def _resolve_payable_invoice_by_id(db: Session, invoice_id: int) -> Invoice:
+    try:
+        invoice = get_invoice_detail(db, invoice_id)
+    except InvoiceNotFoundError as exc:
+        raise InvoiceNotFoundError("Faktura nebyla nalezena.") from exc
+    _assert_invoice_payable_for_bank_matching(invoice)
     return invoice
+
+
+def list_payable_invoices_for_bank_matching(
+    db: Session,
+    *,
+    currency: str | None = None,
+) -> list[Invoice]:
+    normalized_currency = currency.strip().upper() if currency is not None and currency.strip() else None
+    invoices = (
+        db.query(Invoice)
+        .options(selectinload(Invoice.payments))
+        .order_by(Invoice.issue_date.desc(), Invoice.id.desc())
+        .all()
+    )
+    payable_invoices: list[Invoice] = []
+    for invoice in invoices:
+        runtime_invoice = _attach_invoice_runtime_state(invoice)
+        if not _is_invoice_payable_for_bank_matching(runtime_invoice):
+            continue
+        if normalized_currency is not None and runtime_invoice.currency.strip().upper() != normalized_currency:
+            continue
+        payable_invoices.append(runtime_invoice)
+    return payable_invoices
 
 
 def _bank_transaction_import_item_is_duplicate(db: Session, item: InvoiceBankTransactionImportItem) -> bool:
@@ -1355,10 +1377,10 @@ def _create_bank_transaction_from_import_item(
     return transaction
 
 
-def assign_bank_transaction_to_invoice_by_number(
+def assign_bank_transaction_to_invoice(
     db: Session,
     transaction_id: int,
-    invoice_number: str,
+    invoice_id: int,
 ) -> InvoicePaymentMatch:
     transaction = _get_invoice_bank_transaction_or_raise(db, transaction_id)
     if transaction.status == "ignored":
@@ -1370,7 +1392,7 @@ def assign_bank_transaction_to_invoice_by_number(
     if _transaction_has_any_applied_match(db, transaction.id):
         raise InvoiceValidationError("Tato bankovní transakce už má aplikované párování.")
 
-    invoice = _resolve_payable_invoice_by_number(db, invoice_number)
+    invoice = _resolve_payable_invoice_by_id(db, invoice_id)
     if invoice.currency != transaction.currency:
         raise InvoiceValidationError(
             f"Měna transakce ({transaction.currency}) neodpovídá faktuře ({invoice.currency})."
@@ -1416,7 +1438,7 @@ def record_invoice_bank_payment(
     db: Session,
     payload: InvoiceBankTransactionRecordInvoicePaymentRequest,
 ) -> InvoiceBankTransactionRecordInvoicePaymentResponse:
-    invoice = _resolve_payable_invoice_by_number(db, payload.invoice_number)
+    invoice = _resolve_payable_invoice_by_id(db, payload.invoice_id)
     remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
     payment_amount = (
         _quantize_money(Decimal(payload.amount))
@@ -1441,10 +1463,10 @@ def record_invoice_bank_payment(
         counterparty_name=payload.counterparty_name or invoice.customer_name,
     )
     transaction = _create_bank_transaction_from_import_item(db, import_item)
-    applied_match = assign_bank_transaction_to_invoice_by_number(
+    applied_match = assign_bank_transaction_to_invoice(
         db,
         transaction.id,
-        invoice.invoice_number,
+        invoice.id,
     )
     updated_invoice = get_invoice_detail(db, invoice.id)
     payment_summary = _build_payment_summary(updated_invoice)

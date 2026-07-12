@@ -4,14 +4,13 @@ import { FormEvent, useState } from "react";
 
 import { AccountingNewConfirmDialog } from "@/components/admin/accounting-new/AccountingNewConfirmDialog";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
+import { AccountingNewPayableInvoiceSelect } from "@/components/admin/accounting-new/AccountingNewPayableInvoiceSelect";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AccountingNewRequestError, assignAccountingNewBankTransactionInvoice } from "@/lib/accountingNew";
-import type { AccountingNewApiError, AccountingNewBankTransactionListItem } from "@/types/accountingNew";
+import type { AccountingNewApiError, AccountingNewBankTransactionListItem, AccountingNewPayableInvoiceListItem } from "@/types/accountingNew";
 import { formatAccountingNewTemplate } from "@/components/admin/accounting-new/accountingNewFormat";
 
 export function AccountingNewBankTransactionAssignInvoiceForm({
@@ -23,7 +22,8 @@ export function AccountingNewBankTransactionAssignInvoiceForm({
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
-  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [selectedInvoice, setSelectedInvoice] = useState<AccountingNewPayableInvoiceListItem | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -42,8 +42,8 @@ export function AccountingNewBankTransactionAssignInvoiceForm({
     setSuccessMessage(null);
     setValidationError(null);
 
-    const cleanedInvoiceNumber = invoiceNumber.trim();
-    if (!cleanedInvoiceNumber) {
+    const parsedInvoiceId = Number.parseInt(selectedInvoiceId, 10);
+    if (!selectedInvoiceId || Number.isNaN(parsedInvoiceId) || parsedInvoiceId <= 0) {
       setValidationError(t.bankWrite.recordPaymentInvoiceRequired);
       setIsSubmitting(false);
       return;
@@ -51,14 +51,15 @@ export function AccountingNewBankTransactionAssignInvoiceForm({
 
     try {
       await assignAccountingNewBankTransactionInvoice(detail.id, {
-        invoice_number: cleanedInvoiceNumber,
+        invoice_id: parsedInvoiceId,
       });
       setSuccessMessage(
         formatAccountingNewTemplate(t.bankWrite.assignInvoiceSuccess, {
-          invoiceNumber: cleanedInvoiceNumber,
+          invoiceNumber: selectedInvoice?.invoiceNumber ?? String(parsedInvoiceId),
         }),
       );
-      setInvoiceNumber("");
+      setSelectedInvoiceId("");
+      setSelectedInvoice(null);
       setConfirmOpen(false);
       onAssigned?.();
     } catch (assignError) {
@@ -104,17 +105,20 @@ export function AccountingNewBankTransactionAssignInvoiceForm({
           </Alert>
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="grow space-y-2">
-            <Label htmlFor="assign-invoice-number">{t.bankWrite.recordPaymentInvoiceNumberLabel}</Label>
-            <Input
-              id="assign-invoice-number"
-              value={invoiceNumber}
-              onChange={(event) => setInvoiceNumber(event.target.value)}
-              placeholder={t.bankWrite.recordPaymentInvoiceNumberPlaceholder}
-              autoComplete="off"
+          <div className="grow">
+            <AccountingNewPayableInvoiceSelect
+              id="assign-invoice-select"
+              label={t.bankWrite.recordPaymentInvoiceLabel}
+              value={selectedInvoiceId}
+              currencyFilter={detail.currency}
+              onChange={(invoiceId, invoice) => {
+                setSelectedInvoiceId(invoiceId);
+                setSelectedInvoice(invoice);
+              }}
+              required
             />
           </div>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || !selectedInvoiceId}>
             {t.bankWrite.assignInvoiceAction}
           </Button>
         </div>

@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { AccountingNewConfirmDialog } from "@/components/admin/accounting-new/AccountingNewConfirmDialog";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
+import { AccountingNewPayableInvoiceSelect } from "@/components/admin/accounting-new/AccountingNewPayableInvoiceSelect";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +14,14 @@ import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AccountingNewRequestError, recordAccountingNewInvoiceBankPayment } from "@/lib/accountingNew";
 import { minorUnitsToApiDecimal, parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
-import type { AccountingNewApiError } from "@/types/accountingNew";
+import type { AccountingNewApiError, AccountingNewPayableInvoiceListItem } from "@/types/accountingNew";
 import { formatAccountingNewTemplate } from "@/components/admin/accounting-new/accountingNewFormat";
 
 export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded?: () => void }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
-  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [selectedInvoice, setSelectedInvoice] = useState<AccountingNewPayableInvoiceListItem | null>(null);
   const [amount, setAmount] = useState("");
   const [transactionDate, setTransactionDate] = useState(new Date().toISOString().slice(0, 10));
   const [message, setMessage] = useState("");
@@ -35,8 +37,8 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
     setSuccessMessage(null);
     setValidationError(null);
 
-    const cleanedInvoiceNumber = invoiceNumber.trim();
-    if (!cleanedInvoiceNumber) {
+    const parsedInvoiceId = Number.parseInt(selectedInvoiceId, 10);
+    if (!selectedInvoiceId || Number.isNaN(parsedInvoiceId) || parsedInvoiceId <= 0) {
       setValidationError(t.bankWrite.recordPaymentInvoiceRequired);
       setIsSubmitting(false);
       return;
@@ -44,7 +46,7 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
 
     let parsedAmount: number | undefined;
     if (amount.trim()) {
-      const parsed = parseAccountingNewMoneyInput(amount, "CZK");
+      const parsed = parseAccountingNewMoneyInput(amount, selectedInvoice?.currency ?? "CZK");
       if (!parsed.ok) {
         setValidationError(t.money.invalidFormat);
         setIsSubmitting(false);
@@ -55,7 +57,7 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
 
     try {
       const result = await recordAccountingNewInvoiceBankPayment({
-        invoice_number: cleanedInvoiceNumber,
+        invoice_id: parsedInvoiceId,
         transaction_date: transactionDate,
         amount: parsedAmount,
         message: message.trim() || null,
@@ -66,7 +68,8 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
           remaining: String(result.remainingAmount),
         }),
       );
-      setInvoiceNumber("");
+      setSelectedInvoiceId("");
+      setSelectedInvoice(null);
       setAmount("");
       setMessage("");
       setConfirmOpen(false);
@@ -114,14 +117,16 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
           </Alert>
         ) : null}
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="bank-invoice-number">{t.bankWrite.recordPaymentInvoiceNumberLabel}</Label>
-            <Input
-              id="bank-invoice-number"
-              value={invoiceNumber}
-              onChange={(event) => setInvoiceNumber(event.target.value)}
-              placeholder={t.bankWrite.recordPaymentInvoiceNumberPlaceholder}
-              autoComplete="off"
+          <div className="md:col-span-2">
+            <AccountingNewPayableInvoiceSelect
+              id="bank-invoice-select"
+              label={t.bankWrite.recordPaymentInvoiceLabel}
+              value={selectedInvoiceId}
+              onChange={(invoiceId, invoice) => {
+                setSelectedInvoiceId(invoiceId);
+                setSelectedInvoice(invoice);
+              }}
+              required
             />
           </div>
           <div className="space-y-2">
@@ -133,16 +138,13 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
               onChange={(event) => setTransactionDate(event.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="bank-payment-amount">{t.bankWrite.recordPaymentAmountLabel}</Label>
-            <AccountingNewMoneyInput
-              id="bank-payment-amount"
-              value={amount}
-              onChange={setAmount}
-              currency="CZK"
-              placeholder={t.bankWrite.recordPaymentAmountPlaceholder}
-            />
-          </div>
+          <AccountingNewMoneyInput
+            id="bank-payment-amount"
+            label={t.bankWrite.recordPaymentAmountLabel}
+            value={amount}
+            onChange={setAmount}
+            placeholder={t.bankWrite.recordPaymentAmountPlaceholder}
+          />
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="bank-payment-message">{t.bankWrite.recordPaymentMessageLabel}</Label>
             <Input
@@ -153,7 +155,7 @@ export function AccountingNewBankInvoicePaymentForm({ onRecorded }: { onRecorded
             />
           </div>
         </div>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || !selectedInvoiceId}>
           {t.bankWrite.recordPaymentAction}
         </Button>
       </form>

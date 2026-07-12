@@ -4402,13 +4402,39 @@ def test_katalog_matche_bankovnich_transakci_pagination_ordering_auth_a_matched_
     assert confidences == sorted(confidences, reverse=True)
 
 
-def test_record_invoice_bank_payment_zapise_platbu_podle_cisla_faktury() -> None:
+def test_list_payable_invoices_for_bank_matching_vraci_vystavene_neuhrazene_doklady() -> None:
+    unpaid_invoice = _vytvor_fakturu({"customer_email": "payable-list-unpaid@example.com"})
+    paid_invoice = _vytvor_fakturu({"customer_email": "payable-list-paid@example.com"})
+    _pridej_platbu(paid_invoice["id"], {"amount": paid_invoice["total"]})
+    quote = _vytvor_fakturu(
+        {
+            "customer_email": "payable-list-quote@example.com",
+            "document_kind": "quote",
+        }
+    )
+    _login_admin()
+    response = client.get("/api/admin/invoices/bank-transactions/payable-invoices")
+
+    assert response.status_code == 200
+    body = response.json()
+    returned_ids = {item["id"] for item in body}
+    assert unpaid_invoice["id"] in returned_ids
+    assert paid_invoice["id"] not in returned_ids
+    assert quote["id"] not in returned_ids
+
+    unpaid_item = next(item for item in body if item["id"] == unpaid_invoice["id"])
+    assert unpaid_item["invoice_number"] == unpaid_invoice["invoice_number"]
+    assert unpaid_item["remaining_amount"] == unpaid_invoice["remaining_amount"]
+    assert unpaid_item["payment_status"] == "unpaid"
+
+
+def test_record_invoice_bank_payment_zapise_platbu_podle_id_faktury() -> None:
     invoice = _vytvor_fakturu({"customer_email": "record-payment-invoice@example.com"})
     _login_admin()
     response = client.post(
         "/api/admin/invoices/bank-transactions/record-invoice-payment",
         json={
-            "invoice_number": invoice["invoice_number"],
+            "invoice_id": invoice["id"],
             "transaction_date": "2026-06-20",
             "amount": invoice["total"],
             "message": "Ruční zápis platby",
@@ -4427,7 +4453,7 @@ def test_record_invoice_bank_payment_zapise_platbu_podle_cisla_faktury() -> None
     assert detail["status"] == "matched"
 
 
-def test_assign_bank_transaction_to_invoice_by_number_aplikuje_manual_match() -> None:
+def test_assign_bank_transaction_to_invoice_aplikuje_manual_match() -> None:
     invoice = _vytvor_fakturu({"customer_email": "assign-invoice-number@example.com"})
     imported = _importuj_bankovni_transakce(
         [
@@ -4445,7 +4471,7 @@ def test_assign_bank_transaction_to_invoice_by_number_aplikuje_manual_match() ->
     _login_admin()
     response = client.post(
         f"/api/admin/invoices/bank-transactions/{transaction_id}/assign-invoice",
-        json={"invoice_number": invoice["invoice_number"]},
+        json={"invoice_id": invoice["id"]},
     )
 
     assert response.status_code == 200

@@ -43,6 +43,10 @@ import type {
   AccountingNewAttachmentUploadParams,
   AccountingNewBankTransactionImportPayload,
   AccountingNewBankTransactionImportResult,
+  AccountingNewPayableInvoiceListItem,
+  AccountingNewRecordInvoiceBankPaymentPayload,
+  AccountingNewAssignBankTransactionInvoicePayload,
+  AccountingNewRecordInvoiceBankPaymentResult,
   AccountingNewDocumentEmailSendPayload,
   AccountingNewDocumentEmailSendResult,
   AccountingNewExportKind,
@@ -3193,6 +3197,46 @@ export async function importAccountingNewBankTransactions(
     importedTransactionIds: data.imported_transaction_ids,
     skippedDuplicateIdentifiers: data.skipped_duplicate_identifiers,
   };
+}
+
+export async function listAccountingNewPayableInvoices(
+  params: AccountingNewListParams & { currency?: string } = {},
+): Promise<AccountingNewPayableInvoiceListItem[]> {
+  const searchParams = new URLSearchParams();
+  if (params.currency?.trim()) {
+    searchParams.set("currency", params.currency.trim());
+  }
+  const query = searchParams.toString();
+  const path = query ? `/bank-transactions/payable-invoices?${query}` : "/bank-transactions/payable-invoices";
+  const data = await fetchAccountingNewJson<
+    Array<{
+      id: number;
+      invoice_number: string;
+      document_kind: string;
+      customer_name: string;
+      issue_date: string;
+      due_date: string;
+      currency: string;
+      total: number;
+      remaining_amount: number;
+      payment_status: string;
+      effective_status: string;
+    }>
+  >("bank-payable-invoices", path, params.signal);
+
+  return data.map((item) => ({
+    id: item.id,
+    invoiceNumber: item.invoice_number,
+    documentKind: item.document_kind,
+    customerName: item.customer_name,
+    issueDate: item.issue_date,
+    dueDate: item.due_date,
+    currency: item.currency,
+    total: item.total,
+    remainingAmount: item.remaining_amount,
+    paymentStatus: item.payment_status,
+    effectiveStatus: item.effective_status,
+  }));
 }
 
 export async function recordAccountingNewInvoiceBankPayment(
