@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, AccountingNewRequestError, getAccountingNewTodo } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewTodoDetailState } from "@/types/accountingNew";
 import { AccountingNewReminderSendForm } from "@/components/admin/accounting-new/AccountingNewReminderSendForm";
 import { AccountingNewTodoDetailActions } from "@/components/admin/accounting-new/AccountingNewTodoActions";
@@ -21,6 +22,7 @@ import {
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
   translateAccountingNewApiError,
+  translateAccountingNewTodoType,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -131,7 +133,7 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="outline">
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.todoDetail.backLabel}</Link>
+          <Link href={getAccountingNewModuleRoute("reminders")}>{t.todoDetail.backLabel}</Link>
         </Button>
         <Badge variant="outline">{t.todoDetail.badge}</Badge>
       </div>
@@ -153,7 +155,7 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
             </h2>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <MetaRow label={t.todoDetail.fields.status} value={<AccountingNewTodoStatusBadge label={detail.status} />} />
-              <MetaRow label={t.todoDetail.fields.type} value={detail.todoType} />
+              <MetaRow label={t.todoDetail.fields.type} value={translateAccountingNewTodoType(t, detail.todoType)} />
               <MetaRow
                 label={t.todoDetail.fields.dueDate}
                 value={formatAccountingNewDate(detail.dueDate, language, t.common.noValue)}

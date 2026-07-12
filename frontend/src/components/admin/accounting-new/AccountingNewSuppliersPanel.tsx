@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,15 +49,19 @@ export function AccountingNewSuppliersPanel({
   isLoading,
   authRequired,
   error,
+  defaultExpanded = false,
 }: {
   suppliers: AccountingNewSupplierListItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const locale = getAccountingNewLocale(language);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
+  const contentVisible = isContentVisible(authRequired, error);
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
   const deferredQuery = useDeferredValue(query);
@@ -85,9 +90,14 @@ export function AccountingNewSuppliersPanel({
             <Badge variant="secondary">{t.supplierWrite.badgeFunctional}</Badge>
             <Badge variant="outline">{t.suppliers.badge}</Badge>
           </div>
-          <Button asChild>
-            <Link href={`${ACCOUNTING_NEW_ROUTE}/dodavatele/novy`}>{t.supplierWrite.actions.createSupplier}</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={toggle}>
+              {expanded ? t.suppliers.hideList : t.suppliers.showList}
+            </Button>
+            <Button asChild>
+              <Link href={`${ACCOUNTING_NEW_ROUTE}/dodavatele/novy`}>{t.supplierWrite.actions.createSupplier}</Link>
+            </Button>
+          </div>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.suppliers.title}</CardTitle>
@@ -95,6 +105,10 @@ export function AccountingNewSuppliersPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.suppliers.listCollapsed, { count: suppliers.length })}
+        </p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.suppliersTitle}</AlertTitle>
@@ -109,7 +123,7 @@ export function AccountingNewSuppliersPanel({
           </Alert>
         ) : null}
 
-        {!authRequired && !error ? (
+        {contentVisible ? (
           <>
             <div className="grid gap-3 md:grid-cols-[2fr,1fr]">
               <Input
@@ -142,7 +156,7 @@ export function AccountingNewSuppliersPanel({
           </>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && contentVisible ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -150,17 +164,17 @@ export function AccountingNewSuppliersPanel({
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && filteredSuppliers.length > 0 ? (
+        {contentVisible && !isLoading && filteredSuppliers.length > 0 ? (
           <AccountingNewSuppliersTable suppliers={filteredSuppliers} />
         ) : null}
 
-        {!isLoading && !authRequired && !error && suppliers.length === 0 ? (
+        {contentVisible && !isLoading && suppliers.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.suppliers}
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && suppliers.length > 0 && filteredSuppliers.length === 0 ? (
+        {contentVisible && !isLoading && suppliers.length > 0 && filteredSuppliers.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.suppliersFiltered}
           </div>

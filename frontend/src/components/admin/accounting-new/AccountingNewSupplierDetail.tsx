@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, getAccountingNewSupplier } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewApiError, AccountingNewSupplierDetailState } from "@/types/accountingNew";
 import { formatAccountingNewDateTime, translateAccountingNewApiError } from "@/components/admin/accounting-new/accountingNewFormat";
 
@@ -103,7 +104,7 @@ export function AccountingNewSupplierDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("suppliers")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.auth.supplierDetailTitle}</AlertTitle>
@@ -117,7 +118,7 @@ export function AccountingNewSupplierDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("suppliers")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.supplierDetail.notFoundTitle}</AlertTitle>
@@ -131,7 +132,7 @@ export function AccountingNewSupplierDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("suppliers")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.supplierDetailTitle}</AlertTitle>
@@ -147,7 +148,7 @@ export function AccountingNewSupplierDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("suppliers")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="secondary">{t.supplierWrite.badgeFunctional}</Badge>
         <Badge variant="outline">{t.suppliers.badge}</Badge>

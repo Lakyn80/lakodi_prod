@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { AccountingNewConfirmDialog } from "@/components/admin/accounting-new/AccountingNewConfirmDialog";
 import { AccountingNewCurrencySelect } from "@/components/admin/accounting-new/AccountingNewCurrencySelect";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
@@ -30,9 +31,10 @@ import type { AccountingNewApiError, AccountingNewSettingsFormState } from "@/ty
 import { translateAccountingNewApiError } from "@/components/admin/accounting-new/accountingNewFormat";
 import { paymentMethodIdToBackendValue } from "@/lib/accountingNewPaymentMethods";
 
-export function AccountingNewSettingsPanel() {
+export function AccountingNewSettingsPanel({ defaultExpanded = false }: { defaultExpanded?: boolean } = {}) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
   const [form, setForm] = useState<AccountingNewSettingsFormState>(createEmptyAccountingNewSettingsFormState());
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,6 +42,7 @@ export function AccountingNewSettingsPanel() {
   const [loadError, setLoadError] = useState<AccountingNewApiError | null>(null);
   const [mutationError, setMutationError] = useState<AccountingNewApiError | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const contentVisible = isContentVisible(authRequired, loadError);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -104,17 +107,22 @@ export function AccountingNewSettingsPanel() {
   }
 
   return (
-    <Card id="settings" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.settingsWrite.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.settingsWrite.hideSection : t.settingsWrite.showSection}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.settingsWrite.title}</CardTitle>
           <CardDescription>{t.settingsWrite.description}</CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">{t.settingsWrite.sectionCollapsed}</p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.documentsTitle}</AlertTitle>
@@ -129,23 +137,25 @@ export function AccountingNewSettingsPanel() {
           </Alert>
         ) : null}
 
-        {mutationError ? <AccountingNewMutationNotice error={mutationError} /> : null}
+        {contentVisible ? (
+          <>
+            {mutationError ? <AccountingNewMutationNotice error={mutationError} /> : null}
 
-        {successMessage ? (
-          <Alert className="mb-4">
-            <AlertTitle>{t.documentWrite.mutation.successTitle}</AlertTitle>
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        ) : null}
+            {successMessage ? (
+              <Alert className="mb-4">
+                <AlertTitle>{t.documentWrite.mutation.successTitle}</AlertTitle>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            ) : null}
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : (
-          <form className="space-y-6" onSubmit={handleSubmit}>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : (
+              <form className="space-y-6" onSubmit={handleSubmit}>
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-foreground">{t.settingsWrite.sections.issuer}</h3>
               <div className="grid gap-4 md:grid-cols-2">
@@ -202,8 +212,10 @@ export function AccountingNewSettingsPanel() {
             <Button type="submit" disabled={isSaving}>
               {t.settingsWrite.save}
             </Button>
-          </form>
-        )}
+              </form>
+            )}
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );

@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, AccountingNewRequestError, listAccountingNewPaymentMatchesCatalog } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type {
   AccountingNewApiError,
   AccountingNewBankTransactionListItem,
@@ -29,6 +32,7 @@ export function AccountingNewPaymentMatchesPanel({
   error: dashboardError,
   reloadKey = 0,
   onStateChanged,
+  defaultExpanded = false,
 }: {
   transactions: AccountingNewBankTransactionListItem[];
   isLoading: boolean;
@@ -36,9 +40,12 @@ export function AccountingNewPaymentMatchesPanel({
   error: AccountingNewApiError | null;
   reloadKey?: number;
   onStateChanged?: () => void;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
+  const contentVisible = isContentVisible(authRequired, dashboardError);
   const matchedCount = countTransactionsByStatus(transactions, "matched");
   const ignoredCount = countTransactionsByStatus(transactions, "ignored");
   const openCount = transactions.length - matchedCount - ignoredCount;
@@ -101,14 +108,17 @@ export function AccountingNewPaymentMatchesPanel({
     onStateChanged?.();
   }
 
-  const showMatchesSection = !authRequired && !dashboardError;
+  const showMatchesSection = contentVisible;
   const isLoading = isDashboardLoading || isMatchesLoading;
 
   return (
     <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.paymentMatching.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.paymentMatching.hideList : t.paymentMatching.showList}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.paymentMatching.title}</CardTitle>
@@ -116,6 +126,8 @@ export function AccountingNewPaymentMatchesPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">{t.paymentMatching.listCollapsed}</p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.paymentMatchingTitle}</AlertTitle>
@@ -130,7 +142,7 @@ export function AccountingNewPaymentMatchesPanel({
           </Alert>
         ) : null}
 
-        {!authRequired && !dashboardError ? (
+        {contentVisible ? (
           <>
             <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-lg border border-border bg-background p-4">
@@ -185,7 +197,7 @@ export function AccountingNewPaymentMatchesPanel({
 
                 <p className="text-xs text-muted-foreground">
                   {t.paymentMatching.detailRouteHint}{" "}
-                  <Link href={`${ACCOUNTING_NEW_ROUTE}#bank-transactions`} className="underline underline-offset-4">
+                  <Link href={getAccountingNewModuleRoute("bank-transactions")} className="underline underline-offset-4">
                     {t.navigation.bankTransactions}
                   </Link>
                 </p>

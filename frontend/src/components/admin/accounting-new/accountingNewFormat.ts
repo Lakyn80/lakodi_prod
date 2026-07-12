@@ -85,6 +85,11 @@ export function translateAccountingNewStatus(t: AccountingNewTranslations, value
   return t.common.noValue;
 }
 
+export function translateAccountingNewTodoType(t: AccountingNewTranslations, value: string): string {
+  const labels = t.todoTypeLabels as Record<string, string>;
+  return labels[normalizeAccountingNewLookupKey(value)] ?? value;
+}
+
 export function translateAccountingNewDocumentKind(t: AccountingNewTranslations, value: string): string {
   const labels = t.documentKinds as Record<string, string>;
   return labels[normalizeAccountingNewLookupKey(value)] ?? value;

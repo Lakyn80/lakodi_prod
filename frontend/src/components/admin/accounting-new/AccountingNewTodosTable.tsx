@@ -12,6 +12,7 @@ import {
   formatAccountingNewDate,
   formatAccountingNewDateTime,
   formatAccountingNewTemplate,
+  translateAccountingNewTodoType,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function renderRelatedLink(todo: AccountingNewTodoListItem, t: (typeof translations)["cs"]["accountingNew"]) {
@@ -73,7 +74,9 @@ export function AccountingNewTodosTable({ todos }: { todos: AccountingNewTodoLis
             <TableCell className="align-top">
               <AccountingNewTodoStatusBadge label={todo.status} />
             </TableCell>
-            <TableCell className="align-top text-sm text-foreground">{todo.todoType}</TableCell>
+            <TableCell className="align-top text-sm text-foreground">
+              {translateAccountingNewTodoType(t, todo.todoType)}
+            </TableCell>
             <TableCell className="align-top">{formatAccountingNewDate(todo.dueDate, language, t.common.noValue)}</TableCell>
             <TableCell className="align-top">{renderRelatedLink(todo, t)}</TableCell>
             <TableCell className="align-top">

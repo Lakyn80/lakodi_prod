@@ -18,6 +18,7 @@ import {
   getAccountingNewExpenseAuditEvents,
   getAccountingNewExpensePayments,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewApiError, AccountingNewExpenseDetail, AccountingNewExpenseDetailState } from "@/types/accountingNew";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewExpensePaymentForm } from "@/components/admin/accounting-new/AccountingNewExpensePaymentForm";
@@ -167,7 +168,7 @@ export function AccountingNewExpenseDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("expenses")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.auth.expenseDetailTitle}</AlertTitle>
@@ -181,7 +182,7 @@ export function AccountingNewExpenseDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("expenses")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.expenseDetail.notFoundTitle}</AlertTitle>
@@ -195,7 +196,7 @@ export function AccountingNewExpenseDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("expenses")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.expenseDetailTitle}</AlertTitle>
@@ -211,7 +212,7 @@ export function AccountingNewExpenseDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("expenses")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="secondary">{t.expenseWrite.badgeFunctional}</Badge>
         <Badge variant="outline">{t.expenses.badge}</Badge>

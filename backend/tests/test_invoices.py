@@ -5233,6 +5233,96 @@ def test_todo_complete_cancel_a_delete_maji_bezpecne_chovani() -> None:
     assert delete_cancelled_response.json() == {"detail": "Dokončené nebo zrušené todo nelze smazat."}
 
 
+def test_uplna_uhrada_faktury_automaticky_dokonci_otevrene_todo() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "auto-complete-invoice@example.com"})
+    other_invoice = _vytvor_fakturu({"customer_email": "auto-complete-other@example.com"})
+    todo = _vytvor_todo(
+        {
+            "invoice_id": invoice["id"],
+            "todo_type": "invoice_overdue",
+            "title": "Upomínka faktury",
+        }
+    )
+    other_todo = _vytvor_todo(
+        {
+            "invoice_id": other_invoice["id"],
+            "todo_type": "invoice_overdue",
+            "title": "Jiná faktura",
+        }
+    )
+    _login_admin()
+
+    partial_response = client.post(
+        f"/api/admin/invoices/{invoice['id']}/payments",
+        json={
+            "amount": 1000,
+            "paid_at": "2026-04-10",
+            "payment_method": "Bankovní převod",
+            "note": "Částečná úhrada",
+        },
+    )
+    assert partial_response.status_code == 200
+    partial_todo = client.get(f"/api/admin/invoices/todos/{todo['id']}").json()
+    assert partial_todo["status"] == "open"
+
+    full_response = client.post(
+        f"/api/admin/invoices/{invoice['id']}/payments",
+        json={
+            "amount": invoice["total"] - 1000,
+            "paid_at": "2026-04-11",
+            "payment_method": "Bankovní převod",
+            "note": "Doplatek",
+        },
+    )
+    assert full_response.status_code == 200
+    completed_todo = client.get(f"/api/admin/invoices/todos/{todo['id']}").json()
+    untouched_todo = client.get(f"/api/admin/invoices/todos/{other_todo['id']}").json()
+
+    assert completed_todo["status"] == "completed"
+    assert completed_todo["completed_at"] is not None
+    assert untouched_todo["status"] == "open"
+
+
+def test_uplna_uhrada_vydaje_automaticky_dokonci_otevrene_todo() -> None:
+    expense = _vytvor_vydaj()
+    todo = _vytvor_todo(
+        {
+            "expense_id": expense["id"],
+            "todo_type": "expense_overdue",
+            "title": "Upomínka výdaje",
+        }
+    )
+    _login_admin()
+
+    partial_response = client.post(
+        f"/api/admin/invoices/expenses/{expense['id']}/payments",
+        json={
+            "amount": 1000,
+            "paid_at": "2026-05-10",
+            "payment_method": "Bankovní převod",
+            "note": "Částečná úhrada dodavateli",
+        },
+    )
+    assert partial_response.status_code == 200
+    partial_todo = client.get(f"/api/admin/invoices/todos/{todo['id']}").json()
+    assert partial_todo["status"] == "open"
+
+    full_response = client.post(
+        f"/api/admin/invoices/expenses/{expense['id']}/payments",
+        json={
+            "amount": expense["total"] - 1000,
+            "paid_at": "2026-05-11",
+            "payment_method": "Bankovní převod",
+            "note": "Doplatek",
+        },
+    )
+    assert full_response.status_code == 200
+    completed_todo = client.get(f"/api/admin/invoices/todos/{todo['id']}").json()
+
+    assert completed_todo["status"] == "completed"
+    assert completed_todo["completed_at"] is not None
+
+
 def test_generate_todos_vytvori_overdue_invoice_a_proforma_bez_quote_a_bez_duplikatu() -> None:
     today = date.today()
     issue_date = (today - timedelta(days=30)).isoformat()

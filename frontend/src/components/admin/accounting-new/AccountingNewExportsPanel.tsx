@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +20,11 @@ const EXPORT_BUTTONS: Array<{ kind: AccountingNewExportKind; labelKey: keyof typ
   { kind: "expenses-xlsx", labelKey: "expensesXlsx" },
 ];
 
-export function AccountingNewExportsPanel() {
+export function AccountingNewExportsPanel({ defaultExpanded = false }: { defaultExpanded?: boolean } = {}) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
+  const contentVisible = isContentVisible(false, null);
   const [pendingKind, setPendingKind] = useState<AccountingNewExportKind | null>(null);
   const [error, setError] = useState<AccountingNewApiError | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -51,10 +54,13 @@ export function AccountingNewExportsPanel() {
   }
 
   return (
-    <Card id="exports" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.exportsWrite.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.exportsWrite.hideSection : t.exportsWrite.showSection}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.exportsWrite.title}</CardTitle>
@@ -62,26 +68,33 @@ export function AccountingNewExportsPanel() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {error ? <AccountingNewMutationNotice error={error} /> : null}
-        {successMessage ? (
-          <Alert>
-            <AlertTitle>{t.documentWrite.mutation.successTitle}</AlertTitle>
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        ) : null}
+        <p className="text-sm text-muted-foreground">{t.exportsWrite.sectionCollapsed}</p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {EXPORT_BUTTONS.map(({ kind, labelKey }) => (
-            <Button
-              key={kind}
-              variant="outline"
-              disabled={pendingKind !== null}
-              onClick={() => void handleDownload(kind)}
-            >
-              {t.exportsWrite[labelKey]}
-            </Button>
-          ))}
-        </div>
+        {error ? <AccountingNewMutationNotice error={error} /> : null}
+
+        {contentVisible ? (
+          <>
+            {successMessage ? (
+              <Alert>
+                <AlertTitle>{t.documentWrite.mutation.successTitle}</AlertTitle>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {EXPORT_BUTTONS.map(({ kind, labelKey }) => (
+                <Button
+                  key={kind}
+                  variant="outline"
+                  disabled={pendingKind !== null}
+                  onClick={() => void handleDownload(kind)}
+                >
+                  {t.exportsWrite[labelKey]}
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );

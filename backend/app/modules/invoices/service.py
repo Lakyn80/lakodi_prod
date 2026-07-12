@@ -1182,6 +1182,7 @@ def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int)
             new_values=_build_invoice_payment_summary_payload(payment),
             metadata={"match_type": match.match_type},
         )
+        _auto_complete_open_todos_for_settled_invoice(db, invoice.id)
     elif match.expense_id is not None:
         if transaction.direction != "outgoing":
             raise InvoiceValidationError("Odchozí bankovní transakce je povinná pro párování s výdajem.")
@@ -1207,6 +1208,7 @@ def apply_invoice_payment_match(db: Session, transaction_id: int, match_id: int)
             new_values=_build_expense_payment_summary_payload(payment),
             metadata={"match_type": match.match_type},
         )
+        _auto_complete_open_todos_for_settled_expense(db, expense.id)
     else:
         raise InvoiceValidationError("Návrh párování neobsahuje cílový doklad.")
 
@@ -1977,6 +1979,7 @@ def add_invoice_expense_payment(db: Session, expense_id: int, payload: InvoiceEx
         source="admin_api",
         new_values=_build_expense_payment_summary_payload(payment),
     )
+    _auto_complete_open_todos_for_settled_expense(db, expense.id)
     db.commit()
     return get_invoice_expense_detail(db, expense.id)
 
@@ -2624,6 +2627,7 @@ def add_invoice_payment(db: Session, invoice_id: int, payload: InvoicePaymentCre
         source="admin_api",
         new_values=_build_invoice_payment_summary_payload(payment),
     )
+    _auto_complete_open_todos_for_settled_invoice(db, invoice.id)
     db.commit()
     return get_invoice_detail(db, invoice.id)
 
@@ -3815,6 +3819,82 @@ def _should_prevent_open_todo_duplicate(
     if todo_type in AUTO_EXPENSE_TODO_TYPES and expense_id is not None:
         return True
     return False
+
+
+def _auto_complete_open_todos_for_settled_invoice(db: Session, invoice_id: int) -> list[int]:
+    invoice = get_invoice_detail(db, invoice_id)
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    if remaining_amount > Decimal("0.00"):
+        return []
+
+    open_todos = (
+        db.query(InvoiceTodo)
+        .filter(
+            InvoiceTodo.invoice_id == invoice_id,
+            InvoiceTodo.status == "open",
+        )
+        .order_by(InvoiceTodo.id.asc())
+        .all()
+    )
+    completed_ids: list[int] = []
+    for todo in open_todos:
+        previous_status = todo.status
+        todo.status = "completed"
+        todo.completed_at = _resolve_completed_at_for_status("completed", current_value=todo.completed_at)
+        db.add(todo)
+        create_accounting_event(
+            db,
+            event_type="status_changed",
+            entity_type="todo",
+            entity_id=todo.id,
+            invoice_id=todo.invoice_id,
+            expense_id=todo.expense_id,
+            todo_id=todo.id,
+            source="system",
+            old_values={"status": previous_status},
+            new_values={"status": todo.status, "completed_at": todo.completed_at},
+            metadata={"reason": "invoice_fully_paid"},
+        )
+        completed_ids.append(todo.id)
+    return completed_ids
+
+
+def _auto_complete_open_todos_for_settled_expense(db: Session, expense_id: int) -> list[int]:
+    expense = get_invoice_expense_detail(db, expense_id)
+    remaining_amount = _quantize_money(Decimal(getattr(expense, "remaining_amount", Decimal("0.00"))))
+    if remaining_amount > Decimal("0.00"):
+        return []
+
+    open_todos = (
+        db.query(InvoiceTodo)
+        .filter(
+            InvoiceTodo.expense_id == expense_id,
+            InvoiceTodo.status == "open",
+        )
+        .order_by(InvoiceTodo.id.asc())
+        .all()
+    )
+    completed_ids: list[int] = []
+    for todo in open_todos:
+        previous_status = todo.status
+        todo.status = "completed"
+        todo.completed_at = _resolve_completed_at_for_status("completed", current_value=todo.completed_at)
+        db.add(todo)
+        create_accounting_event(
+            db,
+            event_type="status_changed",
+            entity_type="todo",
+            entity_id=todo.id,
+            invoice_id=todo.invoice_id,
+            expense_id=todo.expense_id,
+            todo_id=todo.id,
+            source="system",
+            old_values={"status": previous_status},
+            new_values={"status": todo.status, "completed_at": todo.completed_at},
+            metadata={"reason": "expense_fully_paid"},
+        )
+        completed_ids.append(todo.id)
+    return completed_ids
 
 
 def _has_open_todo_duplicate(

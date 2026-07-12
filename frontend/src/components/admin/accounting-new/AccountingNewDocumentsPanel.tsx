@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,15 +53,17 @@ export function AccountingNewDocumentsPanel({
   isLoading,
   authRequired,
   error,
+  defaultExpanded = false,
 }: {
   documents: AccountingNewDocumentListItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
-  const [expanded, setExpanded] = useState(false);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
   const [query, setQuery] = useState("");
   const [documentKind, setDocumentKind] = useState("all");
   const [effectiveStatus, setEffectiveStatus] = useState("all");
@@ -105,7 +109,7 @@ export function AccountingNewDocumentsPanel({
             <CardDescription>{t.documents.description}</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setExpanded((current) => !current)}>
+            <Button type="button" variant="outline" size="sm" onClick={toggle}>
               {expanded ? t.documents.hideDocuments : t.documents.showDocuments}
             </Button>
             <Button asChild>
@@ -133,7 +137,7 @@ export function AccountingNewDocumentsPanel({
           </Alert>
         ) : null}
 
-        {expanded && !authRequired && !error ? (
+        {isContentVisible(authRequired, error) ? (
           <>
             <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <Input
@@ -184,7 +188,7 @@ export function AccountingNewDocumentsPanel({
           </>
         ) : null}
 
-        {isLoading && expanded ? (
+        {isLoading && isContentVisible(authRequired, error) ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -192,15 +196,15 @@ export function AccountingNewDocumentsPanel({
           </div>
         ) : null}
 
-        {expanded && !isLoading && !authRequired && !error && visibleDocuments.length > 0 ? (
+        {isContentVisible(authRequired, error) && !isLoading && visibleDocuments.length > 0 ? (
           <AccountingNewDocumentsTable documents={visibleDocuments} />
         ) : null}
 
-        {expanded && !isLoading && !authRequired && !error && documents.length === 0 ? (
+        {isContentVisible(authRequired, error) && !isLoading && documents.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">{t.empty.documents}</div>
         ) : null}
 
-        {expanded && !isLoading && !authRequired && !error && documents.length > 0 && visibleDocuments.length === 0 ? (
+        {isContentVisible(authRequired, error) && !isLoading && documents.length > 0 && visibleDocuments.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.documentsFiltered}
           </div>

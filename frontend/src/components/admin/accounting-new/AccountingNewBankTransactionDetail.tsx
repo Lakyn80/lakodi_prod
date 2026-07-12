@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ACCOUNTING_NEW_ROUTE, getAccountingNewBankTransaction, listAccountingNewBankTransactionMatches } from "@/lib/accountingNew";
+import { getAccountingNewBankTransaction, listAccountingNewBankTransactionMatches } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewApiError, AccountingNewBankTransactionDetailState } from "@/types/accountingNew";
 import { AccountingNewBankTransactionActions } from "@/components/admin/accounting-new/AccountingNewBankTransactionActions";
 import { AccountingNewBankTransactionAssignInvoiceForm } from "@/components/admin/accounting-new/AccountingNewBankTransactionAssignInvoiceForm";
@@ -139,7 +140,7 @@ export function AccountingNewBankTransactionDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("bank-transactions")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.auth.bankTransactionDetailTitle}</AlertTitle>
@@ -153,7 +154,7 @@ export function AccountingNewBankTransactionDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("bank-transactions")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.bankTransactionDetail.notFoundTitle}</AlertTitle>
@@ -167,7 +168,7 @@ export function AccountingNewBankTransactionDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("bank-transactions")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.bankTransactionDetailTitle}</AlertTitle>
@@ -184,7 +185,7 @@ export function AccountingNewBankTransactionDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("bank-transactions")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="outline">{t.bankTransactions.badge}</Badge>
       </div>

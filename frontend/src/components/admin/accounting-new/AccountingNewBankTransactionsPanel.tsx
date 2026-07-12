@@ -2,8 +2,10 @@
 
 import { useDeferredValue, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,16 +53,20 @@ export function AccountingNewBankTransactionsPanel({
   authRequired,
   error,
   onImported,
+  defaultExpanded = false,
 }: {
   transactions: AccountingNewBankTransactionListItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
   onImported?: () => void;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const locale = getAccountingNewLocale(language);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
+  const contentVisible = isContentVisible(authRequired, error);
   const [query, setQuery] = useState("");
   const [direction, setDirection] = useState("all");
   const [status, setStatus] = useState("all");
@@ -90,10 +96,13 @@ export function AccountingNewBankTransactionsPanel({
   });
 
   return (
-    <Card id="bank-transactions" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.bankTransactions.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.bankTransactions.hideList : t.bankTransactions.showList}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.bankTransactions.title}</CardTitle>
@@ -101,6 +110,10 @@ export function AccountingNewBankTransactionsPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.bankTransactions.listCollapsed, { count: transactions.length })}
+        </p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.bankTransactionsTitle}</AlertTitle>
@@ -115,9 +128,9 @@ export function AccountingNewBankTransactionsPanel({
           </Alert>
         ) : null}
 
-        {!authRequired ? <AccountingNewBankInvoicePaymentForm onRecorded={onImported} /> : null}
+        {contentVisible ? <AccountingNewBankInvoicePaymentForm onRecorded={onImported} /> : null}
 
-        {!authRequired && !error ? (
+        {contentVisible ? (
           <>
             <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <Input
@@ -164,7 +177,7 @@ export function AccountingNewBankTransactionsPanel({
           </>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && contentVisible ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -172,17 +185,17 @@ export function AccountingNewBankTransactionsPanel({
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && filteredTransactions.length > 0 ? (
+        {contentVisible && !isLoading && filteredTransactions.length > 0 ? (
           <AccountingNewBankTransactionsTable transactions={filteredTransactions} />
         ) : null}
 
-        {!isLoading && !authRequired && !error && transactions.length === 0 ? (
+        {contentVisible && !isLoading && transactions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.bankTransactions}
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && transactions.length > 0 && filteredTransactions.length === 0 ? (
+        {contentVisible && !isLoading && transactions.length > 0 && filteredTransactions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.bankTransactionsFiltered}
           </div>

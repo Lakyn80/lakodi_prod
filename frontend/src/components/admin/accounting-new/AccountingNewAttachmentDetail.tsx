@@ -18,6 +18,7 @@ import {
   getAccountingNewAttachment,
   getAccountingNewAttachmentAuditEvents,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewApiError, AccountingNewAttachmentDetailState } from "@/types/accountingNew";
 import { AccountingNewAttachmentStatusBadge } from "@/components/admin/accounting-new/AccountingNewAttachmentStatusBadge";
 import { AccountingNewAttachmentLinkForm } from "@/components/admin/accounting-new/AccountingNewAttachmentLinkForm";
@@ -186,7 +187,7 @@ export function AccountingNewAttachmentDetail({ attachmentId }: { attachmentId: 
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="outline">
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.attachmentDetail.backLabel}</Link>
+          <Link href={getAccountingNewModuleRoute("attachments")}>{t.attachmentDetail.backLabel}</Link>
         </Button>
         <Badge variant="outline">{t.attachmentDetail.badge}</Badge>
       </div>

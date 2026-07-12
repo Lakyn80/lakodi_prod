@@ -31,6 +31,7 @@ import {
   listAccountingNewSubjects,
   updateAccountingNewDocument,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import {
   buildAccountingNewDocumentFormStateFromDetail,
   buildAccountingNewDocumentWritePayloadFromForm,
@@ -286,7 +287,7 @@ export function AccountingNewDocumentForm({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={documentId ? `${ACCOUNTING_NEW_ROUTE}/doklady/${documentId}` : ACCOUNTING_NEW_ROUTE}>
+          <Link href={documentId ? `${ACCOUNTING_NEW_ROUTE}/doklady/${documentId}` : getAccountingNewModuleRoute("documents")}>
             {t.documentWrite.backToDetail}
           </Link>
         </Button>
@@ -302,10 +303,10 @@ export function AccountingNewDocumentForm({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("documents")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href={mode === "edit" && documentId ? `${ACCOUNTING_NEW_ROUTE}/doklady/${documentId}` : ACCOUNTING_NEW_ROUTE}>
+          <Link href={mode === "edit" && documentId ? `${ACCOUNTING_NEW_ROUTE}/doklady/${documentId}` : getAccountingNewModuleRoute("documents")}>
             {t.documentWrite.backToDetail}
           </Link>
         </Button>

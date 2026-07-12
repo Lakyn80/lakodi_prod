@@ -2,8 +2,10 @@
 
 import { useDeferredValue, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,16 +42,20 @@ export function AccountingNewAttachmentInboxPanel({
   authRequired,
   error,
   onUploaded,
+  defaultExpanded = false,
 }: {
   attachments: AccountingNewAttachmentInboxItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
   onUploaded?: () => void;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const locale = getAccountingNewLocale(language);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
+  const contentVisible = isContentVisible(authRequired, error);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
@@ -58,10 +64,13 @@ export function AccountingNewAttachmentInboxPanel({
   );
 
   return (
-    <Card id="attachment-inbox" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.attachmentInbox.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.attachmentInbox.hideList : t.attachmentInbox.showList}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.attachmentInbox.title}</CardTitle>
@@ -69,9 +78,9 @@ export function AccountingNewAttachmentInboxPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{t.attachmentInbox.apiNote}</p>
-
-        {!authRequired ? <AccountingNewAttachmentUploadForm onUploaded={onUploaded} /> : null}
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.attachmentInbox.listCollapsed, { count: attachments.length })}
+        </p>
 
         {authRequired ? (
           <Alert>
@@ -80,14 +89,20 @@ export function AccountingNewAttachmentInboxPanel({
           </Alert>
         ) : null}
 
-        {error ? (
+        {error && !authRequired ? (
           <Alert variant="destructive">
             <AlertTitle>{t.errors.attachmentInboxTitle}</AlertTitle>
             <AlertDescription>{translateAccountingNewApiError(t, error)}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="space-y-2">
+        {contentVisible ? (
+          <>
+            <p className="text-sm text-muted-foreground">{t.attachmentInbox.apiNote}</p>
+
+            <AccountingNewAttachmentUploadForm onUploaded={onUploaded} />
+
+            <div className="space-y-2">
           <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground" htmlFor="attachment-inbox-search">
             {t.attachmentInbox.searchLabel}
           </label>
@@ -99,23 +114,25 @@ export function AccountingNewAttachmentInboxPanel({
           />
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          {formatAccountingNewTemplate(t.attachmentInbox.shownCount, { count: filteredAttachments.length })}
-        </p>
+            <p className="text-sm text-muted-foreground">
+              {formatAccountingNewTemplate(t.attachmentInbox.shownCount, { count: filteredAttachments.length })}
+            </p>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : filteredAttachments.length > 0 ? (
-          <AccountingNewAttachmentInboxTable attachments={filteredAttachments} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {attachments.length > 0 ? t.empty.attachmentInboxFiltered : t.empty.attachmentInbox}
-          </p>
-        )}
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredAttachments.length > 0 ? (
+              <AccountingNewAttachmentInboxTable attachments={filteredAttachments} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {attachments.length > 0 ? t.empty.attachmentInboxFiltered : t.empty.attachmentInbox}
+              </p>
+            )}
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );

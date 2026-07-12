@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
+import { AccountingNewModulePageShell } from "@/components/admin/accounting-new/AccountingNewModulePageShell";
 
-import { ACCOUNTING_NEW_ROUTE } from "@/lib/accountingNew";
-
-export default function AccountingNewBankTransactionsIndexPage() {
-  redirect(`${ACCOUNTING_NEW_ROUTE}#bank-transactions`);
+export default function AccountingNewBankTransactionsModulePage() {
+  return <AccountingNewModulePageShell moduleId="bank-transactions" />;
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,19 +49,23 @@ export function AccountingNewExpensesPanel({
   isLoading,
   authRequired,
   error,
+  defaultExpanded = false,
 }: {
   expenses: AccountingNewExpenseListItem[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const locale = getAccountingNewLocale(language);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
   const [query, setQuery] = useState("");
   const [expenseStatus, setExpenseStatus] = useState("all");
   const [paymentStatus, setPaymentStatus] = useState("all");
   const deferredQuery = useDeferredValue(query);
+  const contentVisible = isContentVisible(authRequired, error);
 
   const expenseStatusOptions = Array.from(new Set(expenses.map((expense) => expense.status))).sort((left, right) =>
     left.localeCompare(right, locale),
@@ -93,9 +98,14 @@ export function AccountingNewExpensesPanel({
             <Badge variant="secondary">{t.expenseWrite.badgeFunctional}</Badge>
             <Badge variant="outline">{t.expenses.badge}</Badge>
           </div>
-          <Button asChild>
-            <Link href={`${ACCOUNTING_NEW_ROUTE}/vydaje/novy`}>{t.expenseWrite.actions.createExpense}</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={toggle}>
+              {expanded ? t.expenses.hideList : t.expenses.showList}
+            </Button>
+            <Button asChild>
+              <Link href={`${ACCOUNTING_NEW_ROUTE}/vydaje/novy`}>{t.expenseWrite.actions.createExpense}</Link>
+            </Button>
+          </div>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.expenses.title}</CardTitle>
@@ -103,6 +113,10 @@ export function AccountingNewExpensesPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.expenses.listCollapsed, { count: expenses.length })}
+        </p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.expensesTitle}</AlertTitle>
@@ -117,7 +131,7 @@ export function AccountingNewExpensesPanel({
           </Alert>
         ) : null}
 
-        {!authRequired && !error ? (
+        {contentVisible ? (
           <>
             <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <Input
@@ -164,7 +178,7 @@ export function AccountingNewExpensesPanel({
           </>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && contentVisible ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -172,17 +186,17 @@ export function AccountingNewExpensesPanel({
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && filteredExpenses.length > 0 ? (
+        {contentVisible && !isLoading && filteredExpenses.length > 0 ? (
           <AccountingNewExpensesTable expenses={filteredExpenses} />
         ) : null}
 
-        {!isLoading && !authRequired && !error && expenses.length === 0 ? (
+        {contentVisible && !isLoading && expenses.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.expenses}
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && expenses.length > 0 && filteredExpenses.length === 0 ? (
+        {contentVisible && !isLoading && expenses.length > 0 && filteredExpenses.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.expensesFiltered}
           </div>

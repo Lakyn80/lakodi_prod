@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { useDeferredValue, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -41,15 +42,17 @@ export function AccountingNewSubjectsPanel({
   isLoading,
   authRequired,
   error,
+  defaultExpanded = false,
 }: {
   subjects: AccountingNewSubjectSummary[];
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
-  const [expanded, setExpanded] = useState(false);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
@@ -59,7 +62,7 @@ export function AccountingNewSubjectsPanel({
   const hasMoreResults = filteredSubjects.length > MAX_VISIBLE_SUBJECTS;
 
   return (
-    <Card id="subjects" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -67,7 +70,7 @@ export function AccountingNewSubjectsPanel({
             <Badge variant="outline">{t.subjects.badge}</Badge>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setExpanded((current) => !current)}>
+            <Button type="button" variant="outline" size="sm" onClick={toggle}>
               {expanded ? t.customerPersistence.hideCustomers : t.customerPersistence.showCustomers}
             </Button>
             <Button asChild>
@@ -99,7 +102,7 @@ export function AccountingNewSubjectsPanel({
           </Alert>
         ) : null}
 
-        {expanded && !authRequired && !error ? (
+        {isContentVisible(authRequired, error) ? (
           <>
             <Input
               value={query}
@@ -116,7 +119,7 @@ export function AccountingNewSubjectsPanel({
           </>
         ) : null}
 
-        {isLoading && expanded ? (
+        {isLoading && isContentVisible(authRequired, error) ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-14 w-full" />
@@ -124,15 +127,15 @@ export function AccountingNewSubjectsPanel({
           </div>
         ) : null}
 
-        {expanded && !isLoading && !authRequired && !error && visibleSubjects.length > 0 ? (
+        {isContentVisible(authRequired, error) && !isLoading && visibleSubjects.length > 0 ? (
           <AccountingNewSubjectsTable subjects={visibleSubjects} />
         ) : null}
 
-        {expanded && !isLoading && !authRequired && !error && subjects.length === 0 ? (
+        {isContentVisible(authRequired, error) && !isLoading && subjects.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">{t.empty.subjects}</div>
         ) : null}
 
-        {expanded && !isLoading && !authRequired && !error && subjects.length > 0 && visibleSubjects.length === 0 ? (
+        {isContentVisible(authRequired, error) && !isLoading && subjects.length > 0 && visibleSubjects.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.customerPersistence.noCustomersFound}
           </div>

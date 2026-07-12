@@ -28,6 +28,7 @@ import {
   listAccountingNewSuppliers,
   updateAccountingNewExpense,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import {
   ACCOUNTING_NEW_EXPENSE_STORED_STATUS_IDS,
   applyAccountingNewSettingsToExpenseForm,
@@ -194,10 +195,10 @@ export function AccountingNewExpenseForm({
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("expenses")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href={mode === "edit" && expenseId ? `${ACCOUNTING_NEW_ROUTE}/vydaje/${expenseId}` : ACCOUNTING_NEW_ROUTE}>
+          <Link href={mode === "edit" && expenseId ? `${ACCOUNTING_NEW_ROUTE}/vydaje/${expenseId}` : getAccountingNewModuleRoute("expenses")}>
             {t.expenseWrite.backToDetail}
           </Link>
         </Button>

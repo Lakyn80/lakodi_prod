@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, getAccountingNewSubject } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewApiError, AccountingNewSubjectDetailState } from "@/types/accountingNew";
 import { formatAccountingNewDateTime, translateAccountingNewApiError } from "@/components/admin/accounting-new/accountingNewFormat";
 
@@ -93,7 +94,7 @@ export function AccountingNewSubjectDetail({ subjectId }: { subjectId: string })
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("subjects")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.auth.subjectDetailTitle}</AlertTitle>
@@ -107,7 +108,7 @@ export function AccountingNewSubjectDetail({ subjectId }: { subjectId: string })
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("subjects")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.subjectDetail.notFoundTitle}</AlertTitle>
@@ -121,7 +122,7 @@ export function AccountingNewSubjectDetail({ subjectId }: { subjectId: string })
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("subjects")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.subjectDetailTitle}</AlertTitle>
@@ -137,7 +138,7 @@ export function AccountingNewSubjectDetail({ subjectId }: { subjectId: string })
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("subjects")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="secondary">{t.subjectWrite.badgeFunctional}</Badge>
         <Badge variant="outline">{t.subjects.badge}</Badge>

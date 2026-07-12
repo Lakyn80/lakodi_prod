@@ -1,7 +1,11 @@
 import type { AccountingNewModuleDefinition, AccountingNewModuleId } from "@/types/accountingNew";
 import type { AccountingNewModuleRegistryEntry } from "@/types/accountingNewMetadata";
+import {
+  ACCOUNTING_NEW_BASE_ROUTE,
+  getAccountingNewModuleRoute,
+} from "@/lib/accountingNewModuleRoutes";
 
-const ACCOUNTING_NEW_BASE_ROUTE = "/admin/ucetnictvi-new";
+export { ACCOUNTING_NEW_BASE_ROUTE, getAccountingNewModuleRoute };
 
 type AccountingNewModuleRegistrySeed = Omit<AccountingNewModuleRegistryEntry, "capabilities">;
 
@@ -62,7 +66,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "documents",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#documents`,
+    route: getAccountingNewModuleRoute("documents"),
     labelKey: "moduleRegistry.documents.label",
     descriptionKey: "moduleRegistry.documents.description",
     entityType: "document",
@@ -118,7 +122,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
       id: "subjects",
-      route: `${ACCOUNTING_NEW_BASE_ROUTE}#subjects`,
+      route: getAccountingNewModuleRoute("subjects"),
       labelKey: "moduleRegistry.subjects.label",
       descriptionKey: "moduleRegistry.subjects.description",
       entityType: "document",
@@ -174,7 +178,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "expenses",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#expenses`,
+    route: getAccountingNewModuleRoute("expenses"),
     labelKey: "moduleRegistry.expenses.label",
     descriptionKey: "moduleRegistry.expenses.description",
     entityType: "expense",
@@ -229,7 +233,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "suppliers",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#suppliers`,
+    route: getAccountingNewModuleRoute("suppliers"),
     labelKey: "moduleRegistry.suppliers.label",
     descriptionKey: "moduleRegistry.suppliers.description",
     entityType: "supplier",
@@ -284,7 +288,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "bank-transactions",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#bank-transactions`,
+    route: getAccountingNewModuleRoute("bank-transactions"),
     labelKey: "moduleRegistry.bankTransactions.label",
     descriptionKey: "moduleRegistry.bankTransactions.description",
     entityType: "bank_transaction",
@@ -339,7 +343,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "payment-matching",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#payment-matching`,
+    route: getAccountingNewModuleRoute("payment-matching"),
     labelKey: "moduleRegistry.paymentMatching.label",
     descriptionKey: "moduleRegistry.paymentMatching.description",
     entityType: "payment_match",
@@ -367,7 +371,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "reminders",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#reminders`,
+    route: getAccountingNewModuleRoute("reminders"),
     labelKey: "moduleRegistry.reminders.label",
     descriptionKey: "moduleRegistry.reminders.description",
     entityType: "todo",
@@ -424,7 +428,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   ),
   createRegistryEntry({
     id: "reminder-emails",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#reminder-emails`,
+    route: getAccountingNewModuleRoute("reminders"),
     labelKey: "moduleRegistry.reminderEmails.label",
     descriptionKey: "moduleRegistry.reminderEmails.description",
     entityType: "reminder_email",
@@ -479,7 +483,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "attachments",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#attachments`,
+    route: getAccountingNewModuleRoute("attachments"),
     labelKey: "moduleRegistry.attachments.label",
     descriptionKey: "moduleRegistry.attachments.description",
     entityType: "attachment",
@@ -540,7 +544,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "attachment-inbox",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#attachment-inbox`,
+    route: getAccountingNewModuleRoute("attachments"),
     labelKey: "moduleRegistry.attachmentInbox.label",
     descriptionKey: "moduleRegistry.attachmentInbox.description",
     entityType: "attachment_inbox_item",
@@ -569,7 +573,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "recurring",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#recurring`,
+    route: getAccountingNewModuleRoute("recurring"),
     labelKey: "moduleRegistry.recurring.label",
     descriptionKey: "moduleRegistry.recurring.description",
     entityType: "recurring_template",
@@ -654,7 +658,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
       id: "settings",
-      route: `${ACCOUNTING_NEW_BASE_ROUTE}#settings`,
+      route: getAccountingNewModuleRoute("settings"),
       labelKey: "moduleRegistry.settings.label",
       descriptionKey: "moduleRegistry.settings.description",
       entityType: "settings",
@@ -683,7 +687,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   createRegistryEntry(
     {
     id: "exports",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#exports`,
+    route: getAccountingNewModuleRoute("exports"),
     labelKey: "moduleRegistry.exports.label",
     descriptionKey: "moduleRegistry.exports.description",
     entityType: "export",
@@ -709,7 +713,7 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
   ),
   createRegistryEntry({
     id: "audit",
-    route: `${ACCOUNTING_NEW_BASE_ROUTE}#audit`,
+    route: getAccountingNewModuleRoute("audit"),
     labelKey: "moduleRegistry.audit.label",
     descriptionKey: "moduleRegistry.audit.description",
     entityType: "audit_event",

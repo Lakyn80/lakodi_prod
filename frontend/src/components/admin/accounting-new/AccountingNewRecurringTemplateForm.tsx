@@ -28,6 +28,7 @@ import {
   listAccountingNewSuppliers,
   updateAccountingNewRecurringTemplate,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
 import {
   ACCOUNTING_NEW_RECURRING_INTERVALS,
@@ -184,7 +185,7 @@ export function AccountingNewRecurringTemplateForm({
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("recurring")}>{t.navigation.backToDashboard}</Link>
         </Button>
       </div>
 

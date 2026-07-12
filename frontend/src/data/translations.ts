@@ -98,6 +98,7 @@ export const translations = {
         bankTransactions: "Bankovní transakce",
         paymentMatching: "Párování plateb",
         backToDashboard: "Zpět do Účetnictví",
+        backToModules: "Zpět na moduly",
         legacyInvoices: "Původní faktury"
       },
       common: {
@@ -722,6 +723,9 @@ export const translations = {
         paymentStatusLabel: "Filtrovat podle stavu platby výdaje",
         paymentStatusAll: "Všechny stavy platby",
         shownCount: "{count} zobrazených výdajů",
+        showList: "Zobrazit výdaje",
+        hideList: "Skrýt výdaje",
+        listCollapsed: "V seznamu je {count} výdajů — přehled je sbalený.",
         detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           expense: "Výdaj",
@@ -795,6 +799,9 @@ export const translations = {
         countryLabel: "Filtrovat podle země dodavatele",
         countryAll: "Všechny země",
         shownCount: "{count} zobrazených dodavatelů",
+        showList: "Zobrazit dodavatele",
+        hideList: "Skrýt dodavatele",
+        listCollapsed: "V registru je {count} dodavatelů — seznam je sbalený.",
         detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           supplier: "Dodavatel",
@@ -841,6 +848,9 @@ export const translations = {
         statusLabel: "Filtrovat podle stavu transakce",
         statusAll: "Všechny stavy",
         shownCount: "{count} zobrazených bankovních transakcí",
+        showList: "Zobrazit transakce",
+        hideList: "Skrýt transakce",
+        listCollapsed: "V seznamu je {count} bankovních transakcí — přehled je sbalený.",
         detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         table: {
           date: "Datum",
@@ -902,6 +912,9 @@ export const translations = {
         apiNote: "Návrhy párování spravujte v detailu bankovní transakce.",
         deferredTitle: "Návrhy párování",
         deferredDescription: "Otevřete detail transakce pro přiřazení nebo zamítnutí návrhů.",
+        showList: "Zobrazit párování",
+        hideList: "Skrýt párování",
+        listCollapsed: "Přehled párování plateb je sbalený.",
         table: {
           transactionDate: "Datum transakce",
           amount: "Částka",
@@ -932,6 +945,9 @@ export const translations = {
         typeFilterLabel: "Filtrovat podle typu",
         typeAll: "Všechny typy",
         shownCount: "{count} zobrazených úkolů",
+        showList: "Zobrazit úkoly",
+        hideList: "Skrýt úkoly",
+        listCollapsed: "V seznamu je {count} úkolů — přehled je sbalený.",
         readOnlyNote: "",
         table: {
           title: "Název",
@@ -983,6 +999,9 @@ export const translations = {
         typeFilterLabel: "Filtrovat podle typu upomínky",
         typeAll: "Všechny typy",
         shownCount: "{count} zobrazených e-mailů",
+        showList: "Zobrazit e-maily",
+        hideList: "Skrýt e-maily",
+        listCollapsed: "V seznamu je {count} upomínkových e-mailů — přehled je sbalený.",
         readOnlyNote: "",
         aggregationNote: "Seznam se načítá z historie u jednotlivých dokladů.",
         table: {
@@ -1034,6 +1053,9 @@ export const translations = {
         statusFilterLabel: "Filtrovat podle stavu šablony",
         statusAll: "Všechny stavy",
         shownCount: "{count} zobrazených šablon",
+        showList: "Zobrazit šablony",
+        hideList: "Skrýt šablony",
+        listCollapsed: "V seznamu je {count} šablon — přehled je sbalený.",
         detailRouteHint: "Klikněte na řádek pro detail záznamu.",
         relatedSubject: "Odběratel #{id}",
         relatedSupplier: "Dodavatel #{id}",
@@ -1138,6 +1160,9 @@ export const translations = {
         typeFilterLabel: "Filtrovat podle typu přílohy",
         typeAll: "Všechny typy",
         shownCount: "{count} zobrazených příloh",
+        showList: "Zobrazit přílohy",
+        hideList: "Skrýt přílohy",
+        listCollapsed: "V seznamu je {count} příloh — přehled je sbalený.",
         table: {
           fileName: "Soubor",
           type: "Typ",
@@ -1193,6 +1218,9 @@ export const translations = {
         searchPlaceholder: "Hledat podle názvu souboru, typu nebo stavu",
         searchLabel: "Hledat v inboxu",
         shownCount: "{count} zobrazených nezařazených příloh",
+        showList: "Zobrazit inbox",
+        hideList: "Skrýt inbox",
+        listCollapsed: "V inboxu je {count} nezařazených příloh — přehled je sbalený.",
         table: {
           fileName: "Soubor",
           type: "Typ",
@@ -1620,6 +1648,13 @@ export const translations = {
         payment_proof: "Doklad o platbě",
         other: "Jiné"
       },
+      todoTypeLabels: {
+        invoice_overdue: "Faktura po splatnosti",
+        invoice_payment_reminder: "Upomínka k platbě",
+        expense_overdue: "Výdaj po splatnosti",
+        expense_due: "Výdaj ke splatnosti",
+        manual: "Ruční úkol"
+      },
       documentKinds: {
         invoice: "Faktura",
         proforma: "Proforma",
@@ -1655,6 +1690,9 @@ export const translations = {
         badge: "Nastavení",
         title: "Nastavení účetnictví",
         description: "Údaje vystavitele, výchozí měna a platební údaje pro nové doklady.",
+        showSection: "Zobrazit nastavení",
+        hideSection: "Skrýt nastavení",
+        sectionCollapsed: "Nastavení účetnictví je sbalené.",
         save: "Uložit nastavení",
         loading: "Načítání nastavení…",
         mutation: {
@@ -1754,6 +1792,9 @@ export const translations = {
         badge: "Exporty",
         title: "Exporty dat",
         description: "Stáhněte přehled vydaných dokladů a výdajů.",
+        showSection: "Zobrazit exporty",
+        hideSection: "Skrýt exporty",
+        sectionCollapsed: "Exporty dat jsou sbalené.",
         outgoingCsv: "Vydané doklady (CSV)",
         outgoingXlsx: "Vydané doklady (Excel)",
         expensesCsv: "Výdaje (CSV)",
@@ -1767,10 +1808,11 @@ export const translations = {
         generateConfirmTitle: "Vygenerovat úkoly z dokladů",
         generateConfirmDescription: "Vytvoří úkoly pro neuhrazené doklady po splatnosti.",
         generateSuccess: "Vygenerováno {generated} úkolů, {skipped} již existovalo.",
-        completeAction: "Dokončit úkol",
-        completeConfirmTitle: "Dokončit úkol",
-        completeConfirmDescription: "Úkol se označí jako hotový.",
-        completeSuccess: "Úkol byl dokončen.",
+        completeAction: "Označit jako vyřízeno",
+        completeConfirmTitle: "Označit úkol jako vyřízeno",
+        completeConfirmDescription:
+          "Úkol se uzavře v seznamu. Faktura se tím automaticky neuhradí — ověřte stav platby v dokladu.",
+        completeSuccess: "Úkol byl označen jako vyřízený.",
         cancelAction: "Zrušit úkol",
         cancelConfirmTitle: "Zrušit úkol",
         cancelConfirmDescription: "Úkol se označí jako zrušený.",
@@ -1816,7 +1858,10 @@ export const translations = {
       },
       auditPanel: {
         title: "Auditní události",
-        description: "Poslední změny a operace v modulu Účetnictví."
+        description: "Poslední změny a operace v modulu Účetnictví.",
+        showList: "Zobrazit audit",
+        hideList: "Skrýt audit",
+        listCollapsed: "V seznamu je {count} auditních událostí — přehled je sbalený."
       },
       recurringForm: {
         createTitle: "Nová opakovaná šablona",
@@ -1971,6 +2016,7 @@ export const translations = {
         bankTransactions: "Bank transactions",
         paymentMatching: "Payment matching",
         backToDashboard: "Back to Accounting",
+        backToModules: "Back to modules",
         legacyInvoices: "Original invoices"
       },
       common: {
@@ -2595,6 +2641,9 @@ export const translations = {
         paymentStatusLabel: "Filter by payment status",
         paymentStatusAll: "All payment statuses",
         shownCount: "{count} expenses shown",
+        showList: "Show expenses",
+        hideList: "Hide expenses",
+        listCollapsed: "{count} expenses in the list — overview is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         table: {
           expense: "Expense",
@@ -2668,6 +2717,9 @@ export const translations = {
         countryLabel: "Filter by supplier country",
         countryAll: "All countries",
         shownCount: "{count} suppliers shown",
+        showList: "Show suppliers",
+        hideList: "Hide suppliers",
+        listCollapsed: "{count} suppliers in the registry — list is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         table: {
           supplier: "Supplier",
@@ -2714,6 +2766,9 @@ export const translations = {
         statusLabel: "Filter by transaction status",
         statusAll: "All statuses",
         shownCount: "{count} bank transactions shown",
+        showList: "Show transactions",
+        hideList: "Hide transactions",
+        listCollapsed: "{count} bank transactions in the list — overview is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         table: {
           date: "Date",
@@ -2775,6 +2830,9 @@ export const translations = {
         apiNote: "Пропозиції зіставлення керуйте в деталях банківської транзакції.",
         deferredTitle: "Matching suggestions",
         deferredDescription: "Відкрийте деталі транзакції, щоб призначити або відхилити пропозиції.",
+        showList: "Показати зіставлення",
+        hideList: "Сховати зіставлення",
+        listCollapsed: "Огляд зіставлення платежів згорнуто.",
         table: {
           transactionDate: "Transaction date",
           amount: "Amount",
@@ -2805,6 +2863,9 @@ export const translations = {
         typeFilterLabel: "Filter by type",
         typeAll: "All types",
         shownCount: "{count} tasks shown",
+        showList: "Show tasks",
+        hideList: "Hide tasks",
+        listCollapsed: "{count} tasks in the list — overview is collapsed.",
         readOnlyNote: "",
         table: {
           title: "Title",
@@ -2856,6 +2917,9 @@ export const translations = {
         typeFilterLabel: "Filter by reminder type",
         typeAll: "All types",
         shownCount: "{count} emails shown",
+        showList: "Show emails",
+        hideList: "Hide emails",
+        listCollapsed: "{count} reminder emails in the list — overview is collapsed.",
         readOnlyNote: "",
         aggregationNote: "The list is built from history on individual documents.",
         table: {
@@ -2907,6 +2971,9 @@ export const translations = {
         statusFilterLabel: "Filter by template status",
         statusAll: "All statuses",
         shownCount: "{count} templates shown",
+        showList: "Show templates",
+        hideList: "Hide templates",
+        listCollapsed: "{count} templates in the list — overview is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         relatedSubject: "Customer #{id}",
         relatedSupplier: "Supplier #{id}",
@@ -3011,6 +3078,9 @@ export const translations = {
         typeFilterLabel: "Filter by attachment type",
         typeAll: "All types",
         shownCount: "{count} attachments shown",
+        showList: "Show attachments",
+        hideList: "Hide attachments",
+        listCollapsed: "{count} attachments in the list — overview is collapsed.",
         table: {
           fileName: "File",
           type: "Type",
@@ -3066,6 +3136,9 @@ export const translations = {
         searchPlaceholder: "Search by file name, type, or status",
         searchLabel: "Search inbox",
         shownCount: "{count} unassigned attachments shown",
+        showList: "Show inbox",
+        hideList: "Hide inbox",
+        listCollapsed: "{count} unassigned attachments in the inbox — overview is collapsed.",
         table: {
           fileName: "File",
           type: "Type",
@@ -3493,6 +3566,13 @@ export const translations = {
         payment_proof: "Payment proof",
         other: "Other"
       },
+      todoTypeLabels: {
+        invoice_overdue: "Прострочений рахунок",
+        invoice_payment_reminder: "Нагадування про оплату",
+        expense_overdue: "Прострочена витрата",
+        expense_due: "Витрата до сплати",
+        manual: "Ручне завдання"
+      },
       documentKinds: {
         invoice: "Invoice",
         proforma: "Proforma",
@@ -3528,6 +3608,9 @@ export const translations = {
         badge: "Settings",
         title: "Accounting settings",
         description: "Issuer details, default currency, and payment details for new documents.",
+        showSection: "Show settings",
+        hideSection: "Hide settings",
+        sectionCollapsed: "Accounting settings are collapsed.",
         save: "Save settings",
         loading: "Loading settings…",
         mutation: {
@@ -3627,6 +3710,9 @@ export const translations = {
         badge: "Exports",
         title: "Data exports",
         description: "Download summaries of issued documents and expenses.",
+        showSection: "Show exports",
+        hideSection: "Hide exports",
+        sectionCollapsed: "Data exports are collapsed.",
         outgoingCsv: "Issued documents (CSV)",
         outgoingXlsx: "Issued documents (Excel)",
         expensesCsv: "Expenses (CSV)",
@@ -3640,10 +3726,11 @@ export const translations = {
         generateConfirmTitle: "Згенерувати завдання з документів",
         generateConfirmDescription: "Створить завдання для прострочених неоплачених документів.",
         generateSuccess: "Згенеровано {generated} завдань, {skipped} уже існувало.",
-        completeAction: "Завершити завдання",
-        completeConfirmTitle: "Завершити завдання",
-        completeConfirmDescription: "Завдання буде позначено як виконане.",
-        completeSuccess: "Завдання завершено.",
+        completeAction: "Позначити як опрацьоване",
+        completeConfirmTitle: "Позначити завдання як опрацьоване",
+        completeConfirmDescription:
+          "Завдання буде закрито в списку. Рахунок цим автоматично не оплачується — перевірте оплату в документі.",
+        completeSuccess: "Завдання позначено як опрацьоване.",
         cancelAction: "Скасувати завдання",
         cancelConfirmTitle: "Скасувати завдання",
         cancelConfirmDescription: "Завдання буде позначено як скасоване.",
@@ -3689,7 +3776,10 @@ export const translations = {
       },
       auditPanel: {
         title: "Audit-події",
-        description: "Останні зміни та операції в модулі бухгалтерії."
+        description: "Останні зміни та операції в модулі бухгалтерії.",
+        showList: "Показати аудит",
+        hideList: "Сховати аудит",
+        listCollapsed: "У списку {count} audit-подій — огляд згорнуто."
       },
       recurringForm: {
         createTitle: "Новий повторюваний шаблон",
@@ -3844,6 +3934,7 @@ export const translations = {
         bankTransactions: "Банковские транзакции",
         paymentMatching: "Сопоставление платежей",
         backToDashboard: "Назад в бухгалтерию",
+        backToModules: "Назад к модулям",
         legacyInvoices: "Старые счета"
       },
       common: {
@@ -4468,6 +4559,9 @@ export const translations = {
         paymentStatusLabel: "Фильтр по статусу оплаты",
         paymentStatusAll: "Все статусы оплаты",
         shownCount: "{count} расходов показано",
+        showList: "Показать расходы",
+        hideList: "Скрыть расходы",
+        listCollapsed: "В списке {count} расходов — обзор свёрнут.",
         detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           expense: "Расход",
@@ -4541,6 +4635,9 @@ export const translations = {
         countryLabel: "Фильтр по стране поставщика",
         countryAll: "Все страны",
         shownCount: "{count} поставщиков показано",
+        showList: "Показать поставщиков",
+        hideList: "Скрыть поставщиков",
+        listCollapsed: "В реестре {count} поставщиков — список свёрнут.",
         detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           supplier: "Поставщик",
@@ -4587,6 +4684,9 @@ export const translations = {
         statusLabel: "Фильтр по статусу транзакции",
         statusAll: "Все статусы",
         shownCount: "{count} банковских транзакций показано",
+        showList: "Показать транзакции",
+        hideList: "Скрыть транзакции",
+        listCollapsed: "В списке {count} банковских транзакций — обзор свёрнут.",
         detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         table: {
           date: "Дата",
@@ -4648,6 +4748,9 @@ export const translations = {
         apiNote: "Предложения сопоставления управляйте в деталях банковской транзакции.",
         deferredTitle: "Предложения сопоставления",
         deferredDescription: "Откройте детали транзакции, чтобы назначить или отклонить предложения.",
+        showList: "Показать сопоставление",
+        hideList: "Скрыть сопоставление",
+        listCollapsed: "Обзор сопоставления платежей свёрнут.",
         table: {
           transactionDate: "Дата транзакции",
           amount: "Сумма",
@@ -4678,6 +4781,9 @@ export const translations = {
         typeFilterLabel: "Фильтр по типу",
         typeAll: "Все типы",
         shownCount: "{count} показанных задач",
+        showList: "Показать задачи",
+        hideList: "Скрыть задачи",
+        listCollapsed: "В списке {count} задач — обзор свёрнут.",
         readOnlyNote: "",
         table: {
           title: "Название",
@@ -4729,6 +4835,9 @@ export const translations = {
         typeFilterLabel: "Фильтр по типу напоминания",
         typeAll: "Все типы",
         shownCount: "{count} показанных e-mail",
+        showList: "Показать e-mail",
+        hideList: "Скрыть e-mail",
+        listCollapsed: "В списке {count} напоминаний по e-mail — обзор свёрнут.",
         readOnlyNote: "",
         aggregationNote: "Список формируется из истории отдельных документов.",
         table: {
@@ -4780,6 +4889,9 @@ export const translations = {
         statusFilterLabel: "Фильтр по статусу шаблона",
         statusAll: "Все статусы",
         shownCount: "{count} шаблонов показано",
+        showList: "Показать шаблоны",
+        hideList: "Скрыть шаблоны",
+        listCollapsed: "В списке {count} шаблонов — обзор свёрнут.",
         detailRouteHint: "Нажмите строку, чтобы открыть детали записи.",
         relatedSubject: "Клиент #{id}",
         relatedSupplier: "Поставщик #{id}",
@@ -4884,6 +4996,9 @@ export const translations = {
         typeFilterLabel: "Фильтр по типу вложения",
         typeAll: "Все типы",
         shownCount: "{count} вложений показано",
+        showList: "Показать вложения",
+        hideList: "Скрыть вложения",
+        listCollapsed: "В списке {count} вложений — обзор свёрнут.",
         table: {
           fileName: "Файл",
           type: "Тип",
@@ -4939,6 +5054,9 @@ export const translations = {
         searchPlaceholder: "Искать по имени файла, типу или статусу",
         searchLabel: "Искать в inbox",
         shownCount: "{count} несвязанных вложений показано",
+        showList: "Показать inbox",
+        hideList: "Скрыть inbox",
+        listCollapsed: "В inbox {count} несвязанных вложений — обзор свёрнут.",
         table: {
           fileName: "Файл",
           type: "Тип",
@@ -5366,6 +5484,13 @@ export const translations = {
         payment_proof: "Подтверждение платежа",
         other: "Другое"
       },
+      todoTypeLabels: {
+        invoice_overdue: "Просроченный счёт",
+        invoice_payment_reminder: "Напоминание об оплате",
+        expense_overdue: "Просроченный расход",
+        expense_due: "Расход к оплате",
+        manual: "Ручная задача"
+      },
       documentKinds: {
         invoice: "Счет",
         proforma: "Proforma",
@@ -5401,6 +5526,9 @@ export const translations = {
         badge: "Настройки",
         title: "Настройки бухгалтерии",
         description: "Данные поставщика услуг, валюта по умолчанию и платёжные реквизиты.",
+        showSection: "Показать настройки",
+        hideSection: "Скрыть настройки",
+        sectionCollapsed: "Настройки бухгалтерии свёрнуты.",
         save: "Сохранить настройки",
         loading: "Загрузка настроек…",
         mutation: {
@@ -5500,6 +5628,9 @@ export const translations = {
         badge: "Экспорт",
         title: "Экспорт данных",
         description: "Скачайте обзор выставленных документов и расходов.",
+        showSection: "Показать экспорт",
+        hideSection: "Скрыть экспорт",
+        sectionCollapsed: "Экспорт данных свёрнут.",
         outgoingCsv: "Выставленные документы (CSV)",
         outgoingXlsx: "Выставленные документы (Excel)",
         expensesCsv: "Расходы (CSV)",
@@ -5513,10 +5644,11 @@ export const translations = {
         generateConfirmTitle: "Сгенерировать задачи из документов",
         generateConfirmDescription: "Создаст задачи для просроченных неоплаченных документов.",
         generateSuccess: "Сгенерировано {generated} задач, {skipped} уже существовало.",
-        completeAction: "Завершить задачу",
-        completeConfirmTitle: "Завершить задачу",
-        completeConfirmDescription: "Задача будет помечена как выполненная.",
-        completeSuccess: "Задача завершена.",
+        completeAction: "Отметить как обработанное",
+        completeConfirmTitle: "Отметить задачу как обработанную",
+        completeConfirmDescription:
+          "Задача будет закрыта в списке. Счёт этим автоматически не оплачивается — проверьте оплату в документе.",
+        completeSuccess: "Задача отмечена как обработанная.",
         cancelAction: "Отменить задачу",
         cancelConfirmTitle: "Отменить задачу",
         cancelConfirmDescription: "Задача будет помечена как отменённая.",
@@ -5562,7 +5694,10 @@ export const translations = {
       },
       auditPanel: {
         title: "Audit-события",
-        description: "Последние изменения и операции в модуле бухгалтерии."
+        description: "Последние изменения и операции в модуле бухгалтерии.",
+        showList: "Показать audit",
+        hideList: "Скрыть audit",
+        listCollapsed: "В списке {count} audit-событий — обзор свёрнут."
       },
       recurringForm: {
         createTitle: "Новый повторяющийся шаблон",
@@ -5717,6 +5852,7 @@ export const translations = {
         bankTransactions: "Bank transactions",
         paymentMatching: "Payment matching",
         backToDashboard: "Back to Accounting",
+        backToModules: "Back to modules",
         legacyInvoices: "Original invoices"
       },
       common: {
@@ -6341,6 +6477,9 @@ export const translations = {
         paymentStatusLabel: "Filter by payment status",
         paymentStatusAll: "All payment statuses",
         shownCount: "{count} expenses shown",
+        showList: "Show expenses",
+        hideList: "Hide expenses",
+        listCollapsed: "{count} expenses in the list — overview is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         table: {
           expense: "Expense",
@@ -6414,6 +6553,9 @@ export const translations = {
         countryLabel: "Filter by supplier country",
         countryAll: "All countries",
         shownCount: "{count} suppliers shown",
+        showList: "Show suppliers",
+        hideList: "Hide suppliers",
+        listCollapsed: "{count} suppliers in the registry — list is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         table: {
           supplier: "Supplier",
@@ -6460,6 +6602,9 @@ export const translations = {
         statusLabel: "Filter by transaction status",
         statusAll: "All statuses",
         shownCount: "{count} bank transactions shown",
+        showList: "Show transactions",
+        hideList: "Hide transactions",
+        listCollapsed: "{count} bank transactions in the list — overview is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         table: {
           date: "Date",
@@ -6521,6 +6666,9 @@ export const translations = {
         apiNote: "Manage matching suggestions in the bank transaction detail.",
         deferredTitle: "Matching suggestions",
         deferredDescription: "Open a transaction detail to assign or reject suggestions.",
+        showList: "Show matching",
+        hideList: "Hide matching",
+        listCollapsed: "Payment matching overview is collapsed.",
         table: {
           transactionDate: "Transaction date",
           amount: "Amount",
@@ -6551,6 +6699,9 @@ export const translations = {
         typeFilterLabel: "Filter by type",
         typeAll: "All types",
         shownCount: "{count} tasks shown",
+        showList: "Show tasks",
+        hideList: "Hide tasks",
+        listCollapsed: "{count} tasks in the list — overview is collapsed.",
         readOnlyNote: "",
         table: {
           title: "Title",
@@ -6602,6 +6753,9 @@ export const translations = {
         typeFilterLabel: "Filter by reminder type",
         typeAll: "All types",
         shownCount: "{count} emails shown",
+        showList: "Show emails",
+        hideList: "Hide emails",
+        listCollapsed: "{count} reminder emails in the list — overview is collapsed.",
         readOnlyNote: "",
         aggregationNote: "The list is built from history on individual documents.",
         table: {
@@ -6653,6 +6807,9 @@ export const translations = {
         statusFilterLabel: "Filter by template status",
         statusAll: "All statuses",
         shownCount: "{count} templates shown",
+        showList: "Show templates",
+        hideList: "Hide templates",
+        listCollapsed: "{count} templates in the list — overview is collapsed.",
         detailRouteHint: "Click a row to open record details.",
         relatedSubject: "Customer #{id}",
         relatedSupplier: "Supplier #{id}",
@@ -6757,6 +6914,9 @@ export const translations = {
         typeFilterLabel: "Filter by attachment type",
         typeAll: "All types",
         shownCount: "{count} attachments shown",
+        showList: "Show attachments",
+        hideList: "Hide attachments",
+        listCollapsed: "{count} attachments in the list — overview is collapsed.",
         table: {
           fileName: "File",
           type: "Type",
@@ -6812,6 +6972,9 @@ export const translations = {
         searchPlaceholder: "Search by file name, type, or status",
         searchLabel: "Search inbox",
         shownCount: "{count} unassigned attachments shown",
+        showList: "Show inbox",
+        hideList: "Hide inbox",
+        listCollapsed: "{count} unassigned attachments in the inbox — overview is collapsed.",
         table: {
           fileName: "File",
           type: "Type",
@@ -7239,6 +7402,13 @@ export const translations = {
         payment_proof: "Payment proof",
         other: "Other"
       },
+      todoTypeLabels: {
+        invoice_overdue: "Overdue invoice",
+        invoice_payment_reminder: "Payment reminder",
+        expense_overdue: "Overdue expense",
+        expense_due: "Expense due",
+        manual: "Manual task"
+      },
       documentKinds: {
         invoice: "Invoice",
         proforma: "Proforma",
@@ -7274,6 +7444,9 @@ export const translations = {
         badge: "Settings",
         title: "Accounting settings",
         description: "Issuer details, default currency, and payment details for new documents.",
+        showSection: "Show settings",
+        hideSection: "Hide settings",
+        sectionCollapsed: "Accounting settings are collapsed.",
         save: "Save settings",
         loading: "Loading settings…",
         mutation: {
@@ -7373,6 +7546,9 @@ export const translations = {
         badge: "Exports",
         title: "Data exports",
         description: "Download summaries of issued documents and expenses.",
+        showSection: "Show exports",
+        hideSection: "Hide exports",
+        sectionCollapsed: "Data exports are collapsed.",
         outgoingCsv: "Issued documents (CSV)",
         outgoingXlsx: "Issued documents (Excel)",
         expensesCsv: "Expenses (CSV)",
@@ -7386,10 +7562,11 @@ export const translations = {
         generateConfirmTitle: "Generate tasks from documents",
         generateConfirmDescription: "Creates tasks for overdue unpaid documents.",
         generateSuccess: "Generated {generated} tasks, {skipped} already existed.",
-        completeAction: "Complete task",
-        completeConfirmTitle: "Complete task",
-        completeConfirmDescription: "The task will be marked as done.",
-        completeSuccess: "Task completed.",
+        completeAction: "Mark as handled",
+        completeConfirmTitle: "Mark task as handled",
+        completeConfirmDescription:
+          "The task will be closed in the list. This does not pay the invoice automatically — verify payment in the document.",
+        completeSuccess: "Task marked as handled.",
         cancelAction: "Cancel task",
         cancelConfirmTitle: "Cancel task",
         cancelConfirmDescription: "The task will be marked as cancelled.",
@@ -7435,7 +7612,10 @@ export const translations = {
       },
       auditPanel: {
         title: "Audit events",
-        description: "Recent changes and operations in Accounting."
+        description: "Recent changes and operations in Accounting.",
+        showList: "Show audit",
+        hideList: "Hide audit",
+        listCollapsed: "{count} audit events in the list — overview is collapsed."
       },
       recurringForm: {
         createTitle: "New recurring template",

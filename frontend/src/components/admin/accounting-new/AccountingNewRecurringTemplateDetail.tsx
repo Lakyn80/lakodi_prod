@@ -20,6 +20,7 @@ import {
   listAccountingNewSubjects,
   listAccountingNewSuppliers,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type {
   AccountingNewApiError,
   AccountingNewRecurringTemplateDetailState,
@@ -181,7 +182,7 @@ export function AccountingNewRecurringTemplateDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("recurring")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.auth.recurringDetailTitle}</AlertTitle>
@@ -195,7 +196,7 @@ export function AccountingNewRecurringTemplateDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("recurring")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.recurringDetail.notFoundTitle}</AlertTitle>
@@ -209,7 +210,7 @@ export function AccountingNewRecurringTemplateDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("recurring")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.recurringDetailTitle}</AlertTitle>
@@ -234,7 +235,7 @@ export function AccountingNewRecurringTemplateDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("recurring")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="outline">{t.recurringDetail.badge}</Badge>
       </div>

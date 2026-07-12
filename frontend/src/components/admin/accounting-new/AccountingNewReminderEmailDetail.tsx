@@ -16,6 +16,7 @@ import {
   AccountingNewRequestError,
   getAccountingNewReminderEmail,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewReminderEmailDetailState } from "@/types/accountingNew";
 import { AccountingNewTodoStatusBadge } from "@/components/admin/accounting-new/AccountingNewTodoStatusBadge";
 import {
@@ -139,7 +140,7 @@ export function AccountingNewReminderEmailDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="outline">
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.reminderEmailDetail.backLabel}</Link>
+          <Link href={getAccountingNewModuleRoute("reminders")}>{t.reminderEmailDetail.backLabel}</Link>
         </Button>
         <Badge variant="outline">{t.reminderEmailDetail.badge}</Badge>
         <Badge variant="secondary">{t.common.readOnlyBadge}</Badge>

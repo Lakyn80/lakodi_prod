@@ -20,6 +20,7 @@ import {
   listAccountingNewSuppliers,
   updateAccountingNewSupplier,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import {
   buildAccountingNewSupplierFormStateFromDetail,
   buildAccountingNewSupplierWritePayloadFromForm,
@@ -148,10 +149,10 @@ export function AccountingNewSupplierForm({
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("suppliers")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href={mode === "edit" && supplierId ? `${ACCOUNTING_NEW_ROUTE}/dodavatele/${supplierId}` : ACCOUNTING_NEW_ROUTE}>
+          <Link href={mode === "edit" && supplierId ? `${ACCOUNTING_NEW_ROUTE}/dodavatele/${supplierId}` : getAccountingNewModuleRoute("suppliers")}>
             {t.supplierWrite.backToDetail}
           </Link>
         </Button>

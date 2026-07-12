@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,23 +14,9 @@ import {
   accountingNewModuleRegistry,
   mapRegistryEntryToModuleDefinition,
 } from "@/lib/accountingNewModules";
+import { AccountingNewHashRedirect } from "@/components/admin/accounting-new/AccountingNewHashRedirect";
 import { AccountingNewModuleGrid, type AccountingNewModuleStat } from "@/components/admin/accounting-new/AccountingNewModuleGrid";
-import { AccountingNewDocumentsPanel } from "@/components/admin/accounting-new/AccountingNewDocumentsPanel";
-import { AccountingNewExpensesPanel } from "@/components/admin/accounting-new/AccountingNewExpensesPanel";
-import { AccountingNewSubjectsPanel } from "@/components/admin/accounting-new/AccountingNewSubjectsPanel";
-import { AccountingNewSuppliersPanel } from "@/components/admin/accounting-new/AccountingNewSuppliersPanel";
-import { AccountingNewBankTransactionsPanel } from "@/components/admin/accounting-new/AccountingNewBankTransactionsPanel";
-import { AccountingNewPaymentMatchesPanel } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesPanel";
-import { AccountingNewTodosPanel } from "@/components/admin/accounting-new/AccountingNewTodosPanel";
-import { AccountingNewRecurringTemplatesPanel } from "@/components/admin/accounting-new/AccountingNewRecurringTemplatesPanel";
-import { AccountingNewAttachmentsPanel } from "@/components/admin/accounting-new/AccountingNewAttachmentsPanel";
-import { AccountingNewAttachmentInboxPanel } from "@/components/admin/accounting-new/AccountingNewAttachmentInboxPanel";
-import { AccountingNewReminderEmailsPanel } from "@/components/admin/accounting-new/AccountingNewReminderEmailsPanel";
-import { AccountingNewSettingsPanel } from "@/components/admin/accounting-new/AccountingNewSettingsPanel";
-import { AccountingNewExportsPanel } from "@/components/admin/accounting-new/AccountingNewExportsPanel";
-import { AccountingNewAuditPanel } from "@/components/admin/accounting-new/AccountingNewAuditPanel";
 import {
-  formatAccountingNewDateTime,
   formatAccountingNewTemplate,
   getAccountingNewTranslationValue,
   translateAccountingNewApiError,
@@ -142,10 +127,6 @@ function getPrimaryError(errors: AccountingNewApiError[]): AccountingNewApiError
   return errors[0] ?? null;
 }
 
-function getResourceError(errors: AccountingNewApiError[], resource: string): AccountingNewApiError | null {
-  return errors.find((error) => error.resource === resource) ?? null;
-}
-
 function SummarySkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -186,7 +167,6 @@ export function AccountingNewShell() {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const [state, setState] = useState<DashboardState>({ status: "loading" });
-  const [dashboardReloadKey, setDashboardReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -216,31 +196,12 @@ export function AccountingNewShell() {
     void loadDashboard();
 
     return () => controller.abort();
-  }, [t.errors.dashboardTitle, dashboardReloadKey]);
+  }, [t.errors.dashboardTitle]);
 
   const result = state.status === "ready" || state.status === "auth" ? state.result : null;
   const dashboard = result?.dashboard ?? null;
   const partialErrors = result?.partialErrors ?? [];
   const primaryPartialError = getPrimaryError(partialErrors);
-  const documentsError = getResourceError(partialErrors, "documents");
-  const expensesError = getResourceError(partialErrors, "expenses");
-  const suppliersError = getResourceError(partialErrors, "suppliers");
-  const subjectsError = getResourceError(partialErrors, "subjects");
-  const bankTransactionsError = getResourceError(partialErrors, "bank-transactions");
-  const todosError = getResourceError(partialErrors, "todos");
-  const recurringError = getResourceError(partialErrors, "recurring-templates");
-  const attachmentsError = getResourceError(partialErrors, "attachments");
-  const inboxAttachments = useMemo(
-    () =>
-      (dashboard?.attachments ?? []).filter(
-        (attachment) =>
-          !attachment.invoiceId &&
-          !attachment.expenseId &&
-          !attachment.todoId &&
-          !attachment.bankTransactionId,
-      ),
-    [dashboard?.attachments],
-  );
   const moduleStats = getModuleStats(t, dashboard);
 
   const localizedModules = useMemo(
@@ -259,6 +220,8 @@ export function AccountingNewShell() {
 
   return (
     <div className="space-y-6">
+      <AccountingNewHashRedirect />
+
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
           <div className="space-y-1">
@@ -294,197 +257,86 @@ export function AccountingNewShell() {
         </Alert>
       ) : null}
 
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">{t.dashboard.summaryTitle}</h2>
-          <p className="text-sm text-muted-foreground">{t.dashboard.summaryDescription}</p>
-        </div>
-
-        {state.status === "loading" ? (
-          <SummarySkeleton />
-        ) : dashboard ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard
-              title={t.dashboard.documentsTitle}
-              value={dashboard.metrics.documentsLoaded}
-              description={formatAccountingNewTemplate(t.dashboard.documentsDescription, {
-                count: dashboard.metrics.documentsWithRemainingBalance,
-              })}
-            />
-            <SummaryCard
-              title={t.dashboard.expensesTitle}
-              value={dashboard.metrics.expensesLoaded}
-              description={formatAccountingNewTemplate(t.dashboard.expensesDescription, {
-                count: dashboard.metrics.expensesWithRemainingBalance,
-              })}
-            />
-            <SummaryCard
-              title={t.dashboard.todosTitle}
-              value={dashboard.metrics.openTodos}
-              description={formatAccountingNewTemplate(t.dashboard.todosDescription, {
-                overdue: dashboard.metrics.overdueTodos,
-                total: dashboard.metrics.todosLoaded,
-              })}
-            />
-            <SummaryCard
-              title={t.dashboard.bankTitle}
-              value={dashboard.metrics.bankTransactionsLoaded}
-              description={t.dashboard.bankDescription}
-            />
-            <SummaryCard
-              title={t.dashboard.attachmentsTitle}
-              value={dashboard.metrics.attachmentsLoaded}
-              description={t.dashboard.attachmentsDescription}
-            />
-            <SummaryCard
-              title={t.dashboard.auditTitle}
-              value={dashboard.metrics.auditEventsLoaded}
-              description={t.dashboard.auditDescription}
-            />
-            <SummaryCard
-              title={t.dashboard.subjectsTitle}
-              value={dashboard.metrics.subjectsLoaded}
-              description={formatAccountingNewTemplate(t.dashboard.subjectsDescription, {
-                count: dashboard.metrics.suppliersLoaded,
-              })}
-            />
-            <SummaryCard
-              title={t.dashboard.recurringTitle}
-              value={dashboard.metrics.recurringTemplatesLoaded}
-              description={t.dashboard.recurringDescription}
-            />
+      <div className="flex flex-col gap-6">
+        <section className="order-1 space-y-3 md:order-2">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">{t.dashboard.modulesTitle}</h2>
+            <p className="text-sm text-muted-foreground">{t.dashboard.modulesDescription}</p>
           </div>
-        ) : null}
-      </section>
+          <AccountingNewModuleGrid
+            modules={localizedModules}
+            stats={moduleStats}
+            labels={{
+              readOnly: t.common.readOnlyBadge,
+              ready: t.common.readyBadge,
+              noMetrics: t.common.noMetrics,
+            }}
+          />
+        </section>
 
-      <AccountingNewDocumentsPanel
-        documents={dashboard?.invoices ?? []}
-        isLoading={state.status === "loading"}
-        authRequired={state.status === "auth"}
-        error={documentsError}
-      />
+        <section className="order-2 space-y-3 md:order-1">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">{t.dashboard.summaryTitle}</h2>
+            <p className="text-sm text-muted-foreground">{t.dashboard.summaryDescription}</p>
+          </div>
 
-      <AccountingNewSubjectsPanel
-        subjects={dashboard?.subjects ?? []}
-        isLoading={state.status === "loading"}
-        authRequired={state.status === "auth"}
-        error={subjectsError}
-      />
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AccountingNewExpensesPanel
-          expenses={dashboard?.expenses ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={expensesError}
-        />
-
-        <AccountingNewSuppliersPanel
-          suppliers={dashboard?.suppliers ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={suppliersError}
-        />
+          {state.status === "loading" ? (
+            <SummarySkeleton />
+          ) : dashboard ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                title={t.dashboard.documentsTitle}
+                value={dashboard.metrics.documentsLoaded}
+                description={formatAccountingNewTemplate(t.dashboard.documentsDescription, {
+                  count: dashboard.metrics.documentsWithRemainingBalance,
+                })}
+              />
+              <SummaryCard
+                title={t.dashboard.expensesTitle}
+                value={dashboard.metrics.expensesLoaded}
+                description={formatAccountingNewTemplate(t.dashboard.expensesDescription, {
+                  count: dashboard.metrics.expensesWithRemainingBalance,
+                })}
+              />
+              <SummaryCard
+                title={t.dashboard.todosTitle}
+                value={dashboard.metrics.openTodos}
+                description={formatAccountingNewTemplate(t.dashboard.todosDescription, {
+                  overdue: dashboard.metrics.overdueTodos,
+                  total: dashboard.metrics.todosLoaded,
+                })}
+              />
+              <SummaryCard
+                title={t.dashboard.bankTitle}
+                value={dashboard.metrics.bankTransactionsLoaded}
+                description={t.dashboard.bankDescription}
+              />
+              <SummaryCard
+                title={t.dashboard.attachmentsTitle}
+                value={dashboard.metrics.attachmentsLoaded}
+                description={t.dashboard.attachmentsDescription}
+              />
+              <SummaryCard
+                title={t.dashboard.auditTitle}
+                value={dashboard.metrics.auditEventsLoaded}
+                description={t.dashboard.auditDescription}
+              />
+              <SummaryCard
+                title={t.dashboard.subjectsTitle}
+                value={dashboard.metrics.subjectsLoaded}
+                description={formatAccountingNewTemplate(t.dashboard.subjectsDescription, {
+                  count: dashboard.metrics.suppliersLoaded,
+                })}
+              />
+              <SummaryCard
+                title={t.dashboard.recurringTitle}
+                value={dashboard.metrics.recurringTemplatesLoaded}
+                description={t.dashboard.recurringDescription}
+              />
+            </div>
+          ) : null}
+        </section>
       </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AccountingNewBankTransactionsPanel
-          transactions={dashboard?.bankTransactions ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={bankTransactionsError}
-          onImported={() => setDashboardReloadKey((current) => current + 1)}
-        />
-
-        <AccountingNewPaymentMatchesPanel
-          transactions={dashboard?.bankTransactions ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={bankTransactionsError}
-          reloadKey={dashboardReloadKey}
-          onStateChanged={() => setDashboardReloadKey((current) => current + 1)}
-        />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AccountingNewTodosPanel
-          todos={dashboard?.todos ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={todosError}
-          onUpdated={() => setDashboardReloadKey((current) => current + 1)}
-        />
-
-        <AccountingNewRecurringTemplatesPanel
-          templates={dashboard?.recurringTemplates ?? []}
-          subjects={dashboard?.subjects ?? []}
-          suppliers={dashboard?.suppliers ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={recurringError}
-        />
-      </div>
-
-      <AccountingNewReminderEmailsPanel />
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AccountingNewSettingsPanel />
-        <AccountingNewExportsPanel />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AccountingNewAttachmentsPanel
-          attachments={dashboard?.attachments ?? []}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={attachmentsError}
-        />
-
-        <AccountingNewAttachmentInboxPanel
-          attachments={inboxAttachments}
-          isLoading={state.status === "loading"}
-          authRequired={state.status === "auth"}
-          error={attachmentsError}
-          onUploaded={() => setDashboardReloadKey((current) => current + 1)}
-        />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.4fr,1fr]">
-        <AccountingNewAuditPanel />
-
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle>{t.dashboard.loadStateTitle}</CardTitle>
-            <CardDescription>{t.dashboard.loadStateDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>{t.dashboard.loadStateDescription}</p>
-            <p>
-              {dashboard?.lastUpdatedAt
-                ? formatAccountingNewTemplate(t.dashboard.lastRefresh, {
-                    value: formatAccountingNewDateTime(dashboard.lastUpdatedAt, language, t.common.noValue),
-                  })
-                : t.common.noRefresh}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">{t.dashboard.modulesTitle}</h2>
-          <p className="text-sm text-muted-foreground">{t.dashboard.modulesDescription}</p>
-        </div>
-        <AccountingNewModuleGrid
-          modules={localizedModules}
-          stats={moduleStats}
-          labels={{
-            readOnly: t.common.readOnlyBadge,
-            ready: t.common.readyBadge,
-            noMetrics: t.common.noMetrics,
-          }}
-        />
-      </section>
     </div>
   );
 }

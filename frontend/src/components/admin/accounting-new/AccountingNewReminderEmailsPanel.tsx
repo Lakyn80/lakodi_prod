@@ -2,8 +2,10 @@
 
 import { useDeferredValue, useEffect, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,10 +49,11 @@ function matchesQuery(email: AccountingNewReminderEmailListItem, query: string):
   return haystack.includes(query);
 }
 
-export function AccountingNewReminderEmailsPanel() {
+export function AccountingNewReminderEmailsPanel({ defaultExpanded = false }: { defaultExpanded?: boolean } = {}) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const locale = getAccountingNewLocale(language);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
   const [state, setState] = useState<ReminderEmailsState>({ status: "loading" });
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -124,12 +127,16 @@ export function AccountingNewReminderEmailsPanel() {
   const authRequired = state.status === "auth";
   const error = state.status === "auth" || state.status === "error" ? state.error : null;
   const isLoading = state.status === "loading";
+  const contentVisible = isContentVisible(authRequired, state.status === "error" ? state.error : null);
 
   return (
-    <Card id="reminder-emails" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.reminderEmails.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.reminderEmails.hideList : t.reminderEmails.showList}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.reminderEmails.title}</CardTitle>
@@ -137,6 +144,10 @@ export function AccountingNewReminderEmailsPanel() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.reminderEmails.listCollapsed, { count: emails.length })}
+        </p>
+
         {authRequired ? (
           <Alert>
             <AlertTitle>{t.auth.reminderEmailsTitle}</AlertTitle>
@@ -151,7 +162,9 @@ export function AccountingNewReminderEmailsPanel() {
           </Alert>
         ) : null}
 
-        <div className="grid gap-3 md:grid-cols-3">
+        {contentVisible ? (
+          <>
+            <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
             <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground" htmlFor="reminder-emails-search">
               {t.reminderEmails.searchLabel}
@@ -201,23 +214,25 @@ export function AccountingNewReminderEmailsPanel() {
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          {formatAccountingNewTemplate(t.reminderEmails.shownCount, { count: filteredEmails.length })}
-        </p>
+            <p className="text-sm text-muted-foreground">
+              {formatAccountingNewTemplate(t.reminderEmails.shownCount, { count: filteredEmails.length })}
+            </p>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : filteredEmails.length > 0 ? (
-          <AccountingNewReminderEmailsTable emails={filteredEmails} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {emails.length > 0 ? t.empty.reminderEmailsFiltered : t.empty.reminderEmails}
-          </p>
-        )}
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredEmails.length > 0 ? (
+              <AccountingNewReminderEmailsTable emails={filteredEmails} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {emails.length > 0 ? t.empty.reminderEmailsFiltered : t.empty.reminderEmails}
+              </p>
+            )}
+          </>
+        ) : null}
       </CardContent>
     </Card>
   );

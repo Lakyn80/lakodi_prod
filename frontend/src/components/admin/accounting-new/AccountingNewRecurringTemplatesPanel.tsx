@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 
+import { useAccountingNewCollapsibleList } from "@/components/admin/accounting-new/useAccountingNewCollapsibleList";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ export function AccountingNewRecurringTemplatesPanel({
   isLoading,
   authRequired,
   error,
+  defaultExpanded = false,
 }: {
   templates: AccountingNewRecurringTemplateListItem[];
   subjects: AccountingNewSubjectSummary[];
@@ -77,10 +79,13 @@ export function AccountingNewRecurringTemplatesPanel({
   isLoading: boolean;
   authRequired: boolean;
   error: AccountingNewApiError | null;
+  defaultExpanded?: boolean;
 }) {
   const { language } = useLanguage();
   const t = translations[language].accountingNew;
   const locale = getAccountingNewLocale(language);
+  const { expanded, toggle, isContentVisible } = useAccountingNewCollapsibleList(defaultExpanded);
+  const contentVisible = isContentVisible(authRequired, error);
   const [query, setQuery] = useState("");
   const [templateType, setTemplateType] = useState("all");
   const [status, setStatus] = useState("all");
@@ -119,10 +124,13 @@ export function AccountingNewRecurringTemplatesPanel({
   });
 
   return (
-    <Card id="recurring" className="border-border bg-card">
+    <Card className="border-border bg-card">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline">{t.recurring.badge}</Badge>
+          <Button type="button" variant="outline" size="sm" onClick={toggle}>
+            {expanded ? t.recurring.hideList : t.recurring.showList}
+          </Button>
         </div>
         <div className="space-y-1">
           <CardTitle>{t.recurring.title}</CardTitle>
@@ -130,11 +138,9 @@ export function AccountingNewRecurringTemplatesPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!authRequired ? (
-          <Button asChild className="min-h-11">
-            <Link href={`${ACCOUNTING_NEW_ROUTE}/opakovane/novy`}>{t.recurringForm.createAction}</Link>
-          </Button>
-        ) : null}
+        <p className="text-sm text-muted-foreground">
+          {formatAccountingNewTemplate(t.recurring.listCollapsed, { count: templates.length })}
+        </p>
 
         {authRequired ? (
           <Alert>
@@ -150,8 +156,12 @@ export function AccountingNewRecurringTemplatesPanel({
           </Alert>
         ) : null}
 
-        {!authRequired && !error ? (
+        {contentVisible ? (
           <>
+            <Button asChild className="min-h-11">
+              <Link href={`${ACCOUNTING_NEW_ROUTE}/opakovane/novy`}>{t.recurringForm.createAction}</Link>
+            </Button>
+
             <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <Input
                 value={query}
@@ -195,7 +205,7 @@ export function AccountingNewRecurringTemplatesPanel({
           </>
         ) : null}
 
-        {isLoading ? (
+        {isLoading && contentVisible ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-16 w-full" />
@@ -203,7 +213,7 @@ export function AccountingNewRecurringTemplatesPanel({
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && filteredTemplates.length > 0 ? (
+        {contentVisible && !isLoading && filteredTemplates.length > 0 ? (
           <AccountingNewRecurringTemplatesTable
             templates={filteredTemplates}
             subjectLabels={subjectLabels}
@@ -211,13 +221,13 @@ export function AccountingNewRecurringTemplatesPanel({
           />
         ) : null}
 
-        {!isLoading && !authRequired && !error && templates.length === 0 ? (
+        {contentVisible && !isLoading && templates.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.recurring}
           </div>
         ) : null}
 
-        {!isLoading && !authRequired && !error && templates.length > 0 && filteredTemplates.length === 0 ? (
+        {contentVisible && !isLoading && templates.length > 0 && filteredTemplates.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
             {t.empty.recurringFiltered}
           </div>

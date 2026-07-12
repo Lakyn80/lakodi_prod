@@ -13,11 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  ACCOUNTING_NEW_ROUTE,
   getAccountingNewDocument,
   getAccountingNewDocumentAuditEvents,
   getAccountingNewDocumentRelations,
 } from "@/lib/accountingNew";
+import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import type { AccountingNewApiError, AccountingNewDocumentDetail, AccountingNewDocumentDetailState } from "@/types/accountingNew";
 import { AccountingNewDocumentActions } from "@/components/admin/accounting-new/AccountingNewDocumentActions";
 import { AccountingNewDocumentPaymentForm } from "@/components/admin/accounting-new/AccountingNewDocumentPaymentForm";
@@ -169,7 +169,7 @@ export function AccountingNewDocumentDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("documents")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.auth.documentDetailTitle}</AlertTitle>
@@ -183,7 +183,7 @@ export function AccountingNewDocumentDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("documents")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert>
           <AlertTitle>{t.documentDetail.notFoundTitle}</AlertTitle>
@@ -197,7 +197,7 @@ export function AccountingNewDocumentDetail({
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("documents")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Alert variant="destructive">
           <AlertTitle>{t.errors.documentDetailTitle}</AlertTitle>
@@ -213,7 +213,7 @@ export function AccountingNewDocumentDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" asChild>
-          <Link href={ACCOUNTING_NEW_ROUTE}>{t.navigation.backToDashboard}</Link>
+          <Link href={getAccountingNewModuleRoute("documents")}>{t.navigation.backToDashboard}</Link>
         </Button>
         <Badge variant="secondary">{t.documentWrite.badgeFunctional}</Badge>
         <Badge variant="outline">{translateAccountingNewDocumentKind(t, detail.documentKind)}</Badge>
