@@ -325,7 +325,7 @@ export function AccountingNewShell() {
                 title={t.dashboard.subjectsTitle}
                 value={dashboard.metrics.subjectsLoaded}
                 description={formatAccountingNewTemplate(t.dashboard.subjectsDescription, {
-                  count: dashboard.metrics.suppliersLoaded,
+                  count: dashboard.metrics.subjectsLoaded,
                 })}
               />
               <SummaryCard
