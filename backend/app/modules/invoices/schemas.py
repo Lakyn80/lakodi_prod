@@ -697,6 +697,66 @@ class InvoiceBankTransactionIgnoreResponse(BaseModel):
     status: BankTransactionStatus
 
 
+class InvoiceBankTransactionAssignInvoiceRequest(BaseModel):
+    invoice_number: str = Field(min_length=1, max_length=64)
+
+    @field_validator("invoice_number")
+    @classmethod
+    def normalize_invoice_number_value(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Číslo faktury je povinné.")
+        return cleaned
+
+
+class InvoiceBankTransactionRecordInvoicePaymentRequest(BaseModel):
+    invoice_number: str = Field(min_length=1, max_length=64)
+    transaction_date: date
+    amount: Decimal | None = None
+    message: str | None = Field(default=None, max_length=4000)
+    counterparty_name: str | None = Field(default=None, max_length=256)
+
+    @field_validator("invoice_number")
+    @classmethod
+    def normalize_invoice_number_value(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Číslo faktury je povinné.")
+        return cleaned
+
+    @field_validator("amount")
+    @classmethod
+    def validate_optional_positive_amount(cls, value: Decimal | None) -> Decimal | None:
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("Částka platby musí být větší než nula.")
+        return value
+
+    @field_validator("message", "counterparty_name")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class InvoiceBankTransactionRecordInvoicePaymentResponse(BaseModel):
+    transaction_id: int
+    match_id: int
+    invoice_id: int
+    invoice_number: str
+    payment_status: InvoicePaymentStatus
+    total_paid: Decimal
+    remaining_amount: Decimal
+    transaction_status: BankTransactionStatus
+
+    @field_serializer("total_paid", "remaining_amount", when_used="json")
+    def serialize_decimal(self, value: Decimal) -> float:
+        return float(value)
+
+
 class InvoicePaymentMatchResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

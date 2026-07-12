@@ -987,6 +987,29 @@ export interface AccountingNewBankTransactionImportResult {
   skippedDuplicateIdentifiers: string[];
 }
 
+export interface AccountingNewRecordInvoiceBankPaymentPayload {
+  invoice_number: string;
+  transaction_date: string;
+  amount?: number;
+  message?: string | null;
+  counterparty_name?: string | null;
+}
+
+export interface AccountingNewRecordInvoiceBankPaymentResult {
+  transactionId: number;
+  matchId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  paymentStatus: string;
+  totalPaid: number;
+  remainingAmount: number;
+  transactionStatus: string;
+}
+
+export interface AccountingNewAssignBankTransactionInvoicePayload {
+  invoice_number: string;
+}
+
 export interface AccountingNewTodoCreatePayload {
   invoice_id?: number | null;
   expense_id?: number | null;

@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { translations } from "@/data/translations";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { AccountingNewApiError, AccountingNewBankTransactionListItem } from "@/types/accountingNew";
-import { AccountingNewBankImportForm } from "@/components/admin/accounting-new/AccountingNewBankImportForm";
+import { AccountingNewBankInvoicePaymentForm } from "@/components/admin/accounting-new/AccountingNewBankInvoicePaymentForm";
 import { AccountingNewBankTransactionsTable } from "@/components/admin/accounting-new/AccountingNewBankTransactionsTable";
 import {
   formatAccountingNewTemplate,
@@ -115,7 +115,7 @@ export function AccountingNewBankTransactionsPanel({
           </Alert>
         ) : null}
 
-        {!authRequired ? <AccountingNewBankImportForm onImported={onImported} /> : null}
+        {!authRequired ? <AccountingNewBankInvoicePaymentForm onRecorded={onImported} /> : null}
 
         {!authRequired && !error ? (
           <>

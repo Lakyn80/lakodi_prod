@@ -3195,6 +3195,49 @@ export async function importAccountingNewBankTransactions(
   };
 }
 
+export async function recordAccountingNewInvoiceBankPayment(
+  payload: AccountingNewRecordInvoiceBankPaymentPayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewRecordInvoiceBankPaymentResult> {
+  const data = await mutateAccountingNewJson<{
+    transaction_id: number;
+    match_id: number;
+    invoice_id: number;
+    invoice_number: string;
+    payment_status: string;
+    total_paid: number;
+    remaining_amount: number;
+    transaction_status: string;
+  }>("bank-record-invoice-payment", "/bank-transactions/record-invoice-payment", "POST", payload, params.signal);
+
+  return {
+    transactionId: data.transaction_id,
+    matchId: data.match_id,
+    invoiceId: data.invoice_id,
+    invoiceNumber: data.invoice_number,
+    paymentStatus: data.payment_status,
+    totalPaid: data.total_paid,
+    remainingAmount: data.remaining_amount,
+    transactionStatus: data.transaction_status,
+  };
+}
+
+export async function assignAccountingNewBankTransactionInvoice(
+  transactionId: number | string,
+  payload: AccountingNewAssignBankTransactionInvoicePayload,
+  params: AccountingNewListParams = {},
+): Promise<AccountingNewPaymentMatchListItem> {
+  const normalizedId = normalizeBankTransactionId(transactionId);
+  const data = await mutateAccountingNewJson<Parameters<typeof mapPaymentMatchSummary>[0]>(
+    "bank-assign-invoice",
+    `/bank-transactions/${normalizedId}/assign-invoice`,
+    "POST",
+    payload,
+    params.signal,
+  );
+  return mapPaymentMatchSummary(data);
+}
+
 export async function ignoreAccountingNewBankTransaction(
   transactionId: number | string,
   params: AccountingNewListParams = {},

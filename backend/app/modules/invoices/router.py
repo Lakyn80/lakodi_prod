@@ -40,6 +40,9 @@ from backend.app.modules.invoices.schemas import (
     InvoiceBankTransactionIgnoreResponse,
     InvoiceBankTransactionImportRequest,
     InvoiceBankTransactionImportResponse,
+    InvoiceBankTransactionRecordInvoicePaymentRequest,
+    InvoiceBankTransactionRecordInvoicePaymentResponse,
+    InvoiceBankTransactionAssignInvoiceRequest,
     InvoiceBankTransactionResponse,
     InvoiceCreate,
     InvoiceDocumentRelationResponse,
@@ -101,6 +104,7 @@ from backend.app.modules.invoices.service import (
     InvoiceTodoNotFoundError,
     InvoiceValidationError,
     apply_invoice_payment_match,
+    assign_bank_transaction_to_invoice_by_number,
     add_invoice_expense_payment,
     add_invoice_payment,
     activate_invoice_recurring_template,
@@ -166,6 +170,7 @@ from backend.app.modules.invoices.service import (
     send_invoice_email,
     send_invoice_reminder_email,
     archive_invoice_attachment,
+    record_invoice_bank_payment,
     reject_invoice_payment_match,
     list_invoice_payment_matches,
     list_invoice_payment_matches_catalog,
@@ -938,6 +943,23 @@ def admin_import_invoice_bank_transactions(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.post(
+    "/bank-transactions/record-invoice-payment",
+    response_model=InvoiceBankTransactionRecordInvoicePaymentResponse,
+)
+def admin_record_invoice_bank_payment(
+    body: InvoiceBankTransactionRecordInvoicePaymentRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return record_invoice_bank_payment(db, body)
+    except InvoiceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/bank-transactions/matches", response_model=list[InvoicePaymentMatchListItemResponse])
 def admin_list_invoice_payment_matches_catalog(
     status: str | None = Query(default="suggested"),
@@ -974,6 +996,26 @@ def admin_ignore_invoice_bank_transaction(
         transaction = ignore_invoice_bank_transaction(db, transaction_id)
         return {"ok": True, "transaction_id": transaction.id, "status": transaction.status}
     except InvoiceBankTransactionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/bank-transactions/{transaction_id}/assign-invoice",
+    response_model=InvoicePaymentMatchResponse,
+)
+def admin_assign_invoice_bank_transaction(
+    transaction_id: int,
+    body: InvoiceBankTransactionAssignInvoiceRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return assign_bank_transaction_to_invoice_by_number(db, transaction_id, body.invoice_number)
+    except InvoiceBankTransactionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

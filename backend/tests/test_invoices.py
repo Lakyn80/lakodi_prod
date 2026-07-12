@@ -4402,6 +4402,61 @@ def test_katalog_matche_bankovnich_transakci_pagination_ordering_auth_a_matched_
     assert confidences == sorted(confidences, reverse=True)
 
 
+def test_record_invoice_bank_payment_zapise_platbu_podle_cisla_faktury() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "record-payment-invoice@example.com"})
+    _login_admin()
+    response = client.post(
+        "/api/admin/invoices/bank-transactions/record-invoice-payment",
+        json={
+            "invoice_number": invoice["invoice_number"],
+            "transaction_date": "2026-06-20",
+            "amount": invoice["total"],
+            "message": "Ruční zápis platby",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["invoice_id"] == invoice["id"]
+    assert body["invoice_number"] == invoice["invoice_number"]
+    assert body["transaction_status"] == "matched"
+    assert body["payment_status"] == "paid"
+    assert body["remaining_amount"] == 0.0
+
+    detail = client.get(f"/api/admin/invoices/bank-transactions/{body['transaction_id']}").json()
+    assert detail["status"] == "matched"
+
+
+def test_assign_bank_transaction_to_invoice_by_number_aplikuje_manual_match() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "assign-invoice-number@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "assign-invoice-number-tx",
+                "transaction_date": "2026-06-21",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": "999999",
+                "direction": "incoming",
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+    _login_admin()
+    response = client.post(
+        f"/api/admin/invoices/bank-transactions/{transaction_id}/assign-invoice",
+        json={"invoice_number": invoice["invoice_number"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "applied"
+    assert response.json()["invoice_id"] == invoice["id"]
+    assert response.json()["match_type"] == "manual"
+
+    invoice_detail = client.get(f"/api/admin/invoices/{invoice['id']}").json()
+    assert invoice_detail["payment_status"] == "paid"
+
+
 def test_vytvoreni_recurring_invoice_proforma_a_expense_sablon_funguje() -> None:
     invoice_template = _vytvor_recurring_sablonu({"name": "Recurring invoice"})
     proforma_template = _vytvor_recurring_sablonu(

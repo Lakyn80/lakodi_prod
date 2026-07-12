@@ -14,6 +14,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { ACCOUNTING_NEW_ROUTE, getAccountingNewBankTransaction, listAccountingNewBankTransactionMatches } from "@/lib/accountingNew";
 import type { AccountingNewApiError, AccountingNewBankTransactionDetailState } from "@/types/accountingNew";
 import { AccountingNewBankTransactionActions } from "@/components/admin/accounting-new/AccountingNewBankTransactionActions";
+import { AccountingNewBankTransactionAssignInvoiceForm } from "@/components/admin/accounting-new/AccountingNewBankTransactionAssignInvoiceForm";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
 import { AccountingNewPaymentMatchesTable } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesTable";
@@ -280,6 +281,10 @@ export function AccountingNewBankTransactionDetail({
           <CardDescription>{t.bankTransactionDetail.matchesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
+          <AccountingNewBankTransactionAssignInvoiceForm
+            detail={detail}
+            onAssigned={() => setReloadKey((current) => current + 1)}
+          />
           {suggestedMatches.length > 0 ? (
             <AccountingNewPaymentMatchesTable
               matches={suggestedMatches}

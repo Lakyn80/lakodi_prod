@@ -87,6 +87,8 @@ from backend.app.modules.invoices.schemas import (
     FinalInvoiceCreateRequest,
     InvoiceBankTransactionImportItem,
     InvoiceBankTransactionImportRequest,
+    InvoiceBankTransactionRecordInvoicePaymentRequest,
+    InvoiceBankTransactionRecordInvoicePaymentResponse,
     InvoiceCreate,
     InvoiceDocumentRelationResponse,
     InvoiceExpenseCreate,
@@ -1254,6 +1256,210 @@ def reject_invoice_payment_match(db: Session, transaction_id: int, match_id: int
     )
     db.commit()
     return _get_invoice_payment_match_or_raise(db, transaction_id, match_id)
+
+
+def _resolve_payable_invoice_by_number(db: Session, invoice_number: str) -> Invoice:
+    cleaned = invoice_number.strip()
+    if not cleaned:
+        raise InvoiceValidationError("Číslo faktury je povinné.")
+
+    lookup_numbers = {cleaned}
+    try:
+        normalized = normalize_invoice_number(cleaned)
+        if normalized is not None:
+            lookup_numbers.add(normalized)
+    except InvoiceNumberingError:
+        pass
+
+    invoice_row = (
+        db.query(Invoice)
+        .filter(Invoice.invoice_number.in_(sorted(lookup_numbers)))
+        .order_by(Invoice.id.desc())
+        .first()
+    )
+    if invoice_row is None:
+        raise InvoiceNotFoundError(f"Faktura č. {cleaned} nebyla nalezena.")
+
+    invoice = get_invoice_detail(db, invoice_row.id)
+    if not get_document_kind_metadata(invoice.document_kind).allows_payment_tracking:
+        raise InvoiceValidationError("Tento typ dokladu nelze párovat s bankovní platbou.")
+    if getattr(invoice, "effective_status", None) == "cancelled":
+        raise InvoiceValidationError("Zrušenou fakturu nelze párovat s bankovní platbou.")
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    if remaining_amount <= Decimal("0.00"):
+        raise InvoiceValidationError("Faktura je již uhrazena.")
+    return invoice
+
+
+def _bank_transaction_import_item_is_duplicate(db: Session, item: InvoiceBankTransactionImportItem) -> bool:
+    fingerprint = _compute_bank_transaction_fingerprint(item)
+    if (
+        db.query(InvoiceBankTransaction.id)
+        .filter(InvoiceBankTransaction.fingerprint == fingerprint)
+        .first()
+        is not None
+    ):
+        return True
+    if item.external_id is None:
+        return False
+    return (
+        db.query(InvoiceBankTransaction.id)
+        .filter(InvoiceBankTransaction.external_id == item.external_id)
+        .first()
+        is not None
+    )
+
+
+def _create_bank_transaction_from_import_item(
+    db: Session,
+    item: InvoiceBankTransactionImportItem,
+) -> InvoiceBankTransaction:
+    if _bank_transaction_import_item_is_duplicate(db, item):
+        raise InvoiceValidationError(
+            "Stejná bankovní platba už byla dříve zapsána. Otevřete existující transakci a přiřaďte ji k faktuře."
+        )
+
+    fingerprint = _compute_bank_transaction_fingerprint(item)
+    transaction = InvoiceBankTransaction(
+        external_id=item.external_id,
+        fingerprint=fingerprint,
+        account_iban=item.account_iban,
+        account_number=item.account_number,
+        bank_code=item.bank_code,
+        transaction_date=item.transaction_date,
+        booked_date=item.booked_date,
+        amount=_quantize_money(Decimal(item.amount)),
+        currency=item.currency,
+        variable_symbol=item.variable_symbol,
+        constant_symbol=item.constant_symbol,
+        specific_symbol=item.specific_symbol,
+        counterparty_name=item.counterparty_name,
+        counterparty_account=item.counterparty_account,
+        counterparty_iban=item.counterparty_iban,
+        message=item.message,
+        raw_payload=_serialize_bank_transaction_raw_payload(item.raw_payload),
+        direction=_normalize_bank_transaction_direction(item.direction),
+        status=DEFAULT_BANK_TRANSACTION_STATUS,
+    )
+    db.add(transaction)
+    db.flush()
+    create_accounting_event(
+        db,
+        event_type="created",
+        entity_type="bank_transaction",
+        entity_id=transaction.id,
+        bank_transaction_id=transaction.id,
+        source="import",
+        new_values=_build_bank_transaction_summary(transaction),
+    )
+    return transaction
+
+
+def assign_bank_transaction_to_invoice_by_number(
+    db: Session,
+    transaction_id: int,
+    invoice_number: str,
+) -> InvoicePaymentMatch:
+    transaction = _get_invoice_bank_transaction_or_raise(db, transaction_id)
+    if transaction.status == "ignored":
+        raise InvoiceValidationError("Ignorovanou bankovní transakci nelze párovat.")
+    if transaction.status == "matched":
+        raise InvoiceValidationError("Tato bankovní transakce už byla spárována.")
+    if transaction.direction != "incoming":
+        raise InvoiceValidationError("K faktuře lze párovat pouze příchozí bankovní transakci.")
+    if _transaction_has_any_applied_match(db, transaction.id):
+        raise InvoiceValidationError("Tato bankovní transakce už má aplikované párování.")
+
+    invoice = _resolve_payable_invoice_by_number(db, invoice_number)
+    if invoice.currency != transaction.currency:
+        raise InvoiceValidationError(
+            f"Měna transakce ({transaction.currency}) neodpovídá faktuře ({invoice.currency})."
+        )
+
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    transaction_amount = _quantize_money(Decimal(transaction.amount))
+    if transaction_amount > remaining_amount:
+        raise InvoiceValidationError(
+            f"Částka transakce {float(transaction_amount):.2f} {transaction.currency} "
+            f"překračuje zbývající částku faktury {float(remaining_amount):.2f}."
+        )
+
+    _create_match_suggestion(
+        db,
+        transaction_id=transaction.id,
+        invoice_id=invoice.id,
+        expense_id=None,
+        match_type="manual",
+        confidence=100,
+        reason=f"Ruční přiřazení k faktuře č. {invoice.invoice_number}.",
+    )
+    db.flush()
+
+    match = (
+        db.query(InvoicePaymentMatch)
+        .filter(
+            InvoicePaymentMatch.bank_transaction_id == transaction.id,
+            InvoicePaymentMatch.invoice_id == invoice.id,
+            InvoicePaymentMatch.match_type == "manual",
+            InvoicePaymentMatch.status == DEFAULT_PAYMENT_MATCH_STATUS,
+        )
+        .order_by(InvoicePaymentMatch.id.desc())
+        .first()
+    )
+    if match is None:
+        raise InvoiceValidationError("Nepodařilo se vytvořit ruční návrh párování.")
+
+    return apply_invoice_payment_match(db, transaction.id, match.id)
+
+
+def record_invoice_bank_payment(
+    db: Session,
+    payload: InvoiceBankTransactionRecordInvoicePaymentRequest,
+) -> InvoiceBankTransactionRecordInvoicePaymentResponse:
+    invoice = _resolve_payable_invoice_by_number(db, payload.invoice_number)
+    remaining_amount = _quantize_money(Decimal(getattr(invoice, "remaining_amount", Decimal("0.00"))))
+    payment_amount = (
+        _quantize_money(Decimal(payload.amount))
+        if payload.amount is not None
+        else remaining_amount
+    )
+    if payment_amount <= Decimal("0.00"):
+        raise InvoiceValidationError("Částka platby musí být větší než nula.")
+    if payment_amount > remaining_amount:
+        raise InvoiceValidationError(
+            f"Částka platby {float(payment_amount):.2f} překračuje zbývající částku faktury "
+            f"{float(remaining_amount):.2f}."
+        )
+
+    import_item = InvoiceBankTransactionImportItem(
+        transaction_date=payload.transaction_date,
+        amount=payment_amount,
+        currency=invoice.currency,
+        variable_symbol=invoice.variable_symbol,
+        direction="incoming",
+        message=payload.message,
+        counterparty_name=payload.counterparty_name or invoice.customer_name,
+    )
+    transaction = _create_bank_transaction_from_import_item(db, import_item)
+    applied_match = assign_bank_transaction_to_invoice_by_number(
+        db,
+        transaction.id,
+        invoice.invoice_number,
+    )
+    updated_invoice = get_invoice_detail(db, invoice.id)
+    payment_summary = _build_payment_summary(updated_invoice)
+    updated_transaction = get_invoice_bank_transaction_detail(db, transaction.id)
+
+    return InvoiceBankTransactionRecordInvoicePaymentResponse(
+        transaction_id=updated_transaction.id,
+        match_id=applied_match.id,
+        invoice_id=updated_invoice.id,
+        invoice_number=updated_invoice.invoice_number,
+        payment_status=payment_summary.payment_status,
+        total_paid=payment_summary.total_paid,
+        remaining_amount=payment_summary.remaining_amount,
+        transaction_status=updated_transaction.status,
+    )
 
 
 def list_invoice_todos(
