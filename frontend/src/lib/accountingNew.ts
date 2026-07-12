@@ -29,6 +29,8 @@ import type {
   AccountingNewExpenseWritePayload,
   AccountingNewPaymentSummary,
   AccountingNewPaymentMatchListItem,
+  AccountingNewPaymentMatchDashboardItem,
+  AccountingNewPaymentMatchCatalogParams,
   AccountingNewRecurringGenerationListItem,
   AccountingNewRecurringTemplateDetail,
   AccountingNewRecurringTemplateFilters,
@@ -872,6 +874,69 @@ function mapPaymentMatchSummary(item: {
     reason: item.reason,
     createdAt: item.created_at,
     appliedAt: item.applied_at,
+  };
+}
+
+function mapPaymentMatchDashboardItem(item: {
+  id: number;
+  bank_transaction_id: number;
+  invoice_id: number | null;
+  expense_id: number | null;
+  invoice_payment_id: number | null;
+  expense_payment_id: number | null;
+  match_type: string;
+  confidence: number;
+  status: string;
+  reason: string | null;
+  created_at: string;
+  applied_at: string | null;
+  bank_transaction: {
+    id: number;
+    transaction_date: string;
+    booked_date: string | null;
+    amount: number;
+    currency: string;
+    direction: string;
+    variable_symbol: string | null;
+    message: string | null;
+    status: string;
+    counterparty_name: string | null;
+  };
+  candidate: {
+    invoice_id: number | null;
+    expense_id: number | null;
+    document_number: string | null;
+    variable_symbol: string | null;
+    counterparty_name: string | null;
+    total: number | null;
+    remaining_amount: number | null;
+    currency: string | null;
+  };
+}): AccountingNewPaymentMatchDashboardItem {
+  return {
+    ...mapPaymentMatchSummary(item),
+    bankTransaction: {
+      id: item.bank_transaction.id,
+      transactionDate: item.bank_transaction.transaction_date,
+      bookedDate: item.bank_transaction.booked_date,
+      amount: item.bank_transaction.amount,
+      currency: item.bank_transaction.currency,
+      direction: item.bank_transaction.direction,
+      variableSymbol: item.bank_transaction.variable_symbol,
+      message: item.bank_transaction.message,
+      status: item.bank_transaction.status,
+      counterpartyName: item.bank_transaction.counterparty_name,
+    },
+    candidate: {
+      invoiceId: item.candidate.invoice_id,
+      expenseId: item.candidate.expense_id,
+      documentNumber: item.candidate.document_number,
+      variableSymbol: item.candidate.variable_symbol,
+      counterpartyName: item.candidate.counterparty_name,
+      total: item.candidate.total,
+      remainingAmount: item.candidate.remaining_amount,
+      currency: item.candidate.currency,
+    },
   };
 }
 
@@ -2247,6 +2312,30 @@ export async function listAccountingNewBankTransactionMatches(
   >("bank-transaction-matches", `/bank-transactions/${normalizedId}/matches`, params.signal);
 
   return data.map(mapPaymentMatchSummary);
+}
+
+export async function listAccountingNewPaymentMatchesCatalog(
+  params: AccountingNewPaymentMatchCatalogParams = {},
+): Promise<AccountingNewPaymentMatchDashboardItem[]> {
+  const searchParams = new URLSearchParams();
+  if (params.status !== undefined) {
+    searchParams.set("status", params.status);
+  }
+  if (params.limit !== undefined) {
+    searchParams.set("limit", String(params.limit));
+  }
+  if (params.offset !== undefined) {
+    searchParams.set("offset", String(params.offset));
+  }
+  const query = searchParams.toString();
+  const path = query ? `/bank-transactions/matches?${query}` : "/bank-transactions/matches";
+  const data = await fetchAccountingNewJson<Parameters<typeof mapPaymentMatchDashboardItem>[0][]>(
+    "payment-matches-catalog",
+    path,
+    params.signal,
+  );
+
+  return data.map(mapPaymentMatchDashboardItem);
 }
 
 export async function listAccountingNewAuditEvents(

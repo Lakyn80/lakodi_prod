@@ -382,6 +382,48 @@ export interface AccountingNewPaymentMatchListItem {
 
 export type AccountingNewPaymentMatchDetail = AccountingNewPaymentMatchListItem;
 
+export interface AccountingNewPaymentMatchBankTransactionContext {
+  id: number;
+  transactionDate: string;
+  bookedDate: string | null;
+  amount: number;
+  currency: string;
+  direction: string;
+  variableSymbol: string | null;
+  message: string | null;
+  status: string;
+  counterpartyName: string | null;
+}
+
+export interface AccountingNewPaymentMatchCandidateSummary {
+  invoiceId: number | null;
+  expenseId: number | null;
+  documentNumber: string | null;
+  variableSymbol: string | null;
+  counterpartyName: string | null;
+  total: number | null;
+  remainingAmount: number | null;
+  currency: string | null;
+}
+
+export interface AccountingNewPaymentMatchDashboardItem extends AccountingNewPaymentMatchListItem {
+  bankTransaction: AccountingNewPaymentMatchBankTransactionContext;
+  candidate: AccountingNewPaymentMatchCandidateSummary;
+}
+
+export function isAccountingNewPaymentMatchDashboardItem(
+  match: AccountingNewPaymentMatchListItem,
+): match is AccountingNewPaymentMatchDashboardItem {
+  return "bankTransaction" in match && "candidate" in match;
+}
+
+export interface AccountingNewPaymentMatchCatalogParams {
+  status?: string;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+}
+
 export interface AccountingNewPaymentMatchCandidate {
   id: string;
   label: string;

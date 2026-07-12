@@ -53,6 +53,7 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpenseSummaryResponse,
     InvoiceExpenseUpdate,
     InvoicePaymentMatchResponse,
+    InvoicePaymentMatchListItemResponse,
     InvoicePaymentCreate,
     InvoicePaymentResponse,
     InvoiceRecurringGenerationResponse,
@@ -167,6 +168,7 @@ from backend.app.modules.invoices.service import (
     archive_invoice_attachment,
     reject_invoice_payment_match,
     list_invoice_payment_matches,
+    list_invoice_payment_matches_catalog,
     link_invoice_attachment,
     upload_invoice_attachment,
     update_invoice_expense,
@@ -932,6 +934,20 @@ def admin_import_invoice_bank_transactions(
             "imported_transaction_ids": result.imported_transaction_ids,
             "skipped_duplicate_identifiers": result.skipped_duplicate_identifiers,
         }
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/bank-transactions/matches", response_model=list[InvoicePaymentMatchListItemResponse])
+def admin_list_invoice_payment_matches_catalog(
+    status: str | None = Query(default="suggested"),
+    limit: int | None = Query(default=100, ge=1, le=500),
+    offset: int | None = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    try:
+        return list_invoice_payment_matches_catalog(db, status=status, limit=limit, offset=offset)
     except InvoiceValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

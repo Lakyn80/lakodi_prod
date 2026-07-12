@@ -290,6 +290,14 @@ def _ziskej_matche_bankovni_transakce(transaction_id: int) -> list[dict]:
     return response.json()
 
 
+def _ziskej_katalog_matche_bankovnich_transakci(query: str = "") -> list[dict]:
+    _login_admin()
+    suffix = f"?{query}" if query else ""
+    response = client.get(f"/api/admin/invoices/bank-transactions/matches{suffix}")
+    assert response.status_code == 200
+    return response.json()
+
+
 def _nastav_storage_priloh(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     storage_dir = tmp_path / "invoice_attachments"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -4244,6 +4252,154 @@ def test_aplikace_matche_nepovoli_overpay_ani_opakovanou_aplikaci_stejne_transak
 
     assert second_apply_response.status_code == 400
     assert second_apply_response.json() == {"detail": "Tato bankovní transakce už byla spárována."}
+
+
+def test_katalog_matche_bankovnich_transakci_vraci_navrzenou_shodu_s_kandidatem_faktury() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "catalog-match-invoice@example.com"})
+    imported = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "catalog-match-incoming-1",
+                "transaction_date": "2026-06-10",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    transaction_id = imported["imported_transaction_ids"][0]
+    generated = _vygeneruj_matche_bankovni_transakce(transaction_id)
+
+    catalog = _ziskej_katalog_matche_bankovnich_transakci()
+
+    assert len(catalog) == 1
+    assert catalog[0]["id"] == generated[0]["id"]
+    assert catalog[0]["status"] == "suggested"
+    assert catalog[0]["invoice_id"] == invoice["id"]
+    assert catalog[0]["bank_transaction"]["id"] == transaction_id
+    assert catalog[0]["bank_transaction"]["status"] == "imported"
+    assert catalog[0]["candidate"]["invoice_id"] == invoice["id"]
+    assert catalog[0]["candidate"]["document_number"] == invoice["invoice_number"]
+    assert catalog[0]["candidate"]["variable_symbol"] == invoice["variable_symbol"]
+    assert catalog[0]["candidate"]["remaining_amount"] == invoice["total"]
+
+
+def test_katalog_matche_bankovnich_transakci_default_nevraci_aplikovane_ani_zamitnute() -> None:
+    invoice = _vytvor_fakturu({"customer_email": "catalog-applied-rejected@example.com"})
+    applied_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "catalog-apply-1",
+                "transaction_date": "2026-06-11",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    rejected_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "catalog-reject-1",
+                "transaction_date": "2026-06-12",
+                "amount": invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    apply_tx_id = applied_import["imported_transaction_ids"][0]
+    reject_tx_id = rejected_import["imported_transaction_ids"][0]
+    apply_matches = _vygeneruj_matche_bankovni_transakce(apply_tx_id)
+    reject_matches = _vygeneruj_matche_bankovni_transakce(reject_tx_id)
+    _aplikuj_match_bankovni_transakce(apply_tx_id, apply_matches[0]["id"])
+    _login_admin()
+    client.post(
+        f"/api/admin/invoices/bank-transactions/{reject_tx_id}/matches/{reject_matches[0]['id']}/reject"
+    )
+
+    default_catalog = _ziskej_katalog_matche_bankovnich_transakci()
+    applied_catalog = _ziskej_katalog_matche_bankovnich_transakci("status=applied")
+    rejected_catalog = _ziskej_katalog_matche_bankovnich_transakci("status=rejected")
+
+    assert default_catalog == []
+    assert len(applied_catalog) == 1
+    assert applied_catalog[0]["id"] == apply_matches[0]["id"]
+    assert len(rejected_catalog) == 1
+    assert rejected_catalog[0]["id"] == reject_matches[0]["id"]
+
+
+def test_katalog_matche_bankovnich_transakci_pagination_ordering_auth_a_matched_transaction() -> None:
+    first_invoice = _vytvor_fakturu({"customer_email": "catalog-order-1@example.com"})
+    second_invoice = _vytvor_fakturu({"customer_email": "catalog-order-2@example.com"})
+    matched_invoice = _vytvor_fakturu({"customer_email": "catalog-order-matched@example.com"})
+    first_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "catalog-order-low",
+                "transaction_date": "2026-06-13",
+                "amount": first_invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": first_invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    second_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "catalog-order-high",
+                "transaction_date": "2026-06-14",
+                "amount": second_invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": second_invoice["variable_symbol"],
+                "direction": "incoming",
+                "message": "High confidence candidate",
+            }
+        ]
+    )
+    matched_import = _importuj_bankovni_transakce(
+        [
+            {
+                "external_id": "catalog-order-matched",
+                "transaction_date": "2026-06-15",
+                "amount": matched_invoice["total"],
+                "currency": "CZK",
+                "variable_symbol": matched_invoice["variable_symbol"],
+                "direction": "incoming",
+            }
+        ]
+    )
+    first_tx_id = first_import["imported_transaction_ids"][0]
+    second_tx_id = second_import["imported_transaction_ids"][0]
+    matched_tx_id = matched_import["imported_transaction_ids"][0]
+    first_matches = _vygeneruj_matche_bankovni_transakce(first_tx_id)
+    second_matches = _vygeneruj_matche_bankovni_transakce(second_tx_id)
+    matched_matches = _vygeneruj_matche_bankovni_transakce(matched_tx_id)
+    _aplikuj_match_bankovni_transakce(matched_tx_id, matched_matches[0]["id"])
+
+    anonymous_client = TestClient(app)
+    unauthorized = anonymous_client.get("/api/admin/invoices/bank-transactions/matches")
+    assert unauthorized.status_code == 401
+    assert unauthorized.json() == {"detail": "Přihlaste se do adminu"}
+
+    full_catalog = _ziskej_katalog_matche_bankovnich_transakci()
+    paged_catalog = _ziskej_katalog_matche_bankovnich_transakci("limit=1&offset=0")
+    second_page = _ziskej_katalog_matche_bankovnich_transakci("limit=1&offset=1")
+
+    returned_ids = {item["id"] for item in full_catalog}
+    assert first_matches[0]["id"] in returned_ids
+    assert second_matches[0]["id"] in returned_ids
+    assert matched_matches[0]["id"] not in returned_ids
+    assert len(paged_catalog) == 1
+    assert len(second_page) == 1
+    assert paged_catalog[0]["id"] != second_page[0]["id"]
+
+    confidences = [item["confidence"] for item in full_catalog]
+    assert confidences == sorted(confidences, reverse=True)
 
 
 def test_vytvoreni_recurring_invoice_proforma_a_expense_sablon_funguje() -> None:

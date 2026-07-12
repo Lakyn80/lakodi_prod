@@ -171,12 +171,67 @@ try {
     $matches = Invoke-ApiJson -Method POST -Uri "$BaseUrl/api/admin/invoices/bank-transactions/$txId/matches/generate" -Session $session
     if (@($matches).Count -ge 1) {
         Add-Result "Banka" "Generate matches" "PASS" ("count=" + @($matches).Count)
+        $catalogBeforeApply = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/bank-transactions/matches" -Session $session
+        if (@($catalogBeforeApply).Count -ge 1 -and $catalogBeforeApply[0].candidate.invoice_id -eq $bankInvoice.id) {
+            Add-Result "Párování" "Dashboard catalog endpoint" "PASS" ("match_id=" + $catalogBeforeApply[0].id)
+        } else {
+            Add-Result "Párování" "Dashboard catalog endpoint" "FAIL" "Suggested match with invoice candidate not returned"
+        }
         $applied = Invoke-ApiJson -Method POST -Uri "$BaseUrl/api/admin/invoices/bank-transactions/$txId/matches/$($matches[0].id)/apply" -Session $session
         Add-Result "Párování" "Apply match" "PASS" ("status=" + $applied.status)
         $paidInvoice = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/$($bankInvoice.id)" -Session $session
         Add-Result "Párování" "Faktura po apply" $(if ($paidInvoice.payment_status -eq "paid") { "PASS" } else { "FAIL" }) ("payment_status=" + $paidInvoice.payment_status)
+        $catalogAfterApply = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/bank-transactions/matches" -Session $session
+        $stillSuggested = @($catalogAfterApply | Where-Object { $_.id -eq $matches[0].id }).Count -eq 0
+        Add-Result "Párování" "Applied match removed from suggested catalog" $(if ($stillSuggested) { "PASS" } else { "FAIL" })
     } else {
         Add-Result "Banka" "Generate matches" "FAIL" "No matches (invoice may already be paid)"
+    }
+
+    # Isolated dashboard matching workflow (VS + 2 000 CZK)
+    $vsDashboardDraft = Invoke-ApiJson -Method POST -Uri "$BaseUrl/api/admin/invoices" -Session $session -Body @{
+        status = "draft"; issue_date = "2026-07-01"; due_date = "2026-07-15"
+        subject_id = $subject.id; note = "QA dashboard VS matching"; business_mode = "autoservice"
+        tax_mode = "standard"; currency = "CZK"; vat_rate = 0
+        items = @(@{ description = "Dashboard match QA"; quantity = 1; unit_price = 2000 })
+    }
+    $vsDashboardInvoice = Invoke-ApiJson -Method PUT -Uri "$BaseUrl/api/admin/invoices/$($vsDashboardDraft.id)" -Session $session -Body @{
+        status = "issued"; issue_date = $vsDashboardDraft.issue_date; due_date = $vsDashboardDraft.due_date
+        subject_id = $subject.id; note = $vsDashboardDraft.note; business_mode = "autoservice"
+        tax_mode = "standard"; currency = "CZK"; vat_rate = 0; document_kind = "invoice"
+        items = @(@{ description = "Dashboard match QA"; quantity = 1; unit_price = 2000 })
+    }
+    $vsDashboardExtId = "qa-dashboard-vs-$(Get-Random)"
+    $vsDashboardImport = Invoke-ApiJson -Method POST -Uri "$BaseUrl/api/admin/invoices/bank-transactions/import" -Session $session -Body @{
+        transactions = @(@{
+            external_id = $vsDashboardExtId; transaction_date = "2026-06-02"
+            amount = 2000; currency = "CZK"; variable_symbol = $vsDashboardInvoice.variable_symbol
+            direction = "incoming"; message = "QA dashboard VS matching"
+        })
+    }
+    if ($vsDashboardImport.imported_count -ge 1) {
+        $vsTxId = $vsDashboardImport.imported_transaction_ids[0]
+        Invoke-ApiJson -Method POST -Uri "$BaseUrl/api/admin/invoices/bank-transactions/$vsTxId/matches/generate" -Session $session | Out-Null
+        $vsCatalog = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/bank-transactions/matches" -Session $session
+        $vsMatch = $vsCatalog | Where-Object { $_.bank_transaction.id -eq $vsTxId } | Select-Object -First 1
+        if ($null -ne $vsMatch -and $vsMatch.candidate.invoice_id -eq $vsDashboardInvoice.id) {
+            Add-Result "Párování" "Dashboard VS workflow catalog" "PASS" ("VS=" + $vsDashboardInvoice.variable_symbol)
+            $vsApplied = Invoke-ApiJson -Method POST -Uri "$BaseUrl/api/admin/invoices/bank-transactions/$vsTxId/matches/$($vsMatch.id)/apply" -Session $session
+            $vsTxDetail = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/bank-transactions/$vsTxId" -Session $session
+            $vsInvoicePaid = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/$($vsDashboardInvoice.id)" -Session $session
+            $vsCatalogAfter = Invoke-ApiJson -Method GET -Uri "$BaseUrl/api/admin/invoices/bank-transactions/matches" -Session $session
+            $vsChecks = @(
+                ($vsApplied.status -eq "applied"),
+                ($vsTxDetail.status -eq "matched"),
+                ($vsInvoicePaid.total_paid -eq 2000),
+                (@($vsCatalogAfter | Where-Object { $_.id -eq $vsMatch.id }).Count -eq 0)
+            )
+            Add-Result "Párování" "Dashboard VS workflow apply" $(if ($vsChecks -notcontains $false) { "PASS" } else { "FAIL" }) ("VS=" + $vsDashboardInvoice.variable_symbol)
+        } else {
+            Add-Result "Párování" "Dashboard VS workflow catalog" "FAIL" "Invoice candidate not returned"
+        }
+    } else {
+        Add-Result "Párování" "Dashboard VS workflow import" "FAIL" "Could not import isolated transaction"
     }
 
     # Outgoing for expense

@@ -16,6 +16,8 @@ import {
   formatAccountingNewTemplate,
   getAccountingNewLocale,
   translateAccountingNewApiError,
+  translateAccountingNewStatus,
+  translateAccountingNewTransactionDirection,
 } from "@/components/admin/accounting-new/accountingNewFormat";
 
 function normalizeFilterValue(value: string | null | undefined): string {
@@ -134,7 +136,7 @@ export function AccountingNewBankTransactionsPanel({
                 <option value="all">{t.bankTransactions.directionAll}</option>
                 {directionOptions.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {translateAccountingNewTransactionDirection(t, option)}
                   </option>
                 ))}
               </select>
@@ -148,7 +150,7 @@ export function AccountingNewBankTransactionsPanel({
                 <option value="all">{t.bankTransactions.statusAll}</option>
                 {statusOptions.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {translateAccountingNewStatus(t, option)}
                   </option>
                 ))}
               </select>

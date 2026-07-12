@@ -3736,3 +3736,24 @@
 - Commit messages:
   - `Fix accounting expense payments, supplier picker, and dev Docker build.`
   - `Enable XLSX accounting exports in backend Docker images`
+
+## Batch 24 Bank transaction matching dashboard
+
+- Date: `2026-07-12` (local verification)
+- Scope:
+  - backend read endpoint `GET /api/admin/invoices/bank-transactions/matches` with status filter (default `suggested`), pagination, eager loading, typed response with bank transaction + invoice/expense candidate summaries
+  - dashboard `AccountingNewPaymentMatchesPanel` loads suggestions in one request; apply/reject via existing write actions; refreshes counters after mutations
+  - transaction detail shows only actionable `suggested` matches; removed placeholder candidates card
+  - i18n: bank statuses (`imported` → „Čeká na párování“), match statuses (`suggested`/`applied`/`rejected`), translated bank filter dropdowns; hide missing `booked_date`; clearer duplicate import messaging
+  - extended `scripts/test-accounting-new-qa-live.ps1` with dashboard catalog + isolated VS/2 000 CZK workflow
+- Protected legacy invoice files: untouched
+- Tests run:
+  - `python -m pytest backend/tests/test_invoices.py` -> **185 passed** (3 new catalog endpoint tests)
+  - `npm run build` (frontend) -> **passed**
+  - `npm run lint` (frontend) -> pre-existing repo-wide ESLint debt (1316 issues); no new lint script added for accounting-new components
+  - `scripts/lakodi-docker-dev.ps1 smoke` -> **passed** (backend health, accounting routes, legacy invoices)
+  - `scripts/test-accounting-new-qa-live.ps1` -> **passed** (Párování 6/6 including dashboard catalog + VS workflow)
+- Remaining limitations:
+  - no dedicated frontend unit test framework configured in `package.json`
+  - single-tenant deployment: “tenant isolation” enforced via admin auth, not multi-tenant row filters
+- Commit message: `Add bank transaction matching dashboard API and UI integration`

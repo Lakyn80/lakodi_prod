@@ -401,6 +401,8 @@ export function AccountingNewShell() {
           isLoading={state.status === "loading"}
           authRequired={state.status === "auth"}
           error={bankTransactionsError}
+          reloadKey={dashboardReloadKey}
+          onStateChanged={() => setDashboardReloadKey((current) => current + 1)}
         />
       </div>
 

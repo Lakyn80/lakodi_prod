@@ -15,7 +15,6 @@ import { ACCOUNTING_NEW_ROUTE, getAccountingNewBankTransaction, listAccountingNe
 import type { AccountingNewApiError, AccountingNewBankTransactionDetailState } from "@/types/accountingNew";
 import { AccountingNewBankTransactionActions } from "@/components/admin/accounting-new/AccountingNewBankTransactionActions";
 import { AccountingNewDocumentStatusBadge } from "@/components/admin/accounting-new/AccountingNewDocumentStatusBadge";
-import { AccountingNewMatchCandidatesList } from "@/components/admin/accounting-new/AccountingNewMatchCandidatesList";
 import { AccountingNewMoney } from "@/components/admin/accounting-new/AccountingNewMoney";
 import { AccountingNewPaymentMatchesTable } from "@/components/admin/accounting-new/AccountingNewPaymentMatchesTable";
 import {
@@ -178,6 +177,7 @@ export function AccountingNewBankTransactionDetail({
   }
 
   const { detail, matches } = state;
+  const suggestedMatches = matches.filter((match) => match.status === "suggested");
 
   return (
     <div className="space-y-6">
@@ -204,7 +204,9 @@ export function AccountingNewBankTransactionDetail({
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetaRow label={t.bankTransactionDetail.fields.transactionDate} value={formatAccountingNewDate(detail.transactionDate, language, t.common.noValue)} />
-            <MetaRow label={t.bankTransactionDetail.fields.bookedDate} value={formatAccountingNewDate(detail.bookedDate, language, t.common.noValue)} />
+            {detail.bookedDate ? (
+              <MetaRow label={t.bankTransactionDetail.fields.bookedDate} value={formatAccountingNewDate(detail.bookedDate, language, t.common.noValue)} />
+            ) : null}
             <MetaRow label={t.bankTransactionDetail.fields.direction} value={translateAccountingNewTransactionDirection(t, detail.direction)} />
             <MetaRow label={t.bankTransactionDetail.fields.matchingStatus} value={translateAccountingNewStatus(t, detail.status)} />
             <MetaRow
@@ -278,25 +280,17 @@ export function AccountingNewBankTransactionDetail({
           <CardDescription>{t.bankTransactionDetail.matchesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          {matches.length > 0 ? (
+          {suggestedMatches.length > 0 ? (
             <AccountingNewPaymentMatchesTable
-              matches={matches}
+              matches={suggestedMatches}
               transactionId={transactionId}
               onMatchApplied={() => setReloadKey((current) => current + 1)}
             />
+          ) : matches.length > 0 ? (
+            <p className="text-sm text-muted-foreground">{t.empty.paymentMatchSuggestions}</p>
           ) : (
             <p className="text-sm text-muted-foreground">{t.empty.bankTransactionMatches}</p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle>{t.bankTransactionDetail.candidatesTitle}</CardTitle>
-          <CardDescription>{t.bankTransactionDetail.candidatesDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AccountingNewMatchCandidatesList deferredNote={t.paymentMatching.deferredDescription} />
         </CardContent>
       </Card>
     </div>

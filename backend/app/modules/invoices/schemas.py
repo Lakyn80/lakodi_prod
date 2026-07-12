@@ -714,6 +714,45 @@ class InvoicePaymentMatchResponse(BaseModel):
     applied_at: datetime | None
 
 
+class InvoicePaymentMatchBankTransactionSummary(BaseModel):
+    id: int
+    transaction_date: date
+    booked_date: date | None
+    amount: Decimal
+    currency: str
+    direction: BankTransactionDirection
+    variable_symbol: str | None
+    message: str | None
+    status: BankTransactionStatus
+    counterparty_name: str | None
+
+    @field_serializer("amount", when_used="json")
+    def serialize_transaction_amount(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InvoicePaymentMatchCandidateSummary(BaseModel):
+    invoice_id: int | None
+    expense_id: int | None
+    document_number: str | None
+    variable_symbol: str | None
+    counterparty_name: str | None
+    total: Decimal | None
+    remaining_amount: Decimal | None
+    currency: str | None
+
+    @field_serializer("total", "remaining_amount", when_used="json")
+    def serialize_decimal(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class InvoicePaymentMatchListItemResponse(InvoicePaymentMatchResponse):
+    bank_transaction: InvoicePaymentMatchBankTransactionSummary
+    candidate: InvoicePaymentMatchCandidateSummary
+
+
 class InvoiceRecurringTemplateItemCreate(InvoiceItemCreate):
     pass
 

@@ -93,6 +93,9 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpensePaymentCreate,
     InvoiceExpenseUpdate,
     InvoicePaymentMatchResponse,
+    InvoicePaymentMatchListItemResponse,
+    InvoicePaymentMatchBankTransactionSummary,
+    InvoicePaymentMatchCandidateSummary,
     InvoiceRelationDocumentSummaryResponse,
     InvoiceRelationPaymentSummaryResponse,
     InvoiceRelationsSummaryResponse,
@@ -1030,6 +1033,73 @@ def list_invoice_payment_matches(db: Session, transaction_id: int) -> list[Invoi
         .order_by(InvoicePaymentMatch.confidence.desc(), InvoicePaymentMatch.id.asc())
         .all()
     )
+
+
+def list_invoice_payment_matches_catalog(
+    db: Session,
+    *,
+    status: str | None = "suggested",
+    limit: int | None = 100,
+    offset: int | None = 0,
+) -> list[InvoicePaymentMatchListItemResponse]:
+    normalized_status = _normalize_payment_match_status(status, allow_none=False)
+    normalized_limit = min(max(limit if limit is not None else 100, 1), 500)
+    normalized_offset = max(offset if offset is not None else 0, 0)
+
+    query = (
+        db.query(InvoicePaymentMatch, InvoiceBankTransaction)
+        .join(
+            InvoiceBankTransaction,
+            InvoicePaymentMatch.bank_transaction_id == InvoiceBankTransaction.id,
+        )
+        .filter(InvoicePaymentMatch.status == normalized_status)
+    )
+
+    if normalized_status == DEFAULT_PAYMENT_MATCH_STATUS:
+        query = query.filter(InvoiceBankTransaction.status == DEFAULT_BANK_TRANSACTION_STATUS)
+
+    query = query.order_by(
+        InvoicePaymentMatch.confidence.desc(),
+        InvoicePaymentMatch.created_at.desc(),
+        InvoicePaymentMatch.id.desc(),
+    ).offset(normalized_offset).limit(normalized_limit)
+
+    rows = query.all()
+    if not rows:
+        return []
+
+    invoice_ids = {match.invoice_id for match, _transaction in rows if match.invoice_id is not None}
+    expense_ids = {match.expense_id for match, _transaction in rows if match.expense_id is not None}
+
+    invoices_by_id: dict[int, Invoice] = {}
+    if invoice_ids:
+        invoices = (
+            db.query(Invoice)
+            .options(selectinload(Invoice.payments))
+            .filter(Invoice.id.in_(invoice_ids))
+            .all()
+        )
+        invoices_by_id = {invoice.id: invoice for invoice in invoices}
+
+    expenses_by_id: dict[int, InvoiceExpense] = {}
+    if expense_ids:
+        expenses = (
+            db.query(InvoiceExpense)
+            .options(selectinload(InvoiceExpense.payments))
+            .filter(InvoiceExpense.id.in_(expense_ids))
+            .all()
+        )
+        expenses_by_id = {expense.id: expense for expense in expenses}
+
+    return [
+        _build_payment_match_list_item_response(
+            match,
+            transaction,
+            invoice=invoices_by_id.get(match.invoice_id) if match.invoice_id is not None else None,
+            expense=expenses_by_id.get(match.expense_id) if match.expense_id is not None else None,
+        )
+        for match, transaction in rows
+    ]
 
 
 def generate_invoice_payment_matches(db: Session, transaction_id: int) -> list[InvoicePaymentMatch]:
@@ -3188,6 +3258,91 @@ def _build_payment_match_summary(match: InvoicePaymentMatch) -> dict:
         "confidence": match.confidence,
         "status": match.status,
     }
+
+
+def _build_payment_match_bank_transaction_summary(
+    transaction: InvoiceBankTransaction,
+) -> InvoicePaymentMatchBankTransactionSummary:
+    return InvoicePaymentMatchBankTransactionSummary(
+        id=transaction.id,
+        transaction_date=transaction.transaction_date,
+        booked_date=transaction.booked_date,
+        amount=_quantize_money(Decimal(transaction.amount)),
+        currency=transaction.currency,
+        direction=_normalize_bank_transaction_direction(transaction.direction),
+        variable_symbol=transaction.variable_symbol,
+        message=transaction.message,
+        status=_normalize_bank_transaction_status(transaction.status),
+        counterparty_name=transaction.counterparty_name,
+    )
+
+
+def _build_payment_match_candidate_summary(
+    *,
+    invoice: Invoice | None,
+    expense: InvoiceExpense | None,
+) -> InvoicePaymentMatchCandidateSummary:
+    if invoice is not None:
+        payment_summary = _build_payment_summary(invoice)
+        return InvoicePaymentMatchCandidateSummary(
+            invoice_id=invoice.id,
+            expense_id=None,
+            document_number=invoice.invoice_number,
+            variable_symbol=invoice.variable_symbol,
+            counterparty_name=invoice.customer_name,
+            total=_quantize_money(Decimal(invoice.total)),
+            remaining_amount=payment_summary.remaining_amount,
+            currency=invoice.currency,
+        )
+
+    if expense is not None:
+        payment_summary = _build_expense_payment_summary(expense)
+        return InvoicePaymentMatchCandidateSummary(
+            invoice_id=None,
+            expense_id=expense.id,
+            document_number=expense.expense_number,
+            variable_symbol=expense.variable_symbol,
+            counterparty_name=expense.supplier_name,
+            total=_quantize_money(Decimal(expense.total)),
+            remaining_amount=payment_summary.remaining_amount,
+            currency=expense.currency,
+        )
+
+    return InvoicePaymentMatchCandidateSummary(
+        invoice_id=None,
+        expense_id=None,
+        document_number=None,
+        variable_symbol=None,
+        counterparty_name=None,
+        total=None,
+        remaining_amount=None,
+        currency=None,
+    )
+
+
+def _build_payment_match_list_item_response(
+    match: InvoicePaymentMatch,
+    transaction: InvoiceBankTransaction,
+    *,
+    invoice: Invoice | None,
+    expense: InvoiceExpense | None,
+) -> InvoicePaymentMatchListItemResponse:
+    return InvoicePaymentMatchListItemResponse(
+        id=match.id,
+        bank_transaction_id=match.bank_transaction_id,
+        invoice_id=match.invoice_id,
+        expense_id=match.expense_id,
+        invoice_payment_id=match.invoice_payment_id,
+        expense_payment_id=match.expense_payment_id,
+        match_type=_normalize_payment_match_type(match.match_type),
+        confidence=match.confidence,
+        status=_normalize_payment_match_status(match.status),
+        reason=match.reason,
+        created_at=match.created_at,
+        applied_at=match.applied_at,
+        bank_transaction=_build_payment_match_bank_transaction_summary(transaction),
+        candidate=_build_payment_match_candidate_summary(invoice=invoice, expense=expense),
+    )
 
 
 def _build_recurring_template_summary(template: InvoiceRecurringTemplate) -> dict:

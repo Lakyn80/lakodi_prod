@@ -47,12 +47,29 @@ export function AccountingNewBankImportForm({ onImported }: { onImported?: () =>
       }
 
       const result = await importAccountingNewBankTransactions({ transactions });
-      setSuccessMessage(
+      const successParts = [
         formatAccountingNewTemplate(t.bankWrite.importSuccess, {
           imported: result.importedCount,
           skipped: result.skippedDuplicateCount,
         }),
-      );
+      ];
+      if (result.skippedDuplicateCount === 1) {
+        successParts.push(t.bankWrite.importSkippedDuplicatesOne);
+      } else if (result.skippedDuplicateCount > 1) {
+        successParts.push(
+          formatAccountingNewTemplate(t.bankWrite.importSkippedDuplicatesMany, {
+            count: result.skippedDuplicateCount,
+          }),
+        );
+      }
+      if (result.skippedDuplicateIdentifiers.length > 0) {
+        successParts.push(
+          formatAccountingNewTemplate(t.bankWrite.importSkippedIdentifiers, {
+            items: result.skippedDuplicateIdentifiers.join(", "),
+          }),
+        );
+      }
+      setSuccessMessage(successParts.join(" "));
       setConfirmOpen(false);
       onImported?.();
     } catch (importError) {

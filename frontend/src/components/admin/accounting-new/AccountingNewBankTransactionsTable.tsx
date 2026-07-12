@@ -47,11 +47,13 @@ export function AccountingNewBankTransactionsTable({
                 >
                   {formatAccountingNewDate(transaction.transactionDate, language, t.common.noValue)}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {formatAccountingNewTemplate(t.bankTransactions.table.bookedDate, {
-                    value: formatAccountingNewDate(transaction.bookedDate, language, t.common.noValue),
-                  })}
-                </p>
+                {transaction.bookedDate ? (
+                  <p className="text-xs text-muted-foreground">
+                    {formatAccountingNewTemplate(t.bankTransactions.table.bookedDate, {
+                      value: formatAccountingNewDate(transaction.bookedDate, language, t.common.noValue),
+                    })}
+                  </p>
+                ) : null}
               </div>
             </TableCell>
             <TableCell className="align-top">
