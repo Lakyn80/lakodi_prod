@@ -185,7 +185,7 @@ export function AccountingNewPaymentMatchesPanel({
 
                 <p className="text-xs text-muted-foreground">
                   {t.paymentMatching.detailRouteHint}{" "}
-                  <Link href={`${ACCOUNTING_NEW_ROUTE}/bankovni-transakce`} className="underline underline-offset-4">
+                  <Link href={`${ACCOUNTING_NEW_ROUTE}#bank-transactions`} className="underline underline-offset-4">
                     {t.navigation.bankTransactions}
                   </Link>
                 </p>
