@@ -63,3 +63,77 @@ class InternalDocumentDefaultsResponse(BaseModel):
     document_kind: str
     document_number: str
     variable_symbol: str
+
+
+class InternalOutgoingDocumentListItemResponse(BaseModel):
+    document_id: int
+    document_number: str
+    document_kind: str
+    status: str
+    payment_status: str
+    currency: str
+    issue_date: date
+    due_date: date
+    subject_name: str
+    total_without_vat: Decimal
+    total_vat: Decimal
+    total_with_vat: Decimal
+    received_payments: Decimal
+    outstanding_amount: Decimal
+
+    @field_serializer(
+        "total_without_vat",
+        "total_vat",
+        "total_with_vat",
+        "received_payments",
+        "outstanding_amount",
+        when_used="json",
+    )
+    def serialize_decimal(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InternalOutgoingDocumentListResponse(BaseModel):
+    items: list[InternalOutgoingDocumentListItemResponse]
+    limit: int
+    offset: int
+    total_count: int
+    sort: str
+
+
+class InternalOutgoingDocumentCurrencySummaryResponse(BaseModel):
+    currency: str
+    document_count: int
+    invoiced_without_vat: Decimal
+    vat: Decimal
+    invoiced_with_vat: Decimal
+    received_payments: Decimal
+    outstanding_amount: Decimal
+
+    @field_serializer(
+        "invoiced_without_vat",
+        "vat",
+        "invoiced_with_vat",
+        "received_payments",
+        "outstanding_amount",
+        when_used="json",
+    )
+    def serialize_decimal(self, value: Decimal) -> float:
+        return float(value)
+
+
+class InternalOutgoingDocumentsSummaryResponse(BaseModel):
+    document_count: int
+    currencies: list[InternalOutgoingDocumentCurrencySummaryResponse]
+
+
+class InternalCustomerAccountingSummaryResponse(BaseModel):
+    customer_query: str
+    ambiguous: bool
+    customer_matches: list[str]
+    summary: InternalOutgoingDocumentsSummaryResponse | None
+
+
+class InternalMonthlyAccountingSummaryResponse(InternalOutgoingDocumentsSummaryResponse):
+    year: int
+    month: int

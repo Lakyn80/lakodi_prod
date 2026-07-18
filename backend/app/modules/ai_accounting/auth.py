@@ -62,6 +62,21 @@ def require_ai_accounting_scope(required_scope: str) -> Callable[[str | None], S
     return dependency
 
 
+def require_ai_accounting_scopes(
+    required_scopes: tuple[str, ...],
+) -> Callable[[str | None], ServiceTokenClaims]:
+    def dependency(authorization: str | None = Header(default=None)) -> ServiceTokenClaims:
+        claims = verify_authorization_header(authorization)
+        if not set(required_scopes).issubset(set(claims.scopes)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Service token does not have the required scopes.",
+            )
+        return claims
+
+    return dependency
+
+
 def verify_authorization_header(authorization: str | None) -> ServiceTokenClaims:
     if not authorization:
         raise _invalid_token_error()

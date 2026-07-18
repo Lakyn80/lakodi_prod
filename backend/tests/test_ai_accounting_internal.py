@@ -71,6 +71,104 @@ def test_internal_ai_can_read_document_defaults_with_valid_scope(monkeypatch) ->
     assert payload["variable_symbol"]
 
 
+def test_internal_ai_searches_outgoing_documents(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    invoice = _create_invoice(customer_name="LOCAL DEMO CUSTOMER ALPHA")
+
+    response = client.get(
+        "/internal/ai/v1/accounting/invoices/search",
+        params={"query": "ALPHA", "limit": 10},
+        headers=_auth_headers(scopes=("lakodi.invoices.read",)),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_count"] >= 1
+    assert any(item["document_id"] == invoice["id"] for item in payload["items"])
+    assert "customer_email" not in payload["items"][0]
+
+
+def test_internal_ai_lists_unpaid_outgoing_documents(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    invoice = _create_invoice(customer_name="LOCAL DEMO CUSTOMER UNPAID")
+
+    response = client.get(
+        "/internal/ai/v1/accounting/invoices",
+        params={"payment_status": "unpaid", "sort": "invoice_number_asc"},
+        headers=_auth_headers(scopes=("lakodi.invoices.read",)),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert any(item["document_id"] == invoice["id"] for item in payload["items"])
+    assert payload["limit"] == 25
+
+
+def test_internal_ai_invoice_summary_is_grouped_by_currency(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    invoice = _create_invoice(customer_name="LOCAL DEMO CUSTOMER SUMMARY")
+    _add_payment(invoice["id"])
+
+    response = client.get(
+        "/internal/ai/v1/accounting/invoices/summary",
+        params={"customer_query": "LOCAL DEMO CUSTOMER SUMMARY"},
+        headers=_auth_headers(scopes=("lakodi.invoices.read", "lakodi.payments.read")),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["document_count"] >= 1
+    czk = next(item for item in payload["currencies"] if item["currency"] == "CZK")
+    assert czk["invoiced_with_vat"] >= 1210.0
+    assert czk["received_payments"] >= 250.0
+
+
+def test_internal_ai_customer_summary_marks_ambiguous_customer(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    _create_invoice(customer_name="LOCAL DEMO CUSTOMER AMBIGUOUS ONE")
+    _create_invoice(customer_name="LOCAL DEMO CUSTOMER AMBIGUOUS TWO")
+
+    response = client.get(
+        "/internal/ai/v1/accounting/customers/summary",
+        params={"customer_query": "LOCAL DEMO CUSTOMER AMBIGUOUS"},
+        headers=_auth_headers(scopes=("lakodi.invoices.read", "lakodi.payments.read")),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ambiguous"] is True
+    assert payload["summary"] is None
+
+
+def test_internal_ai_monthly_summary_validates_month(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+
+    invalid = client.get(
+        "/internal/ai/v1/accounting/monthly-summary",
+        params={"year": 2026, "month": 13},
+        headers=_auth_headers(scopes=("lakodi.invoices.read", "lakodi.payments.read")),
+    )
+    valid = client.get(
+        "/internal/ai/v1/accounting/monthly-summary",
+        params={"year": 2099, "month": 4},
+        headers=_auth_headers(scopes=("lakodi.invoices.read", "lakodi.payments.read")),
+    )
+
+    assert invalid.status_code == 422
+    assert valid.status_code == 200
+
+
+def test_internal_ai_summary_requires_payment_scope(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+
+    response = client.get(
+        "/internal/ai/v1/accounting/invoices/summary",
+        headers=_auth_headers(scopes=("lakodi.invoices.read",)),
+    )
+
+    assert response.status_code == 403
+
+
 def test_internal_ai_rejects_missing_token(monkeypatch) -> None:
     _configure_service_auth(monkeypatch)
     invoice = _create_invoice()
@@ -198,14 +296,20 @@ def _login_admin() -> None:
     assert response.status_code == 200
 
 
-def _create_invoice() -> dict:
+def _create_invoice(
+    *,
+    customer_name: str = "Jan Novak",
+    issue_date: str = "2099-04-04",
+    due_date: str = "2099-04-18",
+    currency: str = "CZK",
+) -> dict:
     _login_admin()
     response = client.post(
         "/api/admin/invoices",
         json={
-            "issue_date": "2099-04-04",
-            "due_date": "2099-04-18",
-            "customer_name": "Jan Novak",
+            "issue_date": issue_date,
+            "due_date": due_date,
+            "customer_name": customer_name,
             "customer_email": "jan@example.com",
             "customer_phone": "+420123456789",
             "customer_address": "Praha 10",
@@ -214,7 +318,7 @@ def _create_invoice() -> dict:
             "note": "Rucni servisni faktura",
             "business_mode": "autoservice",
             "tax_mode": "standard",
-            "currency": "CZK",
+            "currency": currency,
             "vat_rate": 21,
             "items": [{"description": "Diagnostika", "quantity": 1, "unit_price": 1000}],
         },

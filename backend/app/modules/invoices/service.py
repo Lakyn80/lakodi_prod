@@ -289,6 +289,153 @@ def list_invoice_payments(db: Session, invoice_id: int) -> list[InvoicePayment]:
     return list(invoice.payments)
 
 
+@dataclass(frozen=True)
+class OutgoingInvoiceFilters:
+    query: str | None = None
+    customer_query: str | None = None
+    invoice_number: str | None = None
+    status: str | None = None
+    payment_status: str | None = None
+    currency: str | None = None
+    issue_date_from: date | None = None
+    issue_date_to: date | None = None
+    due_date_from: date | None = None
+    due_date_to: date | None = None
+    paid_date_from: date | None = None
+    paid_date_to: date | None = None
+
+
+@dataclass(frozen=True)
+class OutgoingInvoicePage:
+    items: list[Invoice]
+    total_count: int
+    limit: int
+    offset: int
+    sort: str
+
+
+@dataclass(frozen=True)
+class OutgoingInvoiceCurrencySummary:
+    currency: str
+    document_count: int
+    invoiced_without_vat: Decimal
+    vat: Decimal
+    invoiced_with_vat: Decimal
+    received_payments: Decimal
+    outstanding_amount: Decimal
+
+
+@dataclass(frozen=True)
+class OutgoingInvoiceSummary:
+    filters: OutgoingInvoiceFilters
+    currencies: list[OutgoingInvoiceCurrencySummary]
+    document_count: int
+
+
+@dataclass(frozen=True)
+class CustomerAccountingSummary:
+    customer_query: str
+    ambiguous: bool
+    customer_matches: list[str]
+    summary: OutgoingInvoiceSummary | None
+
+
+def search_outgoing_documents(
+    db: Session,
+    *,
+    filters: OutgoingInvoiceFilters,
+    limit: int,
+    offset: int,
+    sort: str,
+) -> OutgoingInvoicePage:
+    if not _normalize_optional_search_text(filters.query):
+        raise InvoiceValidationError("Vyhledavaci dotaz je povinny.")
+    return list_outgoing_documents(
+        db,
+        filters=filters,
+        limit=limit,
+        offset=offset,
+        sort=sort,
+    )
+
+
+def list_outgoing_documents(
+    db: Session,
+    *,
+    filters: OutgoingInvoiceFilters,
+    limit: int,
+    offset: int,
+    sort: str,
+) -> OutgoingInvoicePage:
+    _validate_invoice_filters(filters)
+    bounded_limit = _bounded_ai_limit(limit)
+    bounded_offset = _bounded_ai_offset(offset)
+    normalized_sort = _normalize_ai_invoice_sort(sort)
+    invoices = _load_filtered_outgoing_invoices(db, filters=filters)
+    invoices = _sort_outgoing_invoices(invoices, normalized_sort)
+    return OutgoingInvoicePage(
+        items=invoices[bounded_offset : bounded_offset + bounded_limit],
+        total_count=len(invoices),
+        limit=bounded_limit,
+        offset=bounded_offset,
+        sort=normalized_sort,
+    )
+
+
+def get_outgoing_documents_summary(
+    db: Session,
+    *,
+    filters: OutgoingInvoiceFilters,
+) -> OutgoingInvoiceSummary:
+    _validate_invoice_filters(filters)
+    invoices = _load_filtered_outgoing_invoices(db, filters=filters)
+    return _build_outgoing_invoice_summary(filters=filters, invoices=invoices)
+
+
+def get_customer_accounting_summary(
+    db: Session,
+    *,
+    customer_query: str,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> CustomerAccountingSummary:
+    normalized_customer_query = _normalize_optional_search_text(customer_query)
+    if not normalized_customer_query:
+        raise InvoiceValidationError("Dotaz na zakaznika je povinny.")
+    filters = OutgoingInvoiceFilters(
+        customer_query=normalized_customer_query,
+        issue_date_from=date_from,
+        issue_date_to=date_to,
+    )
+    _validate_invoice_filters(filters)
+    invoices = _load_filtered_outgoing_invoices(db, filters=filters)
+    customer_matches = sorted({invoice.customer_name for invoice in invoices if invoice.customer_name})
+    ambiguous = len(customer_matches) > 1
+    return CustomerAccountingSummary(
+        customer_query=normalized_customer_query,
+        ambiguous=ambiguous,
+        customer_matches=customer_matches[:10],
+        summary=None if ambiguous else _build_outgoing_invoice_summary(filters=filters, invoices=invoices),
+    )
+
+
+def get_monthly_accounting_summary(
+    db: Session,
+    *,
+    year: int,
+    month: int,
+) -> OutgoingInvoiceSummary:
+    if year < 2000 or year > 2100:
+        raise InvoiceValidationError("Rok musi byt v rozsahu 2000 az 2100.")
+    if month < 1 or month > 12:
+        raise InvoiceValidationError("Mesic musi byt v rozsahu 1 az 12.")
+    month_start = date(year, month, 1)
+    month_end = date(year, month, monthrange(year, month)[1])
+    filters = OutgoingInvoiceFilters(issue_date_from=month_start, issue_date_to=month_end)
+    invoices = _load_filtered_outgoing_invoices(db, filters=filters)
+    return _build_outgoing_invoice_summary(filters=filters, invoices=invoices)
+
+
 def list_invoice_outgoing_relations(db: Session, invoice_id: int) -> list[InvoiceDocumentRelationResponse]:
     relations = (
         db.query(InvoiceDocumentRelation)
@@ -4041,6 +4188,211 @@ def _load_relation_payment_summaries(
         )
         for payment in payments
     }
+
+
+def _load_filtered_outgoing_invoices(
+    db: Session,
+    *,
+    filters: OutgoingInvoiceFilters,
+) -> list[Invoice]:
+    query = db.query(Invoice).options(selectinload(Invoice.payments), selectinload(Invoice.subject))
+    query_text = _normalize_optional_search_text(filters.query)
+    customer_text = _normalize_optional_search_text(filters.customer_query)
+    invoice_number = _normalize_optional_search_text(filters.invoice_number)
+    status_filter = _normalize_optional_search_text(filters.status)
+    currency_filter = _normalize_optional_search_text(filters.currency)
+
+    if query_text:
+        pattern = f"%{query_text}%"
+        query = query.filter(
+            or_(
+                Invoice.invoice_number.ilike(pattern),
+                Invoice.variable_symbol.ilike(pattern),
+                Invoice.customer_name.ilike(pattern),
+                Invoice.customer_ico.ilike(pattern),
+                Invoice.customer_dic.ilike(pattern),
+            )
+        )
+    if customer_text:
+        pattern = f"%{customer_text}%"
+        query = query.filter(
+            or_(
+                Invoice.customer_name.ilike(pattern),
+                Invoice.customer_ico.ilike(pattern),
+                Invoice.customer_dic.ilike(pattern),
+            )
+        )
+    if invoice_number:
+        pattern = f"%{invoice_number}%"
+        query = query.filter(Invoice.invoice_number.ilike(pattern))
+    if status_filter:
+        query = query.filter(Invoice.status == status_filter)
+    if currency_filter:
+        query = query.filter(Invoice.currency == currency_filter.upper())
+    if filters.issue_date_from is not None:
+        query = query.filter(Invoice.issue_date >= filters.issue_date_from)
+    if filters.issue_date_to is not None:
+        query = query.filter(Invoice.issue_date <= filters.issue_date_to)
+    if filters.due_date_from is not None:
+        query = query.filter(Invoice.due_date >= filters.due_date_from)
+    if filters.due_date_to is not None:
+        query = query.filter(Invoice.due_date <= filters.due_date_to)
+
+    invoices = [_attach_invoice_runtime_state(invoice) for invoice in query.all()]
+    payment_status_filter = _normalize_optional_search_text(filters.payment_status)
+    if payment_status_filter:
+        invoices = [
+            invoice
+            for invoice in invoices
+            if getattr(invoice, "payment_status", None) == payment_status_filter
+        ]
+    if filters.paid_date_from is not None or filters.paid_date_to is not None:
+        invoices = [
+            invoice
+            for invoice in invoices
+            if _invoice_has_payment_in_interval(
+                invoice,
+                date_from=filters.paid_date_from,
+                date_to=filters.paid_date_to,
+            )
+        ]
+    return invoices
+
+
+def _invoice_has_payment_in_interval(
+    invoice: Invoice,
+    *,
+    date_from: date | None,
+    date_to: date | None,
+) -> bool:
+    for payment in invoice.payments:
+        if date_from is not None and payment.paid_at < date_from:
+            continue
+        if date_to is not None and payment.paid_at > date_to:
+            continue
+        return True
+    return False
+
+
+def _build_outgoing_invoice_summary(
+    *,
+    filters: OutgoingInvoiceFilters,
+    invoices: list[Invoice],
+) -> OutgoingInvoiceSummary:
+    grouped: dict[str, list[Invoice]] = {}
+    for invoice in invoices:
+        currency = (invoice.currency or "UNKNOWN").strip().upper()
+        grouped.setdefault(currency, []).append(invoice)
+
+    currency_summaries: list[OutgoingInvoiceCurrencySummary] = []
+    for currency, currency_invoices in sorted(grouped.items()):
+        currency_summaries.append(
+            OutgoingInvoiceCurrencySummary(
+                currency=currency,
+                document_count=len(currency_invoices),
+                invoiced_without_vat=_sum_decimal_field(currency_invoices, "subtotal"),
+                vat=_sum_decimal_field(currency_invoices, "vat_amount"),
+                invoiced_with_vat=_sum_decimal_field(currency_invoices, "total"),
+                received_payments=_sum_runtime_decimal_field(currency_invoices, "total_paid"),
+                outstanding_amount=_sum_runtime_decimal_field(currency_invoices, "remaining_amount"),
+            )
+        )
+    return OutgoingInvoiceSummary(
+        filters=filters,
+        currencies=currency_summaries,
+        document_count=len(invoices),
+    )
+
+
+def _sum_decimal_field(invoices: list[Invoice], field_name: str) -> Decimal:
+    return _quantize_money(
+        sum((Decimal(getattr(invoice, field_name)) for invoice in invoices), Decimal("0.00"))
+    )
+
+
+def _sum_runtime_decimal_field(invoices: list[Invoice], field_name: str) -> Decimal:
+    return _quantize_money(
+        sum((Decimal(getattr(invoice, field_name, Decimal("0.00"))) for invoice in invoices), Decimal("0.00"))
+    )
+
+
+def _sort_outgoing_invoices(invoices: list[Invoice], sort: str) -> list[Invoice]:
+    if sort == "issue_date_asc":
+        return sorted(invoices, key=lambda invoice: (invoice.issue_date, invoice.id))
+    if sort == "due_date_asc":
+        return sorted(invoices, key=lambda invoice: (invoice.due_date, invoice.id))
+    if sort == "due_date_desc":
+        return sorted(invoices, key=lambda invoice: (invoice.due_date, invoice.id), reverse=True)
+    if sort == "total_asc":
+        return sorted(invoices, key=lambda invoice: (Decimal(invoice.total), invoice.id))
+    if sort == "total_desc":
+        return sorted(invoices, key=lambda invoice: (Decimal(invoice.total), invoice.id), reverse=True)
+    if sort == "invoice_number_asc":
+        return sorted(invoices, key=lambda invoice: (invoice.invoice_number, invoice.id))
+    if sort == "id_desc":
+        return sorted(invoices, key=lambda invoice: invoice.id, reverse=True)
+    return sorted(invoices, key=lambda invoice: (invoice.issue_date, invoice.id), reverse=True)
+
+
+def _validate_invoice_filters(filters: OutgoingInvoiceFilters) -> None:
+    _validate_optional_interval(filters.issue_date_from, filters.issue_date_to, "Datum vystaveni")
+    _validate_optional_interval(filters.due_date_from, filters.due_date_to, "Datum splatnosti")
+    _validate_optional_interval(filters.paid_date_from, filters.paid_date_to, "Datum uhrady")
+    if filters.status is not None and filters.status not in STORED_INVOICE_STATUSES:
+        supported = ", ".join(sorted(STORED_INVOICE_STATUSES))
+        raise InvoiceValidationError(f"Neplatny stav faktury. Povolene hodnoty: {supported}.")
+    if filters.payment_status is not None and filters.payment_status not in {
+        "unpaid",
+        "partially_paid",
+        "paid",
+        "not_payable",
+    }:
+        raise InvoiceValidationError("Neplatny stav uhrady faktury.")
+
+
+def _validate_optional_interval(
+    start: date | None,
+    end: date | None,
+    label: str,
+) -> None:
+    if start is not None and end is not None and end < start:
+        raise InvoiceValidationError(f"{label}: konec intervalu nesmi byt pred zacatkem.")
+
+
+def _normalize_ai_invoice_sort(value: str | None) -> str:
+    normalized = (value or "issue_date_desc").strip()
+    allowed = {
+        "issue_date_desc",
+        "issue_date_asc",
+        "due_date_desc",
+        "due_date_asc",
+        "total_desc",
+        "total_asc",
+        "invoice_number_asc",
+        "id_desc",
+    }
+    if normalized not in allowed:
+        raise InvoiceValidationError("Neplatne razeni vydanych faktur.")
+    return normalized
+
+
+def _bounded_ai_limit(value: int) -> int:
+    if value < 1 or value > 100:
+        raise InvoiceValidationError("Limit musi byt v rozsahu 1 az 100.")
+    return value
+
+
+def _bounded_ai_offset(value: int) -> int:
+    if value < 0 or value > 10000:
+        raise InvoiceValidationError("Offset musi byt v rozsahu 0 az 10000.")
+    return value
+
+
+def _normalize_optional_search_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned[:256] if cleaned else None
 
 
 def _build_payment_summary(invoice: Invoice, reference_date: date | None = None) -> InvoicePaymentSummary:
