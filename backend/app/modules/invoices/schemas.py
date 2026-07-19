@@ -41,7 +41,15 @@ InvoiceAttachmentType = Literal[
     "other",
 ]
 InvoiceAttachmentStatus = Literal["uploaded", "linked", "archived"]
-AccountingEventSource = Literal["admin_api", "system", "import", "generation", "email", "bank_matching"]
+AccountingEventSource = Literal[
+    "admin_api",
+    "system",
+    "import",
+    "generation",
+    "email",
+    "bank_matching",
+    "ai_accounting",
+]
 
 
 class InvoiceItemCreate(BaseModel):

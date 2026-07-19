@@ -1,10 +1,14 @@
-"""Internal read-only accounting endpoints consumed by the AI platform."""
+"""Internal accounting endpoints consumed by the AI platform."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import date
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.db import get_db
@@ -15,19 +19,26 @@ from backend.app.modules.ai_accounting.auth import (
 )
 from backend.app.modules.ai_accounting.schemas import (
     InternalCustomerAccountingSummaryResponse,
+    InternalCustomerSearchItemResponse,
+    InternalCustomerSearchResponse,
     InternalDocumentDefaultsResponse,
+    InternalExecutionStatusResponse,
+    InternalInvoiceCreateRequest,
     InternalInvoiceItemResponse,
     InternalInvoicePaymentResponse,
+    InternalInvoiceValidationResponse,
     InternalMonthlyAccountingSummaryResponse,
     InternalOutgoingDocumentResponse,
     InternalOutgoingDocumentListItemResponse,
     InternalOutgoingDocumentListResponse,
     InternalOutgoingDocumentsSummaryResponse,
 )
+from backend.app.modules.invoices.models import AiAccountingExecution
 from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
     InvoiceValidationError,
     OutgoingInvoiceFilters,
+    create_invoice,
     get_customer_accounting_summary,
     get_document_creation_defaults,
     get_invoice_detail,
@@ -35,7 +46,9 @@ from backend.app.modules.invoices.service import (
     get_outgoing_documents_summary,
     list_outgoing_documents,
     list_invoice_payments,
+    list_invoice_subjects,
     search_outgoing_documents,
+    validate_invoice_create_payload,
 )
 
 router = APIRouter()
@@ -215,6 +228,32 @@ def internal_get_customer_accounting_summary(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/customers/search", response_model=InternalCustomerSearchResponse)
+def internal_search_customers(
+    query: str = Query(min_length=1, max_length=256),
+    limit: int = Query(default=10, ge=1, le=25),
+    db: Session = Depends(get_db),
+    _: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.customers.read")),
+):
+    subjects = list_invoice_subjects(db, search=query)
+    bounded_subjects = subjects[:limit]
+    return InternalCustomerSearchResponse(
+        items=[
+            InternalCustomerSearchItemResponse(
+                subject_id=subject.id,
+                name=subject.name,
+                email=subject.email,
+                ico=subject.ico,
+                dic=subject.dic,
+                country=subject.country,
+            )
+            for subject in bounded_subjects
+        ],
+        limit=limit,
+        total_count=len(subjects),
+    )
+
+
 @router.get("/monthly-summary", response_model=InternalMonthlyAccountingSummaryResponse)
 def internal_get_monthly_accounting_summary(
     year: int = Query(ge=2000, le=2100),
@@ -248,6 +287,125 @@ def internal_get_outgoing_document(
         return _build_outgoing_document_response(invoice)
     except InvoiceNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Faktura nebyla nalezena.") from exc
+
+
+@router.post("/invoices/validate", response_model=InternalInvoiceValidationResponse)
+def internal_validate_invoice(
+    payload: InternalInvoiceCreateRequest,
+    db: Session = Depends(get_db),
+    _: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.draft")),
+):
+    try:
+        preview = validate_invoice_create_payload(db, payload.invoice)
+    except InvoiceValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return InternalInvoiceValidationResponse(
+        valid=True,
+        subject_id=preview.subject_id,
+        subject_name=preview.subject_name,
+        currency=preview.currency,
+        total_without_vat=preview.subtotal,
+        total_vat=preview.vat_amount,
+        total_with_vat=preview.total,
+        vat_rate=preview.vat_rate,
+        item_count=preview.item_count,
+    )
+
+
+@router.post("/invoices", response_model=InternalExecutionStatusResponse)
+def internal_create_invoice(
+    payload: InternalInvoiceCreateRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=160),
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
+):
+    request_hash = _canonical_hash(
+        {
+            "operation": "create_outgoing_invoice",
+            "execution_id": payload.execution_id,
+            "proposal_hash": payload.proposal_hash,
+            "invoice": payload.invoice.model_dump(mode="json"),
+        }
+    )
+    existing = _find_execution_by_idempotency(
+        db,
+        tenant_id=claims.tenant_id,
+        operation="create_outgoing_invoice",
+        idempotency_key=idempotency_key,
+    )
+    if existing is not None:
+        if existing.request_hash != request_hash:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Idempotency conflict.")
+        return _execution_status_response(db, existing)
+
+    execution = AiAccountingExecution(
+        tenant_id=claims.tenant_id,
+        execution_id=payload.execution_id,
+        operation="create_outgoing_invoice",
+        idempotency_key=idempotency_key,
+        request_hash=request_hash,
+        proposal_hash=payload.proposal_hash,
+        status="pending",
+    )
+    db.add(execution)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = _find_execution_by_idempotency(
+            db,
+            tenant_id=claims.tenant_id,
+            operation="create_outgoing_invoice",
+            idempotency_key=idempotency_key,
+        )
+        if existing is None or existing.request_hash != request_hash:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Idempotency conflict.")
+        return _execution_status_response(db, existing)
+
+    try:
+        invoice = create_invoice(
+            db,
+            payload.invoice,
+            audit_source="ai_accounting",
+            audit_metadata={
+                "execution_id": payload.execution_id,
+                "proposal_hash": payload.proposal_hash,
+                "trace_id": claims.trace_id,
+                "correlation_id": claims.correlation_id,
+                "user_id": claims.user_id,
+            },
+        )
+    except InvoiceValidationError as exc:
+        execution.status = "failed"
+        execution.error_code = "validation_error"
+        db.add(execution)
+        db.commit()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    execution.status = "succeeded"
+    execution.invoice_id = invoice.id
+    db.add(execution)
+    db.commit()
+    return _execution_status_response(db, execution)
+
+
+@router.get("/executions/{execution_id}", response_model=InternalExecutionStatusResponse)
+def internal_get_execution(
+    execution_id: str,
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
+):
+    execution = (
+        db.query(AiAccountingExecution)
+        .filter(
+            AiAccountingExecution.tenant_id == claims.tenant_id,
+            AiAccountingExecution.execution_id == execution_id,
+        )
+        .first()
+    )
+    if execution is None:
+        raise HTTPException(status_code=404, detail="Execution was not found.")
+    return _execution_status_response(db, execution)
 
 
 @router.get("/invoices/{invoice_id}/payments", response_model=list[InternalInvoicePaymentResponse])
@@ -387,3 +545,41 @@ def _build_payment_response(payment) -> InternalInvoicePaymentResponse:
         payment_method=payment.payment_method,
         note=payment.note,
     )
+
+
+def _find_execution_by_idempotency(
+    db: Session,
+    *,
+    tenant_id: str,
+    operation: str,
+    idempotency_key: str,
+) -> AiAccountingExecution | None:
+    return (
+        db.query(AiAccountingExecution)
+        .filter(
+            AiAccountingExecution.tenant_id == tenant_id,
+            AiAccountingExecution.operation == operation,
+            AiAccountingExecution.idempotency_key == idempotency_key,
+        )
+        .first()
+    )
+
+
+def _execution_status_response(
+    db: Session,
+    execution: AiAccountingExecution,
+) -> InternalExecutionStatusResponse:
+    invoice = get_invoice_detail(db, execution.invoice_id) if execution.invoice_id else None
+    return InternalExecutionStatusResponse(
+        execution_id=execution.execution_id,
+        operation=execution.operation,
+        status=execution.status,
+        proposal_hash=execution.proposal_hash,
+        invoice=_build_outgoing_document_response(invoice) if invoice is not None else None,
+        error_code=execution.error_code,
+    )
+
+
+def _canonical_hash(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

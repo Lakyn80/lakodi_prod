@@ -94,7 +94,6 @@ from backend.app.modules.invoices.schemas import (
     InvoiceExpenseCreate,
     InvoiceExpensePaymentCreate,
     InvoiceExpenseUpdate,
-    InvoicePaymentMatchResponse,
     InvoicePaymentMatchListItemResponse,
     InvoicePaymentMatchBankTransactionSummary,
     InvoicePaymentMatchCandidateSummary,
@@ -104,7 +103,6 @@ from backend.app.modules.invoices.schemas import (
     InvoicePaymentCreate,
     InvoiceAttachmentLinkRequest,
     InvoiceAccountingEventResponse,
-    InvoiceRecurringGenerationResponse,
     InvoiceRecurringTemplateCreate,
     InvoiceRecurringTemplateUpdate,
     InvoiceSupplierCreate,
@@ -152,7 +150,15 @@ STORED_ATTACHMENT_TYPES = {
     "payment_proof",
     "other",
 }
-STORED_ACCOUNTING_EVENT_SOURCES = {"admin_api", "system", "import", "generation", "email", "bank_matching"}
+STORED_ACCOUNTING_EVENT_SOURCES = {
+    "admin_api",
+    "system",
+    "import",
+    "generation",
+    "email",
+    "bank_matching",
+    "ai_accounting",
+}
 AUTO_INVOICE_TODO_TYPES = {"invoice_overdue", "invoice_payment_reminder"}
 AUTO_EXPENSE_TODO_TYPES = {"expense_due", "expense_overdue"}
 SUPPORTED_RELATION_TYPES = {
@@ -338,6 +344,18 @@ class CustomerAccountingSummary:
     ambiguous: bool
     customer_matches: list[str]
     summary: OutgoingInvoiceSummary | None
+
+
+@dataclass(frozen=True)
+class InvoiceValidationPreview:
+    subject_id: int | None
+    subject_name: str
+    currency: str
+    subtotal: Decimal
+    vat_rate: Decimal | None
+    vat_amount: Decimal
+    total: Decimal
+    item_count: int
 
 
 def search_outgoing_documents(
@@ -2151,7 +2169,35 @@ def delete_invoice_expense_payment(db: Session, expense_id: int, payment_id: int
     return get_invoice_expense_detail(db, expense.id)
 
 
-def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
+def validate_invoice_create_payload(db: Session, payload: InvoiceCreate) -> InvoiceValidationPreview:
+    settings = get_invoice_settings(db)
+    subject = _resolve_invoice_subject(db, payload.subject_id)
+    customer_snapshot = _resolve_customer_snapshot_for_create(payload, subject)
+    prepared_items = [_prepare_invoice_item(item) for item in payload.items]
+    totals = _calculate_totals(
+        tax_mode=payload.tax_mode,
+        vat_rate=payload.vat_rate,
+        line_totals=[item.line_total for item in prepared_items],
+    )
+    return InvoiceValidationPreview(
+        subject_id=subject.id if subject is not None else None,
+        subject_name=customer_snapshot.name,
+        currency=(payload.currency or settings.invoice_defaults.default_currency).strip().upper(),
+        subtotal=totals.subtotal,
+        vat_rate=totals.vat_rate,
+        vat_amount=totals.vat_amount,
+        total=totals.total,
+        item_count=len(prepared_items),
+    )
+
+
+def create_invoice(
+    db: Session,
+    payload: InvoiceCreate,
+    *,
+    audit_source: str = "admin_api",
+    audit_metadata=None,
+) -> Invoice:
     settings = get_invoice_settings(db)
     subject = _resolve_invoice_subject(db, payload.subject_id)
     customer_snapshot = _resolve_customer_snapshot_for_create(payload, subject)
@@ -2171,6 +2217,8 @@ def create_invoice(db: Session, payload: InvoiceCreate) -> Invoice:
             payment_settings=settings,
             prepared_items=prepared_items,
             totals=totals,
+            audit_source=audit_source,
+            audit_metadata=audit_metadata,
         )
     except (InvoiceNumberingError, InvoicePaymentError) as exc:
         db.rollback()

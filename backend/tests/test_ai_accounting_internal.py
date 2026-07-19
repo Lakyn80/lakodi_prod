@@ -140,6 +140,82 @@ def test_internal_ai_customer_summary_marks_ambiguous_customer(monkeypatch) -> N
     assert payload["summary"] is None
 
 
+def test_internal_ai_searches_customers_with_customer_scope(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "ALPHA DEMO s.r.o.", "email": "alpha@example.invalid"})
+
+    response = client.get(
+        "/internal/ai/v1/accounting/customers/search",
+        params={"query": "ALPHA DEMO", "limit": 10},
+        headers=_auth_headers(scopes=("lakodi.customers.read",)),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total_count"] >= 1
+    assert any(item["subject_id"] == subject["id"] for item in payload["items"])
+
+
+def test_internal_ai_validates_invoice_without_creating_it(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "VALIDATION DEMO s.r.o."})
+
+    response = client.post(
+        "/internal/ai/v1/accounting/invoices/validate",
+        json=_internal_invoice_payload(subject["id"]),
+        headers=_auth_headers(scopes=("lakodi.invoices.draft",)),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is True
+    assert payload["subject_id"] == subject["id"]
+    assert payload["total_without_vat"] == 10000.0
+    assert payload["total_with_vat"] == 12100.0
+
+
+def test_internal_ai_creates_invoice_idempotently(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "WRITE DEMO s.r.o."})
+    payload = _internal_invoice_payload(subject["id"])
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.write",)),
+        "Idempotency-Key": "lakodi-write-key-1",
+    }
+
+    first = client.post("/internal/ai/v1/accounting/invoices", json=payload, headers=headers)
+    second = client.post("/internal/ai/v1/accounting/invoices", json=payload, headers=headers)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["status"] == "succeeded"
+    assert first.json()["invoice"]["document_id"] == second.json()["invoice"]["document_id"]
+
+
+def test_internal_ai_rejects_same_idempotency_key_with_different_payload(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    first_subject = _create_subject({"name": "IDEMPOTENCY ONE s.r.o."})
+    second_subject = _create_subject({"name": "IDEMPOTENCY TWO s.r.o."})
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.write",)),
+        "Idempotency-Key": "lakodi-write-key-2",
+    }
+
+    first = client.post(
+        "/internal/ai/v1/accounting/invoices",
+        json=_internal_invoice_payload(first_subject["id"]),
+        headers=headers,
+    )
+    conflict = client.post(
+        "/internal/ai/v1/accounting/invoices",
+        json=_internal_invoice_payload(second_subject["id"]),
+        headers=headers,
+    )
+
+    assert first.status_code == 200
+    assert conflict.status_code == 409
+
+
 def test_internal_ai_monthly_summary_validates_month(monkeypatch) -> None:
     _configure_service_auth(monkeypatch)
 
@@ -325,6 +401,51 @@ def _create_invoice(
     )
     assert response.status_code == 200
     return response.json()
+
+
+def _create_subject(payload: dict | None = None) -> dict:
+    _login_admin()
+    subject_payload = {
+        "name": "Jan Novák",
+        "email": "jan.subject@example.com",
+        "phone": "+420123456789",
+        "address": "Praha 10",
+        "ico": "12345678",
+        "dic": "CZ12345678",
+        "data_box": "abcd123",
+        "country": "Česká republika",
+        "note": "Testovací subjekt",
+    }
+    if payload:
+        subject_payload.update(payload)
+    response = client.post("/api/admin/invoices/subjects", json=subject_payload)
+    assert response.status_code == 200
+    return response.json()
+
+
+def _internal_invoice_payload(subject_id: int) -> dict:
+    return {
+        "execution_id": "exec-test-0001",
+        "proposal_hash": "a" * 64,
+        "invoice": {
+            "document_kind": "invoice",
+            "status": "issued",
+            "issue_date": "2099-05-01",
+            "due_date": "2099-05-15",
+            "subject_id": subject_id,
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {
+                    "description": "Konzultační služby",
+                    "quantity": 10,
+                    "unit_price": 1000,
+                }
+            ],
+        },
+    }
 
 
 def _add_payment(invoice_id: int) -> dict:
