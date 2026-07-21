@@ -319,18 +319,67 @@ def internal_create_invoice(
     db: Session = Depends(get_db),
     claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
 ):
+    return _create_invoice_execution(
+        db=db,
+        claims=claims,
+        payload=payload,
+        idempotency_key=idempotency_key,
+        operation="create_outgoing_invoice",
+        force_status=None,
+    )
+
+
+@router.post("/outgoing-documents/drafts", response_model=InternalExecutionStatusResponse)
+def internal_create_outgoing_document_draft(
+    payload: InternalInvoiceCreateRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=160),
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(
+        require_ai_accounting_scope("lakodi.invoices.drafts.create")
+    ),
+):
+    """Create only a native Lakodi draft invoice. Never issues or sends."""
+
+    return _create_invoice_execution(
+        db=db,
+        claims=claims,
+        payload=payload,
+        idempotency_key=idempotency_key,
+        operation="create_outgoing_invoice_draft",
+        force_status="draft",
+    )
+
+
+def _create_invoice_execution(
+    *,
+    db: Session,
+    claims: ServiceTokenClaims,
+    payload: InternalInvoiceCreateRequest,
+    idempotency_key: str,
+    operation: str,
+    force_status: str | None,
+) -> InternalExecutionStatusResponse:
+    invoice_payload = payload.invoice
+    if force_status is not None:
+        if payload.invoice.status != force_status:
+            raise HTTPException(
+                status_code=422,
+                detail=f"This endpoint accepts only status={force_status}.",
+            )
+        invoice_payload = payload.invoice.model_copy(update={"status": force_status})
+
     request_hash = _canonical_hash(
         {
-            "operation": "create_outgoing_invoice",
+            "operation": operation,
             "execution_id": payload.execution_id,
             "proposal_hash": payload.proposal_hash,
-            "invoice": payload.invoice.model_dump(mode="json"),
+            "invoice": invoice_payload.model_dump(mode="json"),
         }
     )
     existing = _find_execution_by_idempotency(
         db,
         tenant_id=claims.tenant_id,
-        operation="create_outgoing_invoice",
+        operation=operation,
         idempotency_key=idempotency_key,
     )
     if existing is not None:
@@ -341,7 +390,7 @@ def internal_create_invoice(
     execution = AiAccountingExecution(
         tenant_id=claims.tenant_id,
         execution_id=payload.execution_id,
-        operation="create_outgoing_invoice",
+        operation=operation,
         idempotency_key=idempotency_key,
         request_hash=request_hash,
         proposal_hash=payload.proposal_hash,
@@ -355,7 +404,7 @@ def internal_create_invoice(
         existing = _find_execution_by_idempotency(
             db,
             tenant_id=claims.tenant_id,
-            operation="create_outgoing_invoice",
+            operation=operation,
             idempotency_key=idempotency_key,
         )
         if existing is None or existing.request_hash != request_hash:
@@ -365,7 +414,7 @@ def internal_create_invoice(
     try:
         invoice = create_invoice(
             db,
-            payload.invoice,
+            invoice_payload,
             audit_source="ai_accounting",
             audit_metadata={
                 "execution_id": payload.execution_id,
@@ -373,6 +422,7 @@ def internal_create_invoice(
                 "trace_id": claims.trace_id,
                 "correlation_id": claims.correlation_id,
                 "user_id": claims.user_id,
+                "operation": operation,
             },
         )
     except InvoiceValidationError as exc:
@@ -381,6 +431,16 @@ def internal_create_invoice(
         db.add(execution)
         db.commit()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if force_status == "draft" and invoice.status != "draft":
+        execution.status = "failed"
+        execution.error_code = "draft_only_enforcement_failed"
+        db.add(execution)
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail="Lakodi did not persist a draft document.",
+        )
 
     execution.status = "succeeded"
     execution.invoice_id = invoice.id
@@ -395,6 +455,12 @@ def internal_get_execution(
     db: Session = Depends(get_db),
     claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
 ):
+    """Replay-safe execution lookup used by write and draft-create workers.
+
+    Note: draft-create workers also call reconcile via the same idempotency key on
+    POST; this endpoint remains gated by write scope for the legacy issue path.
+    Draft-create reconciliation primarily uses POST replay.
+    """
     execution = (
         db.query(AiAccountingExecution)
         .filter(

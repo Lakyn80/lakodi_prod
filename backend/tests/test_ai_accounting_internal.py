@@ -461,3 +461,129 @@ def _add_payment(invoice_id: int) -> dict:
     )
     assert response.status_code == 200
     return response.json()
+
+def test_internal_ai_creates_draft_with_narrow_scope(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "DRAFT DEMO s.r.o."})
+    payload = _internal_draft_invoice_payload(subject["id"])
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.drafts.create",)),
+        "Idempotency-Key": "lakodi-draft-key-1",
+    }
+
+    response = client.post(
+        "/internal/ai/v1/accounting/outgoing-documents/drafts",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "succeeded"
+    assert body["invoice"]["status"] == "draft"
+    assert body["invoice"]["document_id"] is not None
+
+
+def test_internal_ai_draft_endpoint_is_idempotent(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "DRAFT IDEMPOTENT s.r.o."})
+    payload = _internal_draft_invoice_payload(subject["id"], execution_id="exec-draft-0002")
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.drafts.create",)),
+        "Idempotency-Key": "lakodi-draft-key-2",
+    }
+
+    first = client.post(
+        "/internal/ai/v1/accounting/outgoing-documents/drafts",
+        json=payload,
+        headers=headers,
+    )
+    second = client.post(
+        "/internal/ai/v1/accounting/outgoing-documents/drafts",
+        json=payload,
+        headers=headers,
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["invoice"]["document_id"] == second.json()["invoice"]["document_id"]
+
+
+def test_internal_ai_draft_rejects_write_scope_only(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "DRAFT SCOPE DENY s.r.o."})
+    payload = _internal_draft_invoice_payload(subject["id"], execution_id="exec-draft-0003")
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.write",)),
+        "Idempotency-Key": "lakodi-draft-key-3",
+    }
+
+    response = client.post(
+        "/internal/ai/v1/accounting/outgoing-documents/drafts",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 403
+
+
+def test_internal_ai_draft_rejects_issued_status(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "DRAFT STATUS DENY s.r.o."})
+    payload = _internal_draft_invoice_payload(subject["id"], execution_id="exec-draft-0004")
+    payload["invoice"]["status"] = "issued"
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.drafts.create",)),
+        "Idempotency-Key": "lakodi-draft-key-4",
+    }
+
+    response = client.post(
+        "/internal/ai/v1/accounting/outgoing-documents/drafts",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_internal_ai_draft_rejects_read_scope(monkeypatch) -> None:
+    _configure_service_auth(monkeypatch)
+    subject = _create_subject({"name": "DRAFT READ DENY s.r.o."})
+    payload = _internal_draft_invoice_payload(subject["id"], execution_id="exec-draft-0005")
+    headers = {
+        **_auth_headers(scopes=("lakodi.invoices.read",)),
+        "Idempotency-Key": "lakodi-draft-key-5",
+    }
+
+    response = client.post(
+        "/internal/ai/v1/accounting/outgoing-documents/drafts",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 403
+
+
+def _internal_draft_invoice_payload(subject_id: int, execution_id: str = "exec-draft-0001") -> dict:
+    return {
+        "execution_id": execution_id,
+        "proposal_hash": "b" * 64,
+        "invoice": {
+            "document_kind": "invoice",
+            "status": "draft",
+            "issue_date": "2099-06-01",
+            "due_date": "2099-06-15",
+            "subject_id": subject_id,
+            "business_mode": "autoservice",
+            "tax_mode": "standard",
+            "currency": "CZK",
+            "vat_rate": 21,
+            "items": [
+                {
+                    "description": "Konzultacni sluzby draft",
+                    "quantity": 1,
+                    "unit_price": 1000,
+                }
+            ],
+        },
+    }
