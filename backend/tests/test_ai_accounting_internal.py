@@ -30,6 +30,16 @@ def test_internal_ai_can_read_invoice_with_valid_scope(monkeypatch) -> None:
     assert payload["subject_name"] == "Jan Novak"
     assert payload["total_with_vat"] == 1210.0
     assert "customer_email" not in payload
+    assert payload["vat_rate"] == 21.0
+    assert len(payload["items"]) == 1
+    item = payload["items"][0]
+    assert item["unit_price_without_vat"] == 1000.0
+    assert item["unit_price"] == 1000.0
+    assert item["total_without_vat"] == 1000.0
+    assert item["vat_rate"] == 21.0
+    assert item["vat_amount"] == 210.0
+    assert item["total_with_vat"] == 1210.0
+    assert item["unit"] is None
 
 
 def test_internal_ai_can_read_invoice_payments_with_valid_scope(monkeypatch) -> None:
@@ -482,6 +492,15 @@ def test_internal_ai_creates_draft_with_narrow_scope(monkeypatch) -> None:
     assert body["status"] == "succeeded"
     assert body["invoice"]["status"] == "draft"
     assert body["invoice"]["document_id"] is not None
+    invoice = body["invoice"]
+    assert invoice["vat_rate"] == 21.0
+    assert invoice["subject_id"] == subject["id"]
+    item = invoice["items"][0]
+    assert item["unit_price_without_vat"] == 1000.0
+    assert item["total_without_vat"] == 1000.0
+    assert item["vat_rate"] == 21.0
+    assert item["vat_amount"] == 210.0
+    assert item["total_with_vat"] == 1210.0
 
 
 def test_internal_ai_draft_endpoint_is_idempotent(monkeypatch) -> None:

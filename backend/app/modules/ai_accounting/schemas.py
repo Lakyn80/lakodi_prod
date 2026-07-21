@@ -11,16 +11,42 @@ from backend.app.modules.invoices.schemas import InvoiceCreate
 
 
 class InternalInvoiceItemResponse(BaseModel):
+    """Canonical line-item projection for AI read-back.
+
+    Lakodi stores line ``unit_price`` and ``line_total`` as amounts **without VAT**.
+    Document-level ``vat_rate`` lives on the invoice header, not on ``invoice_items``.
+    Item VAT/gross are derived with the same Decimal HALF_UP money policy as
+    ``_calculate_totals`` (per-line); header VAT remains authoritative for invoice totals.
+    ``unit`` is not persisted on native ``InvoiceItem`` and is always null.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     item_id: int
     description: str
     quantity: Decimal
-    unit_price: Decimal
-    total_with_vat: Decimal
+    unit: str | None = None
+    unit_price_without_vat: Decimal
+    vat_rate: Decimal | None = None
+    total_without_vat: Decimal
+    vat_amount: Decimal | None = None
+    total_with_vat: Decimal | None = None
+    # Compatibility alias: same net unit price (not gross).
+    unit_price: Decimal | None = None
 
-    @field_serializer("quantity", "unit_price", "total_with_vat", when_used="json")
-    def serialize_decimal(self, value: Decimal) -> float:
+    @field_serializer(
+        "quantity",
+        "unit_price_without_vat",
+        "vat_rate",
+        "total_without_vat",
+        "vat_amount",
+        "total_with_vat",
+        "unit_price",
+        when_used="json",
+    )
+    def serialize_decimal(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
         return float(value)
 
 
@@ -49,15 +75,25 @@ class InternalOutgoingDocumentResponse(BaseModel):
     currency: str
     issue_date: date
     due_date: date
+    subject_id: int | None = None
     subject_name: str
+    vat_rate: Decimal | None = None
     total_without_vat: Decimal
     total_vat: Decimal
     total_with_vat: Decimal
     items: list[InternalInvoiceItemResponse]
     payments: list[InternalInvoicePaymentResponse]
 
-    @field_serializer("total_without_vat", "total_vat", "total_with_vat", when_used="json")
-    def serialize_decimal(self, value: Decimal) -> float:
+    @field_serializer(
+        "vat_rate",
+        "total_without_vat",
+        "total_vat",
+        "total_with_vat",
+        when_used="json",
+    )
+    def serialize_decimal(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
         return float(value)
 
 

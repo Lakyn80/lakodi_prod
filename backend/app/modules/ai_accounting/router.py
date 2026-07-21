@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -38,6 +39,8 @@ from backend.app.modules.invoices.service import (
     InvoiceNotFoundError,
     InvoiceValidationError,
     OutgoingInvoiceFilters,
+    _normalize_vat_rate,
+    _quantize_money,
     create_invoice,
     get_customer_accounting_summary,
     get_document_creation_defaults,
@@ -497,11 +500,13 @@ def _build_outgoing_document_response(invoice) -> InternalOutgoingDocumentRespon
         currency=invoice.currency,
         issue_date=invoice.issue_date,
         due_date=invoice.due_date,
+        subject_id=getattr(invoice, "subject_id", None),
         subject_name=invoice.customer_name,
+        vat_rate=Decimal(invoice.vat_rate) if invoice.vat_rate is not None else None,
         total_without_vat=invoice.subtotal,
         total_vat=invoice.vat_amount,
         total_with_vat=invoice.total,
-        items=[_build_item_response(item) for item in invoice.items],
+        items=[_build_item_response(item, invoice=invoice) for item in invoice.items],
         payments=[_build_payment_response(payment) for payment in invoice.payments],
     )
 
@@ -593,13 +598,47 @@ def _parse_date(value: str | None) -> date | None:
         raise InvoiceValidationError("Datum musi byt ve formatu YYYY-MM-DD.") from exc
 
 
-def _build_item_response(item) -> InternalInvoiceItemResponse:
+def _build_item_response(item, *, invoice) -> InternalInvoiceItemResponse:
+    """Map native InvoiceItem using truthful net/VAT semantics.
+
+    Native columns:
+    - unit_price: net unit price (without VAT)
+    - line_total: net line total (quantity * unit_price)
+    - vat_rate: invoice header only (not stored per item)
+
+    Item vat_amount / total_with_vat are derived with Lakodi money quantization.
+    Per-line derived VAT may not sum exactly to header vat_amount (invoice-level
+    rounding); header totals remain the source of truth for invoice VAT/gross.
+    """
+
+    unit_price = _quantize_money(Decimal(item.unit_price))
+    total_without_vat = _quantize_money(Decimal(item.line_total))
+    tax_mode = getattr(invoice, "tax_mode", "standard") or "standard"
+    header_rate = Decimal(invoice.vat_rate) if invoice.vat_rate is not None else None
+    vat_rate: Decimal | None = None
+    vat_amount: Decimal | None = None
+    total_with_vat: Decimal | None = None
+
+    if tax_mode == "standard" and header_rate is not None:
+        vat_rate = _normalize_vat_rate(header_rate)
+        vat_amount = _quantize_money(total_without_vat * vat_rate / Decimal("100"))
+        total_with_vat = _quantize_money(total_without_vat + vat_amount)
+    elif tax_mode == "reverse_charge":
+        vat_rate = _normalize_vat_rate(header_rate) if header_rate is not None else None
+        vat_amount = Decimal("0.00")
+        total_with_vat = total_without_vat
+
     return InternalInvoiceItemResponse(
         item_id=item.id,
         description=item.description,
         quantity=item.quantity,
-        unit_price=item.unit_price,
-        total_with_vat=item.line_total,
+        unit=None,
+        unit_price_without_vat=unit_price,
+        vat_rate=vat_rate,
+        total_without_vat=total_without_vat,
+        vat_amount=vat_amount,
+        total_with_vat=total_with_vat,
+        unit_price=unit_price,
     )
 
 
