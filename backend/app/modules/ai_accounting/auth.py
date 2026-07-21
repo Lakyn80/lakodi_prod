@@ -49,14 +49,30 @@ class ServiceTokenClaims:
     correlation_id: str | None = None
 
 
-def require_ai_accounting_scope(required_scope: str) -> Callable[[str | None], ServiceTokenClaims]:
-    def dependency(authorization: str | None = Header(default=None)) -> ServiceTokenClaims:
+def require_ai_accounting_scope(required_scope: str) -> Callable[..., ServiceTokenClaims]:
+    def dependency(
+        authorization: str | None = Header(default=None),
+        x_correlation_id: str | None = Header(default=None, alias="X-Correlation-Id"),
+        x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+    ) -> ServiceTokenClaims:
+        from backend.app.modules.ai_accounting.correlation import (
+            bind_correlation_context,
+            build_context,
+        )
+
         claims = verify_authorization_header(authorization)
         if required_scope not in claims.scopes:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Service token does not have the required scope.",
             )
+        bind_correlation_context(
+            build_context(
+                correlation_id=claims.correlation_id or x_correlation_id,
+                trace_id=claims.trace_id or x_trace_id,
+                tenant_id=claims.tenant_id,
+            )
+        )
         return claims
 
     return dependency
@@ -64,14 +80,30 @@ def require_ai_accounting_scope(required_scope: str) -> Callable[[str | None], S
 
 def require_ai_accounting_scopes(
     required_scopes: tuple[str, ...],
-) -> Callable[[str | None], ServiceTokenClaims]:
-    def dependency(authorization: str | None = Header(default=None)) -> ServiceTokenClaims:
+) -> Callable[..., ServiceTokenClaims]:
+    def dependency(
+        authorization: str | None = Header(default=None),
+        x_correlation_id: str | None = Header(default=None, alias="X-Correlation-Id"),
+        x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+    ) -> ServiceTokenClaims:
+        from backend.app.modules.ai_accounting.correlation import (
+            bind_correlation_context,
+            build_context,
+        )
+
         claims = verify_authorization_header(authorization)
         if not set(required_scopes).issubset(set(claims.scopes)):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Service token does not have the required scopes.",
             )
+        bind_correlation_context(
+            build_context(
+                correlation_id=claims.correlation_id or x_correlation_id,
+                trace_id=claims.trace_id or x_trace_id,
+                tenant_id=claims.tenant_id,
+            )
+        )
         return claims
 
     return dependency

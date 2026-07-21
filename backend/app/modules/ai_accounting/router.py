@@ -362,6 +362,63 @@ def _create_invoice_execution(
     operation: str,
     force_status: str | None,
 ) -> InternalExecutionStatusResponse:
+    from backend.app.modules.ai_accounting.correlation import (
+        clear_correlation_context,
+        get_correlation_context,
+    )
+    from backend.app.modules.ai_accounting.logging_util import log_event
+    from backend.app.modules.ai_accounting.tracing import business_span
+
+    ctx = get_correlation_context()
+    if ctx is not None and payload.execution_id:
+        from backend.app.modules.ai_accounting.correlation import bind_correlation_context
+
+        bind_correlation_context(ctx.with_updates(execution_id=payload.execution_id))
+
+    span_name = (
+        "lakodi.invoice_draft.create"
+        if operation == "create_outgoing_invoice_draft"
+        else "lakodi.invoice.create"
+    )
+    with business_span(
+        span_name,
+        **{
+            "accounting.action_type": operation,
+            "accounting.document_state": force_status or "unknown",
+        },
+    ):
+        try:
+            log_event(
+                "accounting.lakodi.draft.request.started"
+                if operation == "create_outgoing_invoice_draft"
+                else "accounting.lakodi.invoice.request.started",
+                "Lakodi invoice execution started",
+                operation=operation,
+                execution_id=payload.execution_id,
+            )
+            return _create_invoice_execution_body(
+                db=db,
+                claims=claims,
+                payload=payload,
+                idempotency_key=idempotency_key,
+                operation=operation,
+                force_status=force_status,
+            )
+        finally:
+            clear_correlation_context()
+
+
+def _create_invoice_execution_body(
+    *,
+    db: Session,
+    claims: ServiceTokenClaims,
+    payload: InternalInvoiceCreateRequest,
+    idempotency_key: str,
+    operation: str,
+    force_status: str | None,
+) -> InternalExecutionStatusResponse:
+    from backend.app.modules.ai_accounting.logging_util import log_event
+
     invoice_payload = payload.invoice
     if force_status is not None:
         if payload.invoice.status != force_status:
@@ -388,6 +445,15 @@ def _create_invoice_execution(
     if existing is not None:
         if existing.request_hash != request_hash:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Idempotency conflict.")
+        log_event(
+            "accounting.lakodi.draft.idempotent_replay"
+            if operation == "create_outgoing_invoice_draft"
+            else "accounting.lakodi.invoice.idempotent_replay",
+            "Lakodi idempotent execution replay",
+            operation=operation,
+            execution_id=existing.execution_id,
+            invoice_id=existing.invoice_id,
+        )
         return _execution_status_response(db, existing)
 
     execution = AiAccountingExecution(
@@ -433,6 +499,12 @@ def _create_invoice_execution(
         execution.error_code = "validation_error"
         db.add(execution)
         db.commit()
+        log_event(
+            "accounting.lakodi.draft.failed",
+            "Lakodi invoice validation failed",
+            safe_error_code="validation_error",
+            operation=operation,
+        )
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if force_status == "draft" and invoice.status != "draft":
@@ -440,6 +512,12 @@ def _create_invoice_execution(
         execution.error_code = "draft_only_enforcement_failed"
         db.add(execution)
         db.commit()
+        log_event(
+            "accounting.lakodi.draft.failed",
+            "Draft-only enforcement failed",
+            safe_error_code="draft_only_enforcement_failed",
+            operation=operation,
+        )
         raise HTTPException(
             status_code=500,
             detail="Lakodi did not persist a draft document.",
@@ -449,6 +527,16 @@ def _create_invoice_execution(
     execution.invoice_id = invoice.id
     db.add(execution)
     db.commit()
+    log_event(
+        "accounting.lakodi.draft.created"
+        if operation == "create_outgoing_invoice_draft"
+        else "accounting.lakodi.invoice.created",
+        "Lakodi invoice execution succeeded",
+        operation=operation,
+        execution_id=payload.execution_id,
+        invoice_id=invoice.id,
+        document_status=invoice.status,
+    )
     return _execution_status_response(db, execution)
 
 
