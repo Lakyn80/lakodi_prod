@@ -24,6 +24,16 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    try:
+        from backend.app.modules.ai_accounting.tracing import (
+            configure_json_logging_if_requested,
+            configure_tracing,
+        )
+
+        configure_json_logging_if_requested()
+        configure_tracing(service_name=os.getenv("OTEL_SERVICE_NAME", "lakodi"))
+    except Exception:
+        pass
     init_db()
     try:
         from backend.app.modules.admin.router import _seed_admin
