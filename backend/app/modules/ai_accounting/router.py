@@ -23,6 +23,9 @@ from backend.app.modules.ai_accounting.schemas import (
     InternalCustomerSearchItemResponse,
     InternalCustomerSearchResponse,
     InternalDocumentDefaultsResponse,
+    InternalDocumentMutationRequest,
+    InternalDocumentSendEmailRequest,
+    InternalDocumentUpdateRequest,
     InternalExecutionStatusResponse,
     InternalInvoiceCreateRequest,
     InternalInvoiceItemResponse,
@@ -351,6 +354,223 @@ def internal_create_outgoing_document_draft(
         operation="create_outgoing_invoice_draft",
         force_status="draft",
     )
+
+
+@router.post(
+    "/outgoing-documents/{invoice_id}/issue",
+    response_model=InternalExecutionStatusResponse,
+)
+def internal_issue_outgoing_document(
+    invoice_id: int,
+    payload: InternalDocumentMutationRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=160),
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
+):
+    if payload.invoice_id != invoice_id:
+        raise HTTPException(status_code=422, detail="invoice_id mismatch.")
+    from backend.app.modules.ai_accounting.mutations import issue_draft_invoice
+
+    return _mutate_document_execution(
+        db=db,
+        claims=claims,
+        invoice_id=invoice_id,
+        execution_id=payload.execution_id,
+        proposal_hash=payload.proposal_hash,
+        idempotency_key=idempotency_key,
+        operation="issue_outgoing_invoice",
+        mutator=lambda: issue_draft_invoice(db, invoice_id),
+    )
+
+
+@router.post(
+    "/outgoing-documents/{invoice_id}/update",
+    response_model=InternalExecutionStatusResponse,
+)
+def internal_update_outgoing_document(
+    invoice_id: int,
+    payload: InternalDocumentUpdateRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=160),
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
+):
+    if payload.invoice_id != invoice_id:
+        raise HTTPException(status_code=422, detail="invoice_id mismatch.")
+    from backend.app.modules.ai_accounting.mutations import update_draft_invoice
+
+    return _mutate_document_execution(
+        db=db,
+        claims=claims,
+        invoice_id=invoice_id,
+        execution_id=payload.execution_id,
+        proposal_hash=payload.proposal_hash,
+        idempotency_key=idempotency_key,
+        operation="update_outgoing_invoice",
+        request_extra={"invoice": payload.invoice.model_dump(mode="json")},
+        mutator=lambda: update_draft_invoice(db, invoice_id, payload.invoice),
+    )
+
+
+@router.post(
+    "/outgoing-documents/{invoice_id}/cancel",
+    response_model=InternalExecutionStatusResponse,
+)
+def internal_cancel_outgoing_document(
+    invoice_id: int,
+    payload: InternalDocumentMutationRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=160),
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.write")),
+):
+    """Cancel/storno an outgoing invoice. Hard delete is not available."""
+
+    if payload.invoice_id != invoice_id:
+        raise HTTPException(status_code=422, detail="invoice_id mismatch.")
+    from backend.app.modules.ai_accounting.mutations import cancel_invoice_document
+
+    return _mutate_document_execution(
+        db=db,
+        claims=claims,
+        invoice_id=invoice_id,
+        execution_id=payload.execution_id,
+        proposal_hash=payload.proposal_hash,
+        idempotency_key=idempotency_key,
+        operation="cancel_outgoing_invoice",
+        mutator=lambda: cancel_invoice_document(db, invoice_id),
+    )
+
+
+@router.post(
+    "/outgoing-documents/{invoice_id}/send-email",
+    response_model=InternalExecutionStatusResponse,
+)
+def internal_send_outgoing_document_email(
+    invoice_id: int,
+    payload: InternalDocumentSendEmailRequest,
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=8, max_length=160),
+    db: Session = Depends(get_db),
+    claims: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.send")),
+):
+    if payload.invoice_id != invoice_id:
+        raise HTTPException(status_code=422, detail="invoice_id mismatch.")
+    from backend.app.modules.ai_accounting.mutations import send_document_email
+
+    email_box: dict[str, Any] = {}
+
+    def _send() -> Any:
+        delivery = send_document_email(db, invoice_id, to_email=payload.to_email)
+        email_box["delivery"] = delivery
+        return get_invoice_detail(db, invoice_id)
+
+    response = _mutate_document_execution(
+        db=db,
+        claims=claims,
+        invoice_id=invoice_id,
+        execution_id=payload.execution_id,
+        proposal_hash=payload.proposal_hash,
+        idempotency_key=idempotency_key,
+        operation="send_outgoing_invoice_email",
+        request_extra={"to_email": payload.to_email},
+        mutator=_send,
+    )
+    if email_box.get("delivery"):
+        return response.model_copy(update={"email_delivery": email_box["delivery"]})
+    return response
+
+
+def _mutate_document_execution(
+    *,
+    db: Session,
+    claims: ServiceTokenClaims,
+    invoice_id: int,
+    execution_id: str,
+    proposal_hash: str,
+    idempotency_key: str,
+    operation: str,
+    mutator: Any,
+    request_extra: dict[str, Any] | None = None,
+) -> InternalExecutionStatusResponse:
+    from backend.app.modules.ai_accounting.logging_util import log_event
+    from backend.app.modules.ai_accounting.mutations import begin_or_replay_execution
+    from backend.app.modules.ai_accounting.tracing import business_span
+
+    request_hash = _canonical_hash(
+        {
+            "operation": operation,
+            "execution_id": execution_id,
+            "proposal_hash": proposal_hash,
+            "invoice_id": invoice_id,
+            **(request_extra or {}),
+        }
+    )
+    with business_span(
+        f"lakodi.invoice.{operation}",
+        **{
+            "accounting.action_type": operation,
+            "accounting.invoice_id": invoice_id,
+        },
+    ):
+        try:
+            execution, is_replay = begin_or_replay_execution(
+                db,
+                tenant_id=claims.tenant_id,
+                execution_id=execution_id,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                proposal_hash=proposal_hash,
+            )
+        except ValueError as exc:
+            if str(exc) == "idempotency_conflict":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail="Idempotency conflict."
+                ) from exc
+            raise
+
+        if is_replay:
+            log_event(
+                "accounting.lakodi.mutation.idempotent_replay",
+                "Lakodi mutation idempotent replay",
+                operation=operation,
+                execution_id=execution.execution_id,
+                invoice_id=execution.invoice_id,
+            )
+            return _execution_status_response(db, execution)
+
+        try:
+            invoice = mutator()
+        except InvoiceNotFoundError as exc:
+            execution.status = "failed"
+            execution.error_code = "not_found"
+            db.add(execution)
+            db.commit()
+            raise HTTPException(status_code=404, detail="Invoice was not found.") from exc
+        except InvoiceValidationError as exc:
+            execution.status = "failed"
+            execution.error_code = "validation_error"
+            db.add(execution)
+            db.commit()
+            log_event(
+                "accounting.lakodi.mutation.failed",
+                "Lakodi mutation validation failed",
+                safe_error_code="validation_error",
+                operation=operation,
+            )
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        execution.status = "succeeded"
+        execution.invoice_id = invoice.id
+        db.add(execution)
+        db.commit()
+        log_event(
+            "accounting.lakodi.mutation.succeeded",
+            "Lakodi mutation succeeded",
+            operation=operation,
+            execution_id=execution_id,
+            invoice_id=invoice.id,
+            document_status=invoice.status,
+        )
+        return _execution_status_response(db, execution)
 
 
 def _create_invoice_execution(

@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
-from backend.app.modules.invoices.schemas import InvoiceCreate
+from backend.app.modules.invoices.schemas import InvoiceCreate, InvoiceUpdate
 
 
 class InternalInvoiceItemResponse(BaseModel):
@@ -214,6 +214,22 @@ class InternalInvoiceCreateRequest(BaseModel):
     invoice: InvoiceCreate
 
 
+class InternalDocumentMutationRequest(BaseModel):
+    """Common envelope for mutations on an existing outgoing document."""
+
+    execution_id: str = Field(min_length=8, max_length=128)
+    proposal_hash: str = Field(min_length=64, max_length=64)
+    invoice_id: int = Field(ge=1)
+
+
+class InternalDocumentUpdateRequest(InternalDocumentMutationRequest):
+    invoice: InvoiceUpdate
+
+
+class InternalDocumentSendEmailRequest(InternalDocumentMutationRequest):
+    to_email: str | None = Field(default=None, max_length=256)
+
+
 class InternalExecutionStatusResponse(BaseModel):
     execution_id: str
     operation: str
@@ -221,3 +237,4 @@ class InternalExecutionStatusResponse(BaseModel):
     proposal_hash: str
     invoice: InternalOutgoingDocumentResponse | None = None
     error_code: str | None = None
+    email_delivery: dict[str, object] | None = None
