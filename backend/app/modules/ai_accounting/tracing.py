@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
@@ -12,6 +12,7 @@ from backend.app.modules.ai_accounting.logging_util import log_event
 
 logger = logging.getLogger("lakodi.ai_accounting")
 _TRACING_CONFIGURED = False
+_FASTAPI_INSTRUMENTED = False
 
 
 def configure_tracing(*, service_name: str = "lakodi") -> bool:
@@ -43,6 +44,23 @@ def configure_tracing(*, service_name: str = "lakodi") -> bool:
     except Exception:
         logger.warning("Lakodi OpenTelemetry setup failed", exc_info=True)
         _TRACING_CONFIGURED = False
+        return False
+
+
+def instrument_fastapi_app(application: Any) -> bool:
+    """Instrument FastAPI so inbound W3C traceparent continues the parent trace."""
+
+    global _FASTAPI_INSTRUMENTED
+    if not _TRACING_CONFIGURED or _FASTAPI_INSTRUMENTED:
+        return _FASTAPI_INSTRUMENTED
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+        FastAPIInstrumentor.instrument_app(application)
+        _FASTAPI_INSTRUMENTED = True
+        return True
+    except Exception:
+        logger.warning("Lakodi FastAPI OTEL instrumentation failed", exc_info=True)
         return False
 
 
@@ -92,9 +110,47 @@ def configure_json_logging_if_requested() -> None:
 
 
 @contextmanager
+def attach_trace_context(carrier: Mapping[str, Any] | None) -> Iterator[None]:
+    """Extract W3C context from inbound headers when packages are present."""
+
+    if not _TRACING_CONFIGURED or not carrier:
+        yield
+        return
+    try:
+        from opentelemetry import context as otel_context
+        from opentelemetry.propagate import extract
+
+        normalized = {
+            str(key).lower(): str(value)
+            for key, value in carrier.items()
+            if value is not None and str(value).strip()
+        }
+        token = otel_context.attach(extract(normalized))
+        try:
+            yield
+        finally:
+            otel_context.detach(token)
+    except Exception:
+        yield
+
+
+@contextmanager
 def business_span(name: str, **attributes: Any) -> Iterator[None]:
     try:
         from opentelemetry import trace  # type: ignore
+
+        try:
+            from backend.app.modules.ai_accounting.correlation import (
+                get_correlation_context,
+            )
+
+            ctx = get_correlation_context()
+            if ctx is not None:
+                attributes.setdefault("correlation_id", ctx.correlation_id)
+                if ctx.trace_id:
+                    attributes.setdefault("trace_id", ctx.trace_id)
+        except Exception:
+            pass
 
         tracer = trace.get_tracer("lakodi.ai_accounting")
         with tracer.start_as_current_span(name) as span:

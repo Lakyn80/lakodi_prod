@@ -28,10 +28,12 @@ async def lifespan(app: FastAPI):
         from backend.app.modules.ai_accounting.tracing import (
             configure_json_logging_if_requested,
             configure_tracing,
+            instrument_fastapi_app,
         )
 
         configure_json_logging_if_requested()
         configure_tracing(service_name=os.getenv("OTEL_SERVICE_NAME", "lakodi"))
+        instrument_fastapi_app(app)
     except Exception:
         pass
     init_db()
@@ -45,6 +47,26 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Lakodi Backend", lifespan=lifespan)
+
+# Continue inbound W3C trace context for the full request (soft no-op without OTEL).
+try:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request
+    from starlette.responses import Response
+
+    class _TraceContextMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next) -> Response:
+            try:
+                from backend.app.modules.ai_accounting.tracing import attach_trace_context
+
+                with attach_trace_context(dict(request.headers)):
+                    return await call_next(request)
+            except Exception:
+                return await call_next(request)
+
+    app.add_middleware(_TraceContextMiddleware)
+except Exception:
+    pass
 
 # Pro credentials (cookies) musíme povolit konkrétní origin
 _origins = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1:8080,http://127.0.0.1:3000").split(",")
