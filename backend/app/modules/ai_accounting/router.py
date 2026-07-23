@@ -583,17 +583,23 @@ def _create_invoice_execution(
     force_status: str | None,
 ) -> InternalExecutionStatusResponse:
     from backend.app.modules.ai_accounting.correlation import (
+        bind_correlation_context,
+        build_context,
         clear_correlation_context,
-        get_correlation_context,
     )
     from backend.app.modules.ai_accounting.logging_util import log_event
     from backend.app.modules.ai_accounting.tracing import business_span
 
-    ctx = get_correlation_context()
-    if ctx is not None and payload.execution_id:
-        from backend.app.modules.ai_accounting.correlation import bind_correlation_context
-
-        bind_correlation_context(ctx.with_updates(execution_id=payload.execution_id))
+    # Re-bind from verified claims in this worker thread. Sync FastAPI handlers may
+    # not see ContextVar values set inside Depends() on another thread.
+    bind_correlation_context(
+        build_context(
+            correlation_id=claims.correlation_id,
+            trace_id=claims.trace_id,
+            tenant_id=claims.tenant_id,
+            execution_id=payload.execution_id,
+        )
+    )
 
     span_name = (
         "lakodi.invoice_draft.create"
@@ -605,6 +611,7 @@ def _create_invoice_execution(
         **{
             "accounting.action_type": operation,
             "accounting.document_state": force_status or "unknown",
+            "correlation_id": claims.correlation_id,
         },
     ):
         try:
@@ -615,6 +622,8 @@ def _create_invoice_execution(
                 "Lakodi invoice execution started",
                 operation=operation,
                 execution_id=payload.execution_id,
+                correlation_id=claims.correlation_id,
+                trace_id=claims.trace_id,
             )
             return _create_invoice_execution_body(
                 db=db,
@@ -756,6 +765,8 @@ def _create_invoice_execution_body(
         execution_id=payload.execution_id,
         invoice_id=invoice.id,
         document_status=invoice.status,
+        correlation_id=claims.correlation_id,
+        trace_id=claims.trace_id,
     )
     return _execution_status_response(db, execution)
 
