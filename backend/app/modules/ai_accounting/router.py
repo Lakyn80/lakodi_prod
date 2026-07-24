@@ -557,6 +557,44 @@ def _mutate_document_execution(
                 operation=operation,
             )
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:
+            # Map invoice email delivery failures to stable client status codes.
+            # Unhandled SMTP/config errors previously leaked as opaque HTTP 500.
+            from backend.app.modules.invoices.email_service import (
+                InvoiceEmailConfigurationError,
+                InvoiceEmailSendError,
+            )
+
+            if isinstance(exc, InvoiceEmailConfigurationError):
+                execution.status = "failed"
+                execution.error_code = "email_not_configured"
+                db.add(execution)
+                db.commit()
+                log_event(
+                    "accounting.lakodi.mutation.failed",
+                    "Lakodi email not configured",
+                    safe_error_code="email_not_configured",
+                    operation=operation,
+                )
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            if isinstance(exc, InvoiceEmailSendError):
+                detail = str(exc) or "Invoice email could not be sent."
+                missing_recipient = "chybí e-mailová adresa příjemce" in detail.lower()
+                execution.status = "failed"
+                execution.error_code = (
+                    "email_recipient_missing" if missing_recipient else "email_send_failed"
+                )
+                db.add(execution)
+                db.commit()
+                log_event(
+                    "accounting.lakodi.mutation.failed",
+                    "Lakodi email send failed",
+                    safe_error_code=execution.error_code,
+                    operation=operation,
+                )
+                status_code = 400 if missing_recipient else 502
+                raise HTTPException(status_code=status_code, detail=detail) from exc
+            raise
 
         execution.status = "succeeded"
         execution.invoice_id = invoice.id
