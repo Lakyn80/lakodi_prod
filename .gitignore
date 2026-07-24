@@ -33,6 +33,7 @@ dist/
 
 # Local data and uploads
 data/app.db
+data/webqa-local/
 data/redis/
 data/uploads/
 backend/storage/
