@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.db import init_db
+from backend.app.modules.ai_accounting.bff_router import router as ai_accounting_bff_router
 from backend.app.modules.ai_accounting.router import router as ai_accounting_router
 from backend.app.modules.convertor.router import router as convertor_router
 from backend.app.modules.rag.router import router as rag_router
@@ -80,6 +81,7 @@ app.add_middleware(
 
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(invoices_router, prefix="/api/admin/invoices", tags=["invoices"])
+app.include_router(ai_accounting_bff_router, prefix="/api/admin/ai", tags=["ai-accounting-bff"])
 app.include_router(ai_accounting_router, prefix="/internal/ai/v1/accounting", tags=["ai-accounting"])
 app.include_router(gallery_admin_router, prefix="/api/admin/gallery", tags=["gallery-admin"])
 app.include_router(gallery_router, prefix="/api/gallery", tags=["gallery"])
