@@ -215,7 +215,15 @@ export function AccountingNewExpenseForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "create" ? t.expenseWrite.createTitle : t.expenseWrite.editTitle}</CardTitle>
+          <CardTitle
+            data-testid={
+              mode === "create"
+                ? "accounting-new-expense-form-title-create"
+                : "accounting-new-expense-form-title-edit"
+            }
+          >
+            {mode === "create" ? t.expenseWrite.createTitle : t.expenseWrite.editTitle}
+          </CardTitle>
           <CardDescription>{t.expenseWrite.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -148,7 +148,9 @@ export function AccountingNewReminderEmailDetail({
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>{detail.subject}</CardTitle>
+          <CardTitle data-testid="accounting-new-reminder-email-detail-title">
+            {detail.subject}
+          </CardTitle>
           <CardDescription>{t.reminderEmailDetail.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -199,7 +199,9 @@ export function AccountingNewBankTransactionDetail({
             <Badge variant="secondary">{t.bankTransactionDetail.importBadge}</Badge>
           </div>
           <div className="space-y-1">
-            <CardTitle>{formatAccountingNewTemplate(t.bankTransactionDetail.title, { id: detail.id })}</CardTitle>
+            <CardTitle data-testid="accounting-new-bank-transaction-detail-title">
+              {formatAccountingNewTemplate(t.bankTransactionDetail.title, { id: detail.id })}
+            </CardTitle>
             <CardDescription>{t.bankTransactionDetail.description}</CardDescription>
           </div>
         </CardHeader>

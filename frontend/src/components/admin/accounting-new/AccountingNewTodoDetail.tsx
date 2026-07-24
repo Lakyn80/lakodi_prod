@@ -145,7 +145,9 @@ export function AccountingNewTodoDetail({ todoId }: { todoId: string }) {
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>{detail.title}</CardTitle>
+          <CardTitle data-testid="accounting-new-todo-detail-title">
+            {detail.title}
+          </CardTitle>
           <CardDescription>{t.todoDetail.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -258,7 +258,9 @@ export function AccountingNewRecurringTemplateDetail({
             <Badge variant="outline">{translateAccountingNewRecurringKind(t, detail.templateType)}</Badge>
           </div>
           <div className="space-y-1">
-            <CardTitle>{detail.name}</CardTitle>
+            <CardTitle data-testid="accounting-new-recurring-detail-title">
+              {detail.name}
+            </CardTitle>
             <CardDescription>{t.recurringDetail.description}</CardDescription>
           </div>
         </CardHeader>

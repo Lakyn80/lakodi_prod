@@ -292,7 +292,9 @@ export function AccountingNewDocumentForm({
           </Link>
         </Button>
         <Alert>
-          <AlertTitle>{t.documentWrite.notEditableTitle}</AlertTitle>
+          <AlertTitle data-testid="accounting-new-document-form-title-not-editable">
+            {t.documentWrite.notEditableTitle}
+          </AlertTitle>
           <AlertDescription>{t.documentWrite.notEditableDescription}</AlertDescription>
         </Alert>
       </div>
@@ -328,7 +330,15 @@ export function AccountingNewDocumentForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "create" ? t.documentWrite.createTitle : t.documentWrite.editTitle}</CardTitle>
+          <CardTitle
+            data-testid={
+              mode === "create"
+                ? "accounting-new-document-form-title-create"
+                : "accounting-new-document-form-title-edit"
+            }
+          >
+            {mode === "create" ? t.documentWrite.createTitle : t.documentWrite.editTitle}
+          </CardTitle>
           <CardDescription>{mode === "create" ? t.documentWrite.createDescription : t.documentWrite.editDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
