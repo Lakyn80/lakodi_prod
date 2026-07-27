@@ -11,8 +11,7 @@ export type AccountingNewModuleId =
   | "attachments"
   | "exports"
   | "settings"
-  | "audit"
-  | "ai-assistant";
+  | "audit";
 
 export type AccountingNewModuleAvailability = "placeholder" | "read-only";
 
