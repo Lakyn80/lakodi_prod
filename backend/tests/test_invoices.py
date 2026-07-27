@@ -6865,3 +6865,26 @@ def test_update_issued_invoice_rejects_total_below_payments() -> None:
     )
     assert response.status_code == 400
     assert "Součet plateb nesmí překročit novou celkovou částku dokladu." in response.json()["detail"]
+
+
+def test_create_invoice_uses_payment_method_override() -> None:
+    invoice = _vytvor_fakturu({"payment_method": "Hotově"})
+    assert invoice["payment_method"] == "Hotově"
+
+
+def test_create_invoice_falls_back_to_settings_payment_method() -> None:
+    invoice = _vytvor_fakturu()
+    assert invoice["payment_method"] == "Převodem"
+
+
+def test_update_issued_invoice_changes_payment_method() -> None:
+    invoice = _vytvor_fakturu({"status": "issued", "payment_method": "Hotově"})
+    assert invoice["payment_method"] == "Hotově"
+
+    card_response = _put_invoice(invoice, {"status": "issued", "payment_method": "Kartou"})
+    assert card_response.status_code == 200
+    assert card_response.json()["payment_method"] == "Kartou"
+
+    transfer_response = _put_invoice(invoice, {"status": "issued", "payment_method": "Převodem"})
+    assert transfer_response.status_code == 200
+    assert transfer_response.json()["payment_method"] == "Převodem"

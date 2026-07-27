@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { canAccountingNewDocumentEdit } from "@/lib/accountingNewDocumentWrite";
+import {
+  buildAccountingNewDocumentFormStateFromDetail,
+  buildAccountingNewDocumentWritePayloadFromForm,
+  canAccountingNewDocumentEdit,
+  createEmptyAccountingNewDocumentFormState,
+} from "@/lib/accountingNewDocumentWrite";
 import type { AccountingNewDocumentDetail } from "@/types/accountingNew";
 
 function detail(overrides: Partial<AccountingNewDocumentDetail>): AccountingNewDocumentDetail {
@@ -45,7 +50,7 @@ function detail(overrides: Partial<AccountingNewDocumentDetail>): AccountingNewD
     issuerIco: "12345678",
     issuerDic: "CZ12345678",
     issuerDataBox: null,
-    items: [],
+    items: [{ id: 1, description: "Item", quantity: 1, unitPrice: 1000, lineTotal: 1000 }],
     payments: [],
     createdAt: "2026-07-01T00:00:00",
     ...overrides,
@@ -71,5 +76,24 @@ describe("canAccountingNewDocumentEdit", () => {
 
   it("rejects cancelled effective status", () => {
     expect(canAccountingNewDocumentEdit(detail({ status: "issued", effectiveStatus: "cancelled" }))).toBe(false);
+  });
+});
+
+describe("document write payment method", () => {
+  it("maps detail payment method into form state", () => {
+    const form = buildAccountingNewDocumentFormStateFromDetail(detail({ paymentMethod: "Hotově" }));
+    expect(form.paymentMethod).toBe("cash");
+  });
+
+  it("includes canonical payment_method in write payload", () => {
+    const form = createEmptyAccountingNewDocumentFormState();
+    form.customerName = "Test";
+    form.customerEmail = "test@example.com";
+    form.customerAddress = "Praha";
+    form.paymentMethod = "card";
+    form.items = [{ description: "Item", quantity: "1", unitPrice: "1000" }];
+
+    const payload = buildAccountingNewDocumentWritePayloadFromForm(form);
+    expect(payload.payment_method).toBe("Kartou");
   });
 });

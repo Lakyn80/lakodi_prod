@@ -5791,7 +5791,11 @@ def _create_invoice_with_reserved_sequence(
                 status=_normalize_invoice_status(payload.status),
                 reverse_charge_reason=totals.reverse_charge_reason,
                 reverse_charge_text=totals.reverse_charge_text,
-                payment_method=payment_settings.payment_profile.payment_method,
+                payment_method=(
+                    payload.payment_method
+                    if payload.payment_method is not None
+                    else payment_settings.payment_profile.payment_method
+                ),
                 bank_account_number=payment_settings.payment_profile.account_number,
                 bank_account_prefix=payment_settings.payment_profile.account_prefix,
                 bank_code=payment_settings.payment_profile.bank_code,
@@ -6069,6 +6073,8 @@ def _update_existing_invoice(
         invoice.total = totals.total
         if payload.status is not None:
             invoice.status = _normalize_invoice_status(payload.status)
+        if "payment_method" in payload.model_fields_set and payload.payment_method is not None:
+            invoice.payment_method = payload.payment_method
         invoice.reverse_charge_reason = totals.reverse_charge_reason
         invoice.reverse_charge_text = totals.reverse_charge_text
         invoice.items = [

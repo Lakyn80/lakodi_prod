@@ -96,6 +96,7 @@ class InvoiceCreate(BaseModel):
     customer_dic: str | None = Field(default=None, max_length=32)
 
     note: str | None = None
+    payment_method: str | None = Field(default=None, max_length=64)
 
     business_mode: BusinessMode
     tax_mode: TaxMode
@@ -149,7 +150,7 @@ class InvoiceCreate(BaseModel):
     def validate_status(cls, value: StoredInvoiceStatus | None) -> StoredInvoiceStatus | None:
         return value
 
-    @field_validator("customer_phone", "customer_ico", "customer_dic", "note")
+    @field_validator("customer_phone", "customer_ico", "customer_dic", "note", "payment_method")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:

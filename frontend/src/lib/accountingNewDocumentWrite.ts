@@ -3,6 +3,10 @@ import {
   minorUnitsToApiDecimal,
   parseAccountingNewMoneyInput,
 } from "@/lib/accountingNewMoney";
+import {
+  backendPaymentMethodToId,
+  resolveAccountingNewPaymentMethodForApi,
+} from "@/lib/accountingNewPaymentMethods";
 import type {
   AccountingNewDocumentDetail,
   AccountingNewDocumentFormState,
@@ -62,6 +66,7 @@ export function buildAccountingNewDocumentWritePayloadFromForm(
     customer_ico: form.customerIco.trim() || null,
     customer_dic: form.customerDic.trim() || null,
     note: form.note.trim() || null,
+    payment_method: resolveAccountingNewPaymentMethodForApi(form.paymentMethod),
     business_mode: form.businessMode,
     tax_mode: form.taxMode,
     currency: form.currency.trim().toUpperCase(),
@@ -99,6 +104,7 @@ export function buildAccountingNewDocumentWritePayloadFromDetail(
     customer_ico: detail.customerIco,
     customer_dic: detail.customerDic,
     note: detail.note,
+    payment_method: resolveAccountingNewPaymentMethodForApi(detail.paymentMethod),
     business_mode: detail.businessMode as AccountingNewDocumentWritePayload["business_mode"],
     tax_mode: detail.taxMode as AccountingNewDocumentWritePayload["tax_mode"],
     currency: detail.currency,
@@ -129,6 +135,7 @@ export function buildAccountingNewDocumentFormStateFromDetail(
     customerDic: detail.customerDic ?? "",
     customerDataBox: "",
     note: detail.note ?? "",
+    paymentMethod: backendPaymentMethodToId(detail.paymentMethod),
     businessMode: detail.businessMode as AccountingNewDocumentFormState["businessMode"],
     taxMode: detail.taxMode as AccountingNewDocumentFormState["taxMode"],
     currency: detail.currency,
@@ -161,6 +168,7 @@ export function createEmptyAccountingNewDocumentFormState(): AccountingNewDocume
     customerDic: "",
     customerDataBox: "",
     note: "",
+    paymentMethod: "bank_transfer",
     businessMode: "autoservice",
     taxMode: "standard",
     currency: "CZK",

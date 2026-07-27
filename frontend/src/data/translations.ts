@@ -467,6 +467,7 @@ export const translations = {
           customerIco: "IČO",
           customerDic: "DIČ",
           note: "Poznámka",
+          paymentMethod: "Způsob platby",
           itemDescription: "Popis",
           itemQuantity: "Množství",
           itemUnitPrice: "Cena za jednotku"
@@ -2432,6 +2433,7 @@ export const translations = {
           customerIco: "Company ID",
           customerDic: "VAT ID",
           note: "Note",
+          paymentMethod: "Payment method",
           itemDescription: "Description",
           itemQuantity: "Quantity",
           itemUnitPrice: "Unit price"
@@ -4397,6 +4399,7 @@ export const translations = {
           customerIco: "IČO",
           customerDic: "DIČ",
           note: "Примечание",
+          paymentMethod: "Способ оплаты",
           itemDescription: "Описание",
           itemQuantity: "Количество",
           itemUnitPrice: "Цена за единицу"
@@ -6362,6 +6365,7 @@ export const translations = {
           customerIco: "Company ID",
           customerDic: "VAT ID",
           note: "Note",
+          paymentMethod: "Payment method",
           itemDescription: "Description",
           itemQuantity: "Quantity",
           itemUnitPrice: "Unit price"

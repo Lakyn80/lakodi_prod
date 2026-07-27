@@ -11,7 +11,8 @@ export type AccountingNewModuleId =
   | "attachments"
   | "exports"
   | "settings"
-  | "audit";
+  | "audit"
+  | "ai-assistant";
 
 export type AccountingNewModuleAvailability = "placeholder" | "read-only";
 
@@ -704,6 +705,7 @@ export interface AccountingNewDocumentWritePayload {
   customer_ico?: string | null;
   customer_dic?: string | null;
   note?: string | null;
+  payment_method?: string | null;
   business_mode: AccountingNewBusinessMode;
   tax_mode: AccountingNewTaxMode;
   currency: string;
@@ -745,6 +747,7 @@ export interface AccountingNewDocumentFormState {
   customerDic: string;
   customerDataBox: string;
   note: string;
+  paymentMethod: string;
   businessMode: AccountingNewBusinessMode;
   taxMode: AccountingNewTaxMode;
   currency: string;
