@@ -8,6 +8,7 @@ import { AccountingNewAresLookupSection } from "@/components/admin/accounting-ne
 import { AccountingNewCurrencySelect } from "@/components/admin/accounting-new/AccountingNewCurrencySelect";
 import { AccountingNewMoneyInput } from "@/components/admin/accounting-new/AccountingNewMoneyInput";
 import { AccountingNewMutationNotice } from "@/components/admin/accounting-new/AccountingNewMutationNotice";
+import { AccountingNewPaymentMethodSelect } from "@/components/admin/accounting-new/AccountingNewPaymentMethodSelect";
 import { AccountingNewSubjectPicker } from "@/components/admin/accounting-new/AccountingNewSubjectPicker";
 import {
   formatAccountingNewTemplate,
@@ -39,6 +40,7 @@ import {
   createEmptyAccountingNewDocumentFormState,
 } from "@/lib/accountingNewDocumentWrite";
 import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
+import { backendPaymentMethodToId } from "@/lib/accountingNewPaymentMethods";
 import {
   applyAccountingNewSubjectToDocumentForm,
   buildAccountingNewCustomerInputFromDocumentForm,
@@ -94,6 +96,9 @@ export function AccountingNewDocumentForm({
             ...current,
             invoiceNumber: defaults.suggestedInvoiceNumber,
             currency: normalizeAccountingNewCurrency(settings?.defaultCurrency ?? current.currency),
+            paymentMethod: settings?.paymentMethod
+              ? backendPaymentMethodToId(settings.paymentMethod)
+              : current.paymentMethod,
           }));
         }
 
@@ -454,6 +459,13 @@ export function AccountingNewDocumentForm({
                 label={t.documentWrite.fields.currency}
                 value={form.currency}
                 onChange={(currency) => setForm((current) => ({ ...current, currency }))}
+                required
+              />
+              <AccountingNewPaymentMethodSelect
+                id="paymentMethod"
+                label={t.documentWrite.fields.paymentMethod}
+                value={form.paymentMethod}
+                onChange={(paymentMethod) => setForm((current) => ({ ...current, paymentMethod }))}
                 required
               />
               <div className="space-y-2">
