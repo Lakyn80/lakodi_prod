@@ -50,12 +50,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(target, 307);
   }
 
-  if (isAccountingNewEnabled() && request.nextUrl.pathname === "/admin/invoices") {
-    const target = buildRedirectUrl(request, hostName || ADMIN_HOSTNAME);
-    target.pathname = "/admin/ucetnictvi-new/doklady";
-    return NextResponse.redirect(target, 307);
-  }
-
   return NextResponse.next();
 }
 

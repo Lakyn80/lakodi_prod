@@ -237,7 +237,12 @@ export function AccountingNewModulePageShell({ moduleId }: { moduleId: Accountin
           <Button asChild variant="outline" size="sm">
             <Link href={ACCOUNTING_NEW_BASE_ROUTE}>{t.navigation.backToModules}</Link>
           </Button>
-          <h1 className="text-2xl font-semibold text-foreground">{labels.title}</h1>
+          <h1
+            className="text-2xl font-semibold text-foreground"
+            data-testid={`accounting-new-module-title-${moduleId}`}
+          >
+            {labels.title}
+          </h1>
           <p className="text-sm text-muted-foreground">{labels.description}</p>
         </div>
       </div>

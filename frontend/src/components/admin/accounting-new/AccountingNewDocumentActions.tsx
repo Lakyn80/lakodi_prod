@@ -185,11 +185,11 @@ export function AccountingNewDocumentActions({
       <div className="flex flex-wrap gap-3">
         {canEdit ? (
           <Button variant="outline" asChild>
-            <Link href={`${ACCOUNTING_NEW_ROUTE}/doklady/${detail.id}/upravit`}>{t.documentWrite.actions.editDraft}</Link>
+            <Link href={`${ACCOUNTING_NEW_ROUTE}/doklady/${detail.id}/upravit`}>{t.documentWrite.actions.editDocument}</Link>
           </Button>
         ) : (
           <Button variant="outline" disabled title={t.documentWrite.actions.editDisabledHint}>
-            {t.documentWrite.actions.editDraft}
+            {t.documentWrite.actions.editDocument}
           </Button>
         )}
 

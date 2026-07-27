@@ -181,7 +181,15 @@ export function AccountingNewSupplierForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "create" ? t.supplierWrite.createTitle : t.supplierWrite.editTitle}</CardTitle>
+          <CardTitle
+            data-testid={
+              mode === "create"
+                ? "accounting-new-supplier-form-title-create"
+                : "accounting-new-supplier-form-title-edit"
+            }
+          >
+            {mode === "create" ? t.supplierWrite.createTitle : t.supplierWrite.editTitle}
+          </CardTitle>
           <CardDescription>{t.supplierWrite.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

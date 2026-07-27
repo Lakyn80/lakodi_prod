@@ -75,6 +75,13 @@ ADMIN_PASSWORD=admin123
 ADMIN_RECOVERY_TOKEN=change-me
 ADMIN_SESSION_SECRET=change-me
 WHATSAPP_NUMBER=420776053625
+
+AI_ACCOUNTING_SERVICE_TOKEN_SECRET=
+AI_ACCOUNTING_EXPECTED_TENANT_ID=
+AI_ACCOUNTING_ALLOWED_KEY_ID=
+AI_ACCOUNTING_TOKEN_ISSUER=ai-agent-accounting
+AI_ACCOUNTING_TOKEN_AUDIENCE=lakodi-internal-accounting
+AI_ACCOUNTING_MAX_TOKEN_TTL_SECONDS=300
 ```
 
 Notes:
@@ -85,6 +92,12 @@ Notes:
 - Recovery email settings are optional for local dev.
 - Owner booking notifications use email only.
 - Deployment-specific variables can stay unset during normal local development.
+- `AI_ACCOUNTING_*` variables protect internal read-only endpoints for the AI
+  accounting platform. Keep the signing secret server-side only and do not reuse
+  admin cookies or frontend credentials for this integration.
+- Short token TTL and `jti` are not full bearer-token replay protection without
+  a replay store, mTLS, or another sender-constrained mechanism. The current
+  internal endpoints are read-only and scoped.
 
 For new booking notifications, the backend currently supports:
 

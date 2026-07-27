@@ -191,7 +191,15 @@ export function AccountingNewRecurringTemplateForm({
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>{mode === "create" ? t.recurringForm.createTitle : t.recurringForm.editTitle}</CardTitle>
+          <CardTitle
+            data-testid={
+              mode === "create"
+                ? "accounting-new-recurring-form-title-create"
+                : "accounting-new-recurring-form-title-edit"
+            }
+          >
+            {mode === "create" ? t.recurringForm.createTitle : t.recurringForm.editTitle}
+          </CardTitle>
           <CardDescription>{t.recurringForm.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

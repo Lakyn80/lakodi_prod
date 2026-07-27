@@ -150,7 +150,9 @@ export function AccountingNewSubjectDetail({ subjectId }: { subjectId: string })
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
           <div className="space-y-1">
-            <CardTitle>{detail.name}</CardTitle>
+            <CardTitle data-testid="accounting-new-subject-detail-title">
+              {detail.name}
+            </CardTitle>
             <CardDescription>{t.subjectDetail.description}</CardDescription>
           </div>
         </CardHeader>

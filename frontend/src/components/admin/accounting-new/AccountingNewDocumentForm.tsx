@@ -35,6 +35,7 @@ import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import {
   buildAccountingNewDocumentFormStateFromDetail,
   buildAccountingNewDocumentWritePayloadFromForm,
+  canAccountingNewDocumentEdit,
   createEmptyAccountingNewDocumentFormState,
 } from "@/lib/accountingNewDocumentWrite";
 import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
@@ -98,7 +99,7 @@ export function AccountingNewDocumentForm({
 
         if (mode === "edit" && documentId) {
           const detail = await getAccountingNewDocument(documentId, { signal: controller.signal });
-          if (detail.status !== "draft") {
+          if (!canAccountingNewDocumentEdit(detail)) {
             setNotEditable(true);
           }
           setForm(buildAccountingNewDocumentFormStateFromDetail(detail));
@@ -292,7 +293,9 @@ export function AccountingNewDocumentForm({
           </Link>
         </Button>
         <Alert>
-          <AlertTitle>{t.documentWrite.notEditableTitle}</AlertTitle>
+          <AlertTitle data-testid="accounting-new-document-form-title-not-editable">
+            {t.documentWrite.notEditableTitle}
+          </AlertTitle>
           <AlertDescription>{t.documentWrite.notEditableDescription}</AlertDescription>
         </Alert>
       </div>
@@ -328,7 +331,15 @@ export function AccountingNewDocumentForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "create" ? t.documentWrite.createTitle : t.documentWrite.editTitle}</CardTitle>
+          <CardTitle
+            data-testid={
+              mode === "create"
+                ? "accounting-new-document-form-title-create"
+                : "accounting-new-document-form-title-edit"
+            }
+          >
+            {mode === "create" ? t.documentWrite.createTitle : t.documentWrite.editTitle}
+          </CardTitle>
           <CardDescription>{mode === "create" ? t.documentWrite.createDescription : t.documentWrite.editDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -336,7 +347,9 @@ export function AccountingNewDocumentForm({
             className="space-y-6"
             onSubmit={(event) => {
               event.preventDefault();
-              void submitForm("draft");
+              // Edit must preserve stored status (issued stays issued; draft stays draft).
+              const statusOverride = mode === "edit" && form.status === "issued" ? "issued" : "draft";
+              void submitForm(statusOverride);
             }}
           >
             <div className="space-y-4">
@@ -581,7 +594,11 @@ export function AccountingNewDocumentForm({
 
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={isSubmitting}>
-                {mode === "create" ? t.documentWrite.saveDraft : t.documentWrite.updateDraft}
+                {mode === "create"
+                  ? t.documentWrite.saveDraft
+                  : form.status === "issued"
+                    ? t.documentWrite.updateIssued
+                    : t.documentWrite.updateDraft}
               </Button>
               {mode === "create" ? (
                 <Button type="button" variant="secondary" disabled={isSubmitting} onClick={() => void submitForm("issued")}>

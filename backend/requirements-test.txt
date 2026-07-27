@@ -3,3 +3,6 @@ uvicorn
 pytest
 httpx
 reportlab
+pillow-heif
+passlib
+bcrypt==4.0.1

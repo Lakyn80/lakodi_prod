@@ -369,15 +369,16 @@ export const translations = {
         loading: "Načítání formuláře dokladu…",
         createTitle: "Nový doklad",
         createDescription: "Vytvořte koncept nebo rovnou vystavte nový doklad.",
-        editTitle: "Upravit koncept dokladu",
-        editDescription: "Úpravy jsou povoleny pouze pro koncepty. Vystavené doklady se zde neupravují.",
+        editTitle: "Upravit doklad",
+        editDescription: "Upravte koncept nebo už vystavený doklad. Zrušené doklady upravit nelze.",
         backToDetail: "Zpět na detail dokladu",
         saveDraft: "Uložit koncept",
         updateDraft: "Uložit změny konceptu",
+        updateIssued: "Uložit změny",
         saveAndIssue: "Uložit a vystavit",
         addItem: "Přidat položku",
         notEditableTitle: "Doklad nelze upravit",
-        notEditableDescription: "Tento doklad už není v konceptu a nelze ho zde upravit.",
+        notEditableDescription: "Zrušený doklad nelze upravit.",
         legacyNoticeTitle: "",
         legacyNoticeDescription: "",
         emailDeferred: "Odeslání e-mailu zůstává odložené do pozdější bezpečné fáze.",
@@ -399,8 +400,8 @@ export const translations = {
         },
         actions: {
           createDocument: "Nový doklad",
-          editDraft: "Upravit koncept",
-          editDisabledHint: "Upravit lze pouze koncept dokladu.",
+          editDocument: "Upravit",
+          editDisabledHint: "Zrušený doklad nelze upravit.",
           issueDocument: "Vystavit doklad",
           issueDisabledHint: "Vystavit lze pouze koncept dokladu.",
           downloadPdf: "Stáhnout PDF"
@@ -1325,6 +1326,10 @@ export const translations = {
         settings: {
           label: "Nastavení",
           description: "Údaje vystavitele, výchozí měna a platební údaje pro nové doklady."
+        },
+        aiAssistant: {
+          label: "AI asistent",
+          description: "Chat s AI účetním asistentem přes zabezpečený Lakodi BFF."
         }
       },
       rag: {
@@ -1362,7 +1367,8 @@ export const translations = {
           payment_removed: "Odebrána platba",
           cancelled: "Zrušeno",
           admin_api: "Administrace",
-          settings: "Nastavení účetnictví"
+          settings: "Nastavení účetnictví",
+          ai_assistant: "AI asistent"
         },
         searchableFields: {
           invoiceNumber: "Číslo dokladu",
@@ -1457,7 +1463,8 @@ export const translations = {
           recurringDetail: "Detail opakované šablony",
           exports: "Exporty",
           audit: "Audit",
-          settings: "Nastavení účetnictví"
+          settings: "Nastavení účetnictví",
+          aiAssistant: "AI asistent"
         },
         aliases: {
           dashboard: [
@@ -1603,6 +1610,12 @@ export const translations = {
             "nastavení účetnictví",
             "nastavení faktur",
             "issuer settings"
+          ],
+          aiAssistant: [
+            "ai asistent",
+            "ai účetnictví",
+            "účetní chat",
+            "ai chat"
           ]
         }
       },
@@ -1802,6 +1815,40 @@ export const translations = {
         downloadAction: "Stáhnout",
         downloadSuccess: "Export byl stažen.",
         downloadErrorTitle: "Export se nepodařil stáhnout."
+      },
+      aiChat: {
+        title: "AI účetní asistent",
+        description: "Pište požadavky v přirozeném jazyce. Schválení změn probíhá jen přes tlačítka Approve/Reject.",
+        checkingAvailability: "Ověřuji dostupnost AI služby…",
+        unavailableTitle: "AI služba není dostupná",
+        unavailableDescription: "Lakodi BFF nebo AI accounting služba momentálně neodpovídá. Zkuste to později.",
+        emptyState: "Zatím žádné zprávy. Napište první požadavek.",
+        loadingHistory: "Načítám historii konverzace…",
+        historyLoadError: "Historii konverzace se nepodařilo načíst.",
+        conversationLabel: "Konverzace",
+        newConversation: "Nová konverzace",
+        roleUser: "Vy",
+        roleAssistant: "Asistent",
+        inputPlaceholder: "Např. Najdi faktury pro zákazníka…",
+        inputHint: "Enter odešle, Shift+Enter nový řádek.",
+        send: "Odeslat",
+        sending: "Odesílám…",
+        sendError: "Zprávu se nepodařilo odeslat.",
+        actionTitle: "Navrhovaná akce",
+        actionStatusLabel: "Stav",
+        actionLoading: "Načítám akci",
+        actionApprove: "Schválit",
+        actionApproving: "Schvaluji…",
+        actionReject: "Zamítnout",
+        actionRejecting: "Zamítám…",
+        actionApproveConfirmTitle: "Schválit AI akci?",
+        actionApproveConfirmDescription: "Schválení spustí účetní změnu na serveru. Tuto akci nelze z prohlížeče odvolat.",
+        actionApproveConfirm: "Ano, schválit",
+        actionApproveCancel: "Zrušit",
+        actionApproveError: "Schválení akce selhalo.",
+        actionRejectError: "Zamítnutí akce selhalo.",
+        actionResolvedTitle: "Akce již není čekající",
+        actionResolvedDescription: "Stav akce byl aktualizován. Další schválení nebo zamítnutí není k dispozici."
       },
       todoWrite: {
         generateAction: "Vygenerovat úkoly",
@@ -2287,15 +2334,16 @@ export const translations = {
         loading: "Loading document form…",
         createTitle: "New document",
         createDescription: "Create a draft or issue a new document.",
-        editTitle: "Edit document draft",
-        editDescription: "Edits are allowed only for drafts. Issued documents are not edited here.",
+        editTitle: "Edit document",
+        editDescription: "Edit a draft or an already issued document. Cancelled documents cannot be edited.",
         backToDetail: "Back to document detail",
         saveDraft: "Save draft",
         updateDraft: "Save draft changes",
+        updateIssued: "Save changes",
         saveAndIssue: "Save and issue",
         addItem: "Add item",
         notEditableTitle: "Document cannot be edited",
-        notEditableDescription: "This document is no longer a draft and cannot be edited here.",
+        notEditableDescription: "Cancelled documents cannot be edited.",
         legacyNoticeTitle: "",
         legacyNoticeDescription: "",
         emailDeferred: "Email sending remains deferred to a later safe phase.",
@@ -2317,8 +2365,8 @@ export const translations = {
         },
         actions: {
           createDocument: "New document",
-          editDraft: "Edit draft",
-          editDisabledHint: "Only a document draft can be edited.",
+          editDocument: "Edit",
+          editDisabledHint: "Cancelled documents cannot be edited.",
           issueDocument: "Issue document",
           issueDisabledHint: "Only a document draft can be issued.",
           downloadPdf: "Download PDF"
@@ -3240,9 +3288,13 @@ export const translations = {
           label: "Audit",
           description: "Accounting change history."
         },
-        settings: {
+          settings: {
           label: "Налаштування",
           description: "Дані постачальника послуг, валюта за замовчуванням і платіжні реквізити."
+        },
+        aiAssistant: {
+          label: "AI асистент",
+          description: "Чат з AI бухгалтерським асистентом через захищений Lakodi BFF."
         }
       },
       rag: {
@@ -3280,7 +3332,8 @@ export const translations = {
           payment_removed: "Payment removed",
           cancelled: "Cancelled",
           admin_api: "Administration",
-          settings: "Налаштування бухгалтерії"
+          settings: "Налаштування бухгалтерії",
+          ai_assistant: "AI асистент"
         },
         searchableFields: {
           invoiceNumber: "Document number",
@@ -3375,7 +3428,8 @@ export const translations = {
           recurringDetail: "Recurring template detail",
           exports: "Exports",
           audit: "Audit",
-          settings: "Налаштування бухгалтерії"
+          settings: "Налаштування бухгалтерії",
+          aiAssistant: "AI асистент"
         },
         aliases: {
           dashboard: [
@@ -3521,6 +3575,12 @@ export const translations = {
             "налаштування бухгалтерії",
             "налаштування рахунків",
             "issuer settings"
+          ],
+          aiAssistant: [
+            "ai асистент",
+            "ai бухгалтерія",
+            "бухгалтерський чат",
+            "ai chat"
           ]
         }
       },
@@ -3720,6 +3780,40 @@ export const translations = {
         downloadAction: "Download",
         downloadSuccess: "Export downloaded.",
         downloadErrorTitle: "Could not download export."
+      },
+      aiChat: {
+        title: "AI бухгалтерський асистент",
+        description: "Пишіть запити природною мовою. Затвердження змін лише через кнопки Approve/Reject.",
+        checkingAvailability: "Перевіряю доступність AI служби…",
+        unavailableTitle: "AI служба недоступна",
+        unavailableDescription: "Lakodi BFF або AI accounting служба зараз не відповідає. Спробуйте пізніше.",
+        emptyState: "Повідомлень ще немає. Напишіть перший запит.",
+        loadingHistory: "Завантажую історію розмови…",
+        historyLoadError: "Не вдалося завантажити історію розмови.",
+        conversationLabel: "Розмова",
+        newConversation: "Нова розмова",
+        roleUser: "Ви",
+        roleAssistant: "Асистент",
+        inputPlaceholder: "Напр. Знайди рахунки для клієнта…",
+        inputHint: "Enter надсилає, Shift+Enter — новий рядок.",
+        send: "Надіслати",
+        sending: "Надсилаю…",
+        sendError: "Не вдалося надіслати повідомлення.",
+        actionTitle: "Запропонована дія",
+        actionStatusLabel: "Статус",
+        actionLoading: "Завантажую дію",
+        actionApprove: "Затвердити",
+        actionApproving: "Затверджую…",
+        actionReject: "Відхилити",
+        actionRejecting: "Відхиляю…",
+        actionApproveConfirmTitle: "Затвердити AI дію?",
+        actionApproveConfirmDescription: "Затвердження запустить бухгалтерську зміну на сервері. З браузера її не скасувати.",
+        actionApproveConfirm: "Так, затвердити",
+        actionApproveCancel: "Скасувати",
+        actionApproveError: "Не вдалося затвердити дію.",
+        actionRejectError: "Не вдалося відхилити дію.",
+        actionResolvedTitle: "Дія вже не очікує",
+        actionResolvedDescription: "Статус дії оновлено. Повторне затвердження або відхилення недоступне."
       },
       todoWrite: {
         generateAction: "Згенерувати завдання",
@@ -4205,15 +4299,16 @@ export const translations = {
         loading: "Загрузка формы документа…",
         createTitle: "Новый документ",
         createDescription: "Создайте черновик или сразу выставьте новый документ.",
-        editTitle: "Редактировать черновик документа",
-        editDescription: "Редактирование разрешено только для черновиков. Выставленные документы здесь не изменяются.",
+        editTitle: "Редактировать документ",
+        editDescription: "Редактируйте черновик или уже выставленный документ. Отменённые документы редактировать нельзя.",
         backToDetail: "Назад к деталям документа",
         saveDraft: "Сохранить черновик",
         updateDraft: "Сохранить изменения черновика",
+        updateIssued: "Сохранить изменения",
         saveAndIssue: "Сохранить и выставить",
         addItem: "Добавить позицию",
         notEditableTitle: "Документ нельзя редактировать",
-        notEditableDescription: "Этот документ уже не черновик и здесь не редактируется.",
+        notEditableDescription: "Отменённый документ нельзя редактировать.",
         legacyNoticeTitle: "",
         legacyNoticeDescription: "",
         emailDeferred: "Отправка e-mail отложена до более поздней безопасной фазы.",
@@ -4235,8 +4330,8 @@ export const translations = {
         },
         actions: {
           createDocument: "Новый документ",
-          editDraft: "Редактировать черновик",
-          editDisabledHint: "Редактировать можно только черновик документа.",
+          editDocument: "Редактировать",
+          editDisabledHint: "Отменённый документ нельзя редактировать.",
           issueDocument: "Выставить документ",
           issueDisabledHint: "Выставить можно только черновик документа.",
           downloadPdf: "Скачать PDF"
@@ -5161,6 +5256,10 @@ export const translations = {
         settings: {
           label: "Настройки",
           description: "Данные поставщика услуг, валюта по умолчанию и платёжные реквизиты."
+        },
+        aiAssistant: {
+          label: "AI ассистент",
+          description: "Чат с AI бухгалтерским ассистентом через защищённый Lakodi BFF."
         }
       },
       rag: {
@@ -5198,7 +5297,8 @@ export const translations = {
           payment_removed: "Платёж удалён",
           cancelled: "Отменено",
           admin_api: "Администрирование",
-          settings: "Настройки бухгалтерии"
+          settings: "Настройки бухгалтерии",
+          ai_assistant: "AI ассистент"
         },
         searchableFields: {
           invoiceNumber: "Номер документа",
@@ -5293,7 +5393,8 @@ export const translations = {
           recurringDetail: "Детали повторяющегося шаблона",
           exports: "Экспорты",
           audit: "Аудит",
-          settings: "Настройки бухгалтерии"
+          settings: "Настройки бухгалтерии",
+          aiAssistant: "AI ассистент"
         },
         aliases: {
           dashboard: [
@@ -5439,6 +5540,12 @@ export const translations = {
             "настройки бухгалтерии",
             "настройки счетов",
             "issuer settings"
+          ],
+          aiAssistant: [
+            "ai ассистент",
+            "ai бухгалтерия",
+            "бухгалтерский чат",
+            "ai chat"
           ]
         }
       },
@@ -5638,6 +5745,40 @@ export const translations = {
         downloadAction: "Скачать",
         downloadSuccess: "Экспорт скачан.",
         downloadErrorTitle: "Не удалось скачать экспорт."
+      },
+      aiChat: {
+        title: "AI бухгалтерский ассистент",
+        description: "Пишите запросы на естественном языке. Подтверждение изменений только через кнопки Approve/Reject.",
+        checkingAvailability: "Проверяю доступность AI-сервиса…",
+        unavailableTitle: "AI-сервис недоступен",
+        unavailableDescription: "Lakodi BFF или AI accounting сервис сейчас не отвечает. Попробуйте позже.",
+        emptyState: "Сообщений пока нет. Напишите первый запрос.",
+        loadingHistory: "Загружаю историю разговора…",
+        historyLoadError: "Не удалось загрузить историю разговора.",
+        conversationLabel: "Разговор",
+        newConversation: "Новый разговор",
+        roleUser: "Вы",
+        roleAssistant: "Ассистент",
+        inputPlaceholder: "Напр. Найди счета для клиента…",
+        inputHint: "Enter отправляет, Shift+Enter — новая строка.",
+        send: "Отправить",
+        sending: "Отправляю…",
+        sendError: "Не удалось отправить сообщение.",
+        actionTitle: "Предложенное действие",
+        actionStatusLabel: "Статус",
+        actionLoading: "Загружаю действие",
+        actionApprove: "Подтвердить",
+        actionApproving: "Подтверждаю…",
+        actionReject: "Отклонить",
+        actionRejecting: "Отклоняю…",
+        actionApproveConfirmTitle: "Подтвердить AI-действие?",
+        actionApproveConfirmDescription: "Подтверждение запустит бухгалтерское изменение на сервере. Из браузера его нельзя отменить.",
+        actionApproveConfirm: "Да, подтвердить",
+        actionApproveCancel: "Отмена",
+        actionApproveError: "Не удалось подтвердить действие.",
+        actionRejectError: "Не удалось отклонить действие.",
+        actionResolvedTitle: "Действие уже не ожидает",
+        actionResolvedDescription: "Статус действия обновлён. Повторное подтверждение или отклонение недоступно."
       },
       todoWrite: {
         generateAction: "Сгенерировать задачи",
@@ -6123,15 +6264,16 @@ export const translations = {
         loading: "Loading document form…",
         createTitle: "New document",
         createDescription: "Create a draft or issue a new document.",
-        editTitle: "Edit document draft",
-        editDescription: "Edits are allowed only for drafts. Issued documents are not edited here.",
+        editTitle: "Edit document",
+        editDescription: "Edit a draft or an already issued document. Cancelled documents cannot be edited.",
         backToDetail: "Back to document detail",
         saveDraft: "Save draft",
         updateDraft: "Save draft changes",
+        updateIssued: "Save changes",
         saveAndIssue: "Save and issue",
         addItem: "Add item",
         notEditableTitle: "Document cannot be edited",
-        notEditableDescription: "This document is no longer a draft and cannot be edited here.",
+        notEditableDescription: "Cancelled documents cannot be edited.",
         legacyNoticeTitle: "",
         legacyNoticeDescription: "",
         emailDeferred: "Email sending remains deferred to a later safe phase.",
@@ -6153,8 +6295,8 @@ export const translations = {
         },
         actions: {
           createDocument: "New document",
-          editDraft: "Edit draft",
-          editDisabledHint: "Only a document draft can be edited.",
+          editDocument: "Edit",
+          editDisabledHint: "Cancelled documents cannot be edited.",
           issueDocument: "Issue document",
           issueDisabledHint: "Only a document draft can be issued.",
           downloadPdf: "Download PDF"
@@ -7079,6 +7221,10 @@ export const translations = {
         settings: {
           label: "Settings",
           description: "Issuer details, default currency, and payment details for new documents."
+        },
+        aiAssistant: {
+          label: "AI assistant",
+          description: "Chat with the AI accounting assistant through the secure Lakodi BFF."
         }
       },
       rag: {
@@ -7116,7 +7262,8 @@ export const translations = {
           payment_removed: "Payment removed",
           cancelled: "Cancelled",
           admin_api: "Administration",
-          settings: "Accounting settings"
+          settings: "Accounting settings",
+          ai_assistant: "AI assistant"
         },
         searchableFields: {
           invoiceNumber: "Document number",
@@ -7211,7 +7358,8 @@ export const translations = {
           recurringDetail: "Recurring template detail",
           exports: "Exports",
           audit: "Audit",
-          settings: "Accounting settings"
+          settings: "Accounting settings",
+          aiAssistant: "AI assistant"
         },
         aliases: {
           dashboard: [
@@ -7357,6 +7505,12 @@ export const translations = {
             "accounting settings",
             "invoice settings",
             "issuer settings"
+          ],
+          aiAssistant: [
+            "ai assistant",
+            "ai accounting",
+            "accounting chat",
+            "ai chat"
           ]
         }
       },
@@ -7556,6 +7710,40 @@ export const translations = {
         downloadAction: "Download",
         downloadSuccess: "Export downloaded.",
         downloadErrorTitle: "Could not download export."
+      },
+      aiChat: {
+        title: "AI accounting assistant",
+        description: "Write requests in natural language. Accounting changes are approved only via Approve/Reject.",
+        checkingAvailability: "Checking AI service availability…",
+        unavailableTitle: "AI service unavailable",
+        unavailableDescription: "The Lakodi BFF or AI accounting service is not responding. Try again later.",
+        emptyState: "No messages yet. Send your first request.",
+        loadingHistory: "Loading conversation history…",
+        historyLoadError: "Could not load conversation history.",
+        conversationLabel: "Conversation",
+        newConversation: "New conversation",
+        roleUser: "You",
+        roleAssistant: "Assistant",
+        inputPlaceholder: "e.g. Find invoices for customer…",
+        inputHint: "Enter to send, Shift+Enter for a new line.",
+        send: "Send",
+        sending: "Sending…",
+        sendError: "Could not send the message.",
+        actionTitle: "Proposed action",
+        actionStatusLabel: "Status",
+        actionLoading: "Loading action",
+        actionApprove: "Approve",
+        actionApproving: "Approving…",
+        actionReject: "Reject",
+        actionRejecting: "Rejecting…",
+        actionApproveConfirmTitle: "Approve AI action?",
+        actionApproveConfirmDescription: "Approval will execute the accounting change on the server. It cannot be undone from the browser.",
+        actionApproveConfirm: "Yes, approve",
+        actionApproveCancel: "Cancel",
+        actionApproveError: "Could not approve the action.",
+        actionRejectError: "Could not reject the action.",
+        actionResolvedTitle: "Action is no longer pending",
+        actionResolvedDescription: "The action status was updated. Approve and Reject are no longer available."
       },
       todoWrite: {
         generateAction: "Generate tasks",

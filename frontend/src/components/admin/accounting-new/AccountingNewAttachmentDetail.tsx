@@ -201,7 +201,9 @@ export function AccountingNewAttachmentDetail({ attachmentId }: { attachmentId: 
 
       <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle>{detail.originalFilename}</CardTitle>
+          <CardTitle data-testid="accounting-new-attachment-detail-title">
+            {detail.originalFilename}
+          </CardTitle>
           <CardDescription>{t.attachmentDetail.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

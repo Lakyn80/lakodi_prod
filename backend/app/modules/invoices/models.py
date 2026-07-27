@@ -496,3 +496,29 @@ class InvoiceAccountingEvent(Base):
     new_values = Column(Text, nullable=True)
     event_metadata = Column("metadata", Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+
+
+class AiAccountingExecution(Base):
+    __tablename__ = "ai_accounting_executions"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "execution_id", name="uq_ai_accounting_execution_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "operation",
+            "idempotency_key",
+            name="uq_ai_accounting_execution_idempotency",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String(128), nullable=False, index=True)
+    execution_id = Column(String(128), nullable=False, index=True)
+    operation = Column(String(64), nullable=False, index=True)
+    idempotency_key = Column(String(160), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    proposal_hash = Column(String(64), nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="pending", index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
+    error_code = Column(String(80), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

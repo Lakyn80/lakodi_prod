@@ -225,7 +225,7 @@ export function AccountingNewShell() {
       <Card className="border-border bg-card">
         <CardHeader className="space-y-3">
           <div className="space-y-1">
-            <CardTitle>{t.dashboard.title}</CardTitle>
+            <CardTitle data-testid="accounting-new-dashboard-title">{t.dashboard.title}</CardTitle>
             <CardDescription>{t.dashboard.description}</CardDescription>
           </div>
         </CardHeader>

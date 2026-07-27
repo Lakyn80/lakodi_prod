@@ -228,7 +228,9 @@ export function AccountingNewDocumentDetail({
             <AccountingNewDocumentStatusBadge label={detail.effectiveStatus} />
           </div>
           <div className="space-y-1">
-            <CardTitle>{detail.invoiceNumber}</CardTitle>
+            <CardTitle data-testid="accounting-new-document-detail-title">
+              {detail.invoiceNumber}
+            </CardTitle>
             <CardDescription>{t.documentDetail.description}</CardDescription>
           </div>
         </CardHeader>

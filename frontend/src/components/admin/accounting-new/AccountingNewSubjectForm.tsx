@@ -181,7 +181,15 @@ export function AccountingNewSubjectForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "create" ? t.subjectWrite.createTitle : t.subjectWrite.editTitle}</CardTitle>
+          <CardTitle
+            data-testid={
+              mode === "create"
+                ? "accounting-new-subject-form-title-create"
+                : "accounting-new-subject-form-title-edit"
+            }
+          >
+            {mode === "create" ? t.subjectWrite.createTitle : t.subjectWrite.editTitle}
+          </CardTitle>
           <CardDescription>{t.subjectWrite.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

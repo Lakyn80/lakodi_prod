@@ -163,7 +163,9 @@ export function AccountingNewSupplierDetail({
             <Badge variant="outline">{t.suppliers.badge}</Badge>
           </div>
           <div className="space-y-1">
-            <CardTitle>{detail.name}</CardTitle>
+            <CardTitle data-testid="accounting-new-supplier-detail-title">
+              {detail.name}
+            </CardTitle>
             <CardDescription>{t.supplierDetail.description}</CardDescription>
           </div>
         </CardHeader>
