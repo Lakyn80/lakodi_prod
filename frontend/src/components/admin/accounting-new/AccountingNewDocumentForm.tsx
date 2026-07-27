@@ -35,6 +35,7 @@ import { getAccountingNewModuleRoute } from "@/lib/accountingNewModuleRoutes";
 import {
   buildAccountingNewDocumentFormStateFromDetail,
   buildAccountingNewDocumentWritePayloadFromForm,
+  canAccountingNewDocumentEdit,
   createEmptyAccountingNewDocumentFormState,
 } from "@/lib/accountingNewDocumentWrite";
 import { parseAccountingNewMoneyInput } from "@/lib/accountingNewMoney";
@@ -98,7 +99,7 @@ export function AccountingNewDocumentForm({
 
         if (mode === "edit" && documentId) {
           const detail = await getAccountingNewDocument(documentId, { signal: controller.signal });
-          if (detail.status !== "draft") {
+          if (!canAccountingNewDocumentEdit(detail)) {
             setNotEditable(true);
           }
           setForm(buildAccountingNewDocumentFormStateFromDetail(detail));
@@ -346,7 +347,9 @@ export function AccountingNewDocumentForm({
             className="space-y-6"
             onSubmit={(event) => {
               event.preventDefault();
-              void submitForm("draft");
+              // Edit must preserve stored status (issued stays issued; draft stays draft).
+              const statusOverride = mode === "edit" && form.status === "issued" ? "issued" : "draft";
+              void submitForm(statusOverride);
             }}
           >
             <div className="space-y-4">
@@ -591,7 +594,11 @@ export function AccountingNewDocumentForm({
 
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={isSubmitting}>
-                {mode === "create" ? t.documentWrite.saveDraft : t.documentWrite.updateDraft}
+                {mode === "create"
+                  ? t.documentWrite.saveDraft
+                  : form.status === "issued"
+                    ? t.documentWrite.updateIssued
+                    : t.documentWrite.updateDraft}
               </Button>
               {mode === "create" ? (
                 <Button type="button" variant="secondary" disabled={isSubmitting} onClick={() => void submitForm("issued")}>

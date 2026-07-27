@@ -6023,6 +6023,8 @@ def _update_existing_invoice(
 ) -> Invoice:
     try:
         before = _build_invoice_summary(invoice)
+        if _normalize_invoice_status(invoice.status) == "cancelled":
+            raise InvoiceValidationError("Zrušený doklad nelze upravovat.")
         current_document_kind = normalize_document_kind(invoice.document_kind)
         if current_document_kind == "quote" and _quote_has_any_conversion(db, source_invoice_id=invoice.id):
             raise InvoiceValidationError("Převedenou cenovou nabídku už nelze upravovat.")
@@ -6033,6 +6035,9 @@ def _update_existing_invoice(
         )
         if requested_document_kind is not None and requested_document_kind != current_document_kind:
             raise InvoiceValidationError("Typ dokladu nelze po vytvoření měnit.")
+        payment_summary = _build_payment_summary(invoice)
+        if payment_summary.total_paid > totals.total:
+            raise InvoiceValidationError("Součet plateb nesmí překročit novou celkovou částku dokladu.")
         reserved_sequence = resolve_invoice_sequence_for_update(
             db,
             invoice_id=invoice.id,

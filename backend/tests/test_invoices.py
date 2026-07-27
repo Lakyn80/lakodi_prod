@@ -6784,3 +6784,84 @@ def test_odeslani_faktury_vrati_400_kdyz_chybi_prijemce() -> None:
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Chybí e-mailová adresa příjemce faktury."}
+
+
+def _put_invoice(invoice: dict, overrides: dict | None = None) -> object:
+    _login_admin()
+    payload = {
+        "invoice_number": invoice["invoice_number"],
+        "issue_date": invoice["issue_date"],
+        "due_date": invoice["due_date"],
+        "subject_id": invoice.get("subject_id"),
+        "customer_name": invoice["customer_name"],
+        "customer_email": invoice["customer_email"],
+        "customer_phone": invoice.get("customer_phone"),
+        "customer_address": invoice["customer_address"],
+        "customer_ico": invoice.get("customer_ico"),
+        "customer_dic": invoice.get("customer_dic"),
+        "note": invoice.get("note"),
+        "business_mode": invoice["business_mode"],
+        "tax_mode": invoice["tax_mode"],
+        "currency": invoice["currency"],
+        "vat_rate": invoice.get("vat_rate"),
+        "status": invoice["status"],
+        "document_kind": invoice.get("document_kind", "invoice"),
+        "items": [
+            {
+                "description": item["description"],
+                "quantity": item["quantity"],
+                "unit_price": item["unit_price"],
+            }
+            for item in invoice["items"]
+        ],
+    }
+    if overrides:
+        payload.update(overrides)
+    return client.put(f"/api/admin/invoices/{invoice['id']}", json=payload)
+
+
+def test_update_issued_invoice_succeeds() -> None:
+    invoice = _vytvor_fakturu({"status": "issued", "note": "before"})
+    assert invoice["status"] == "issued"
+
+    response = _put_invoice(invoice, {"note": "after issued edit", "status": "issued"})
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["status"] == "issued"
+    assert updated["note"] == "after issued edit"
+
+
+def test_update_cancelled_invoice_is_rejected() -> None:
+    invoice = _vytvor_fakturu({"status": "issued"})
+    cancel_response = _put_invoice(invoice, {"status": "cancelled"})
+    assert cancel_response.status_code == 200
+    cancelled = cancel_response.json()
+    assert cancelled["status"] == "cancelled"
+
+    response = _put_invoice(cancelled, {"note": "should fail", "status": "cancelled"})
+    assert response.status_code == 400
+    assert "Zrušený doklad nelze upravovat." in response.json()["detail"]
+
+
+def test_update_issued_invoice_rejects_total_below_payments() -> None:
+    invoice = _vytvor_fakturu(
+        {
+            "status": "issued",
+            "items": [{"description": "Diagnostika", "quantity": 1, "unit_price": 5000}],
+        }
+    )
+    paid = _pridej_platbu(invoice["id"], {"amount": 4000})
+    assert float(paid["total_paid"]) == 4000.0
+
+    # New total with 21% VAT: 100 * 1.21 = 121, well below 4000 paid.
+    response = _put_invoice(
+        invoice,
+        {
+            "status": "issued",
+            "items": [{"description": "Diagnostika", "quantity": 1, "unit_price": 100}],
+            "vat_rate": 21,
+            "tax_mode": "standard",
+        },
+    )
+    assert response.status_code == 400
+    assert "Součet plateb nesmí překročit novou celkovou částku dokladu." in response.json()["detail"]

@@ -19,7 +19,11 @@ export function isAccountingNewDocumentDraft(detail: AccountingNewDocumentDetail
 
 export function canAccountingNewDocumentEdit(detail: AccountingNewDocumentDetail): boolean {
   const status = normalizeStoredStatus(detail.status);
-  return status === "draft" && normalizeStoredStatus(detail.effectiveStatus) !== "cancelled";
+  const effectiveStatus = normalizeStoredStatus(detail.effectiveStatus);
+  if (status === "cancelled" || effectiveStatus === "cancelled") {
+    return false;
+  }
+  return status === "draft" || status === "issued";
 }
 
 export function canAccountingNewDocumentIssue(detail: AccountingNewDocumentDetail): boolean {
