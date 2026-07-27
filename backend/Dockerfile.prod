@@ -13,6 +13,7 @@ COPY frontend/public/logo/lakodi_logo_crena_pozadi.png /app/frontend/public/logo
 RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
+    httpx \
     python-multipart \
     pillow \
     pillow-heif \
