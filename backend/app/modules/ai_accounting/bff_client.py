@@ -45,15 +45,17 @@ def proxy_ai_request(
     if idempotency_key:
         headers["Idempotency-Key"] = idempotency_key
     timeout = get_ai_agent_timeout_seconds()
+    request_kwargs: dict[str, Any] = {
+        "method": method.upper(),
+        "url": url,
+        "headers": headers,
+        "params": params,
+    }
+    if json_body is not None:
+        request_kwargs["json"] = json_body
     try:
         with httpx.Client(timeout=timeout) as client:
-            return client.request(
-                method=method.upper(),
-                url=url,
-                headers=headers,
-                json=json_body,
-                params=params,
-            )
+            return client.request(**request_kwargs)
     except httpx.TimeoutException as exc:
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,

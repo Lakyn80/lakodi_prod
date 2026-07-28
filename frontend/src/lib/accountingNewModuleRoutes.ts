@@ -16,6 +16,7 @@ const ACCOUNTING_NEW_MODULE_ROUTES: Record<AccountingNewModuleId, string> = {
   settings: `${ACCOUNTING_NEW_BASE_ROUTE}/nastaveni`,
   exports: `${ACCOUNTING_NEW_BASE_ROUTE}/exporty`,
   audit: `${ACCOUNTING_NEW_BASE_ROUTE}/audit`,
+  "ai-assistant": `${ACCOUNTING_NEW_BASE_ROUTE}/ai-asistent`,
 };
 
 export function getAccountingNewModuleRoute(moduleId: AccountingNewModuleId): string {
@@ -37,4 +38,5 @@ export const accountingNewHashRedirects: Record<string, string> = {
   settings: getAccountingNewModuleRoute("settings"),
   exports: getAccountingNewModuleRoute("exports"),
   audit: getAccountingNewModuleRoute("audit"),
+  "ai-assistant": getAccountingNewModuleRoute("ai-assistant"),
 };

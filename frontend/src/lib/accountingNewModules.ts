@@ -736,6 +736,32 @@ export const accountingNewModuleRegistry: AccountingNewModuleRegistryEntry[] = [
     relatedModuleIds: ["dashboard"],
     gridModuleId: "audit",
   }),
+  createRegistryEntry(
+    {
+      id: "ai-assistant",
+      route: getAccountingNewModuleRoute("ai-assistant"),
+      labelKey: "moduleRegistry.aiAssistant.label",
+      descriptionKey: "moduleRegistry.aiAssistant.description",
+      entityType: "ai_assistant",
+      readAvailability: "read-only",
+      writeEnabled: true,
+      featureStatus: "implemented-write",
+      rag: {
+        entityType: "ai_assistant",
+        labelKey: "rag.entityTypes.ai_assistant",
+        searchableFields: [
+          { field: "message", labelKey: "rag.searchableFields.message", weight: 3 },
+        ],
+      },
+      voice: {
+        labelKey: "voice.labels.aiAssistant",
+        aliasKeys: ["voice.aliases.aiAssistant"],
+      },
+      relatedModuleIds: ["documents", "dashboard", "settings"],
+      gridModuleId: "ai-assistant",
+    },
+    { canCreate: true, canUpdate: true },
+  ),
 ];
 
 export const accountingNewGridModuleIds: AccountingNewModuleId[] = [
@@ -752,6 +778,7 @@ export const accountingNewGridModuleIds: AccountingNewModuleId[] = [
   "settings",
   "exports",
   "audit",
+  "ai-assistant",
 ];
 
 export function mapRegistryEntryToModuleDefinition(entry: AccountingNewModuleRegistryEntry, title: string, description: string): AccountingNewModuleDefinition {

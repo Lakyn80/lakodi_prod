@@ -43,8 +43,13 @@ class HostAiAuthConfig:
 def require_admin_user_id(admin_session: str | None = Cookie(None)) -> int:
     """Admin cookie gate that also returns the authenticated user id."""
     user_id, role = decode_session(admin_session)
-    if user_id is None or role != "admin":
+    if user_id is None:
         raise HTTPException(status_code=401, detail="Přihlaste se do adminu")
+    if role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Účetnictví AI vyžaduje oprávnění administrátora.",
+        )
     return user_id
 
 
@@ -55,7 +60,12 @@ def get_host_ai_auth_config() -> HostAiAuthConfig:
         (os.getenv("AI_AUTH_TENANT_ID") or "").strip()
         or (os.getenv("AI_ACCOUNTING_EXPECTED_TENANT_ID") or "").strip()
     )
-    if not signing_secret or not key_id or not tenant_id:
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI chat tenant/company context is not configured.",
+        )
+    if not signing_secret or not key_id:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI chat authentication is not configured.",

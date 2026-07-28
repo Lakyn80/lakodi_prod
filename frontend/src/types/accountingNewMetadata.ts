@@ -24,7 +24,8 @@ export type AccountingNewModuleId =
   | "recurring-detail"
   | "exports"
   | "settings"
-  | "audit";
+  | "audit"
+  | "ai-assistant";
 
 export type AccountingNewEntityType =
   | "dashboard"
@@ -49,7 +50,8 @@ export type AccountingNewEntityType =
   | "recurringGeneration"
   | "recurring_generation"
   | "export"
-  | "settings";
+  | "settings"
+  | "ai_assistant";
 
 export type AccountingNewFeatureStatus = "implemented-read-only" | "implemented-write" | "deferred" | "future";
 

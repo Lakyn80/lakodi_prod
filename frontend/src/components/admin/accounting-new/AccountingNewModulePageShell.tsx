@@ -30,6 +30,7 @@ import { AccountingNewReminderEmailsPanel } from "@/components/admin/accounting-
 import { AccountingNewSettingsPanel } from "@/components/admin/accounting-new/AccountingNewSettingsPanel";
 import { AccountingNewExportsPanel } from "@/components/admin/accounting-new/AccountingNewExportsPanel";
 import { AccountingNewAuditPanel } from "@/components/admin/accounting-new/AccountingNewAuditPanel";
+import { AccountingNewAiChatPanel } from "@/components/admin/accounting-new/AccountingNewAiChatPanel";
 import {
   getAccountingNewTranslationValue,
   translateAccountingNewApiError,
@@ -66,6 +67,44 @@ export function AccountingNewModulePageShell({ moduleId }: { moduleId: Accountin
   const labels = useMemo(() => getModuleLabels(t, moduleId), [moduleId, t]);
 
   useEffect(() => {
+    if (moduleId === "ai-assistant") {
+      setState({
+        status: "ready",
+        result: {
+          dashboard: {
+            invoices: [],
+            expenses: [],
+            todos: [],
+            bankTransactions: [],
+            auditEvents: [],
+            recurringTemplates: [],
+            attachments: [],
+            subjects: [],
+            suppliers: [],
+            metrics: {
+              documentsLoaded: 0,
+              documentsWithRemainingBalance: 0,
+              expensesLoaded: 0,
+              expensesWithRemainingBalance: 0,
+              todosLoaded: 0,
+              openTodos: 0,
+              overdueTodos: 0,
+              bankTransactionsLoaded: 0,
+              recurringTemplatesLoaded: 0,
+              attachmentsLoaded: 0,
+              auditEventsLoaded: 0,
+              subjectsLoaded: 0,
+              suppliersLoaded: 0,
+            },
+            lastUpdatedAt: null,
+          },
+          partialErrors: [],
+          authRequired: false,
+        },
+      });
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadDashboard() {
@@ -93,7 +132,7 @@ export function AccountingNewModulePageShell({ moduleId }: { moduleId: Accountin
 
     void loadDashboard();
     return () => controller.abort();
-  }, [t.errors.dashboardTitle, dashboardReloadKey]);
+  }, [moduleId, t.errors.dashboardTitle, dashboardReloadKey]);
 
   const result = state.status === "ready" || state.status === "auth" ? state.result : null;
   const dashboard: AccountingNewDashboardData | null = result?.dashboard ?? null;
@@ -225,6 +264,8 @@ export function AccountingNewModulePageShell({ moduleId }: { moduleId: Accountin
         return <AccountingNewExportsPanel defaultExpanded />;
       case "audit":
         return <AccountingNewAuditPanel defaultExpanded />;
+      case "ai-assistant":
+        return <AccountingNewAiChatPanel />;
       default:
         return null;
     }
