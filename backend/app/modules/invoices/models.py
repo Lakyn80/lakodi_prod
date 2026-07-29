@@ -64,6 +64,13 @@ class Invoice(Base):
     bank_iban = Column(String(34), nullable=False)
 
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    # Derived search sync / change-feed watermark (AI retrieval index). Not accounting SoT.
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     items = relationship(
         "InvoiceItem",

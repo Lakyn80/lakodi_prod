@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
@@ -238,3 +238,45 @@ class InternalExecutionStatusResponse(BaseModel):
     invoice: InternalOutgoingDocumentResponse | None = None
     error_code: str | None = None
     email_delivery: dict[str, object] | None = None
+
+
+class InternalSyncChangeItemResponse(BaseModel):
+    operation: str
+    entity_type: str
+    external_id: str
+    source_version: str
+    updated_at: datetime
+    deleted_at: datetime | None = None
+    content_hash: str
+    display_name: str | None = None
+    document_number: str | None = None
+    variable_symbol: str | None = None
+    customer_external_id: str | None = None
+    customer_name: str | None = None
+    customer_ico: str | None = None
+    customer_dic: str | None = None
+    customer_email: str | None = None
+    document_status: str | None = None
+    payment_status: str | None = None
+    currency: str | None = None
+    total_amount: Decimal | None = None
+    issue_date: date | None = None
+    due_date: date | None = None
+    taxable_supply_date: date | None = None
+
+    @field_serializer("total_amount", when_used="json")
+    def serialize_total_amount(self, value: Decimal | None) -> float | None:
+        return None if value is None else float(value)
+
+
+class InternalSyncChangePageResponse(BaseModel):
+    items: list[InternalSyncChangeItemResponse]
+    next_cursor: str | None = None
+    has_more: bool = False
+
+
+class InternalSyncIdPageResponse(BaseModel):
+    external_ids: list[str]
+    content_hashes: dict[str, str]
+    next_cursor: str | None = None
+    has_more: bool = False

@@ -36,6 +36,15 @@ from backend.app.modules.ai_accounting.schemas import (
     InternalOutgoingDocumentListItemResponse,
     InternalOutgoingDocumentListResponse,
     InternalOutgoingDocumentsSummaryResponse,
+    InternalSyncChangeItemResponse,
+    InternalSyncChangePageResponse,
+    InternalSyncIdPageResponse,
+)
+from backend.app.modules.ai_accounting.sync_feed import (
+    list_customer_changes,
+    list_customer_ids,
+    list_document_changes,
+    list_document_ids,
 )
 from backend.app.modules.invoices.models import AiAccountingExecution
 from backend.app.modules.invoices.service import (
@@ -257,6 +266,107 @@ def internal_search_customers(
         ],
         limit=limit,
         total_count=len(subjects),
+    )
+
+
+def _sync_change_response(item) -> InternalSyncChangeItemResponse:
+    return InternalSyncChangeItemResponse(
+        operation=item.operation,
+        entity_type=item.entity_type,
+        external_id=item.external_id,
+        source_version=item.source_version,
+        updated_at=item.updated_at,
+        deleted_at=item.deleted_at,
+        content_hash=item.content_hash,
+        display_name=item.display_name,
+        document_number=item.document_number,
+        variable_symbol=item.variable_symbol,
+        customer_external_id=item.customer_external_id,
+        customer_name=item.customer_name,
+        customer_ico=item.customer_ico,
+        customer_dic=item.customer_dic,
+        customer_email=item.customer_email,
+        document_status=item.document_status,
+        payment_status=item.payment_status,
+        currency=item.currency,
+        total_amount=item.total_amount,
+        issue_date=item.issue_date,
+        due_date=item.due_date,
+        taxable_supply_date=item.taxable_supply_date,
+    )
+
+
+@router.get("/documents/changes", response_model=InternalSyncChangePageResponse)
+def internal_list_document_changes(
+    cursor: str | None = Query(default=None, max_length=512),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.read")),
+):
+    try:
+        page = list_document_changes(db, cursor=cursor, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return InternalSyncChangePageResponse(
+        items=[_sync_change_response(item) for item in page.items],
+        next_cursor=page.next_cursor,
+        has_more=page.has_more,
+    )
+
+
+@router.get("/customers/changes", response_model=InternalSyncChangePageResponse)
+def internal_list_customer_changes(
+    cursor: str | None = Query(default=None, max_length=512),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.customers.read")),
+):
+    try:
+        page = list_customer_changes(db, cursor=cursor, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return InternalSyncChangePageResponse(
+        items=[_sync_change_response(item) for item in page.items],
+        next_cursor=page.next_cursor,
+        has_more=page.has_more,
+    )
+
+
+@router.get("/documents/ids", response_model=InternalSyncIdPageResponse)
+def internal_list_document_ids(
+    cursor: str | None = Query(default=None, max_length=512),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.invoices.read")),
+):
+    try:
+        page = list_document_ids(db, cursor=cursor, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return InternalSyncIdPageResponse(
+        external_ids=list(page.external_ids),
+        content_hashes=page.content_hashes,
+        next_cursor=page.next_cursor,
+        has_more=page.has_more,
+    )
+
+
+@router.get("/customers/ids", response_model=InternalSyncIdPageResponse)
+def internal_list_customer_ids(
+    cursor: str | None = Query(default=None, max_length=512),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _: ServiceTokenClaims = Depends(require_ai_accounting_scope("lakodi.customers.read")),
+):
+    try:
+        page = list_customer_ids(db, cursor=cursor, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return InternalSyncIdPageResponse(
+        external_ids=list(page.external_ids),
+        content_hashes=page.content_hashes,
+        next_cursor=page.next_cursor,
+        has_more=page.has_more,
     )
 
 

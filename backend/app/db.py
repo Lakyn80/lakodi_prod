@@ -63,10 +63,26 @@ def _ensure_invoice_columns():
             "bank_code": "ALTER TABLE invoices ADD COLUMN bank_code VARCHAR(16) NOT NULL DEFAULT '0800'",
             "bank_iban": "ALTER TABLE invoices ADD COLUMN bank_iban VARCHAR(34) NOT NULL DEFAULT 'CZ9108000000005997826359'",
             "subject_id": "ALTER TABLE invoices ADD COLUMN subject_id INTEGER",
+            "updated_at": "ALTER TABLE invoices ADD COLUMN updated_at DATETIME",
         }
         for col, sql in add_map.items():
             if col not in columns:
                 conn.execute(text(sql))
+
+        # Backfill sync watermark from created_at (or now) for AI change-feed.
+        conn.execute(
+            text(
+                "UPDATE invoices "
+                "SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP) "
+                "WHERE updated_at IS NULL"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_invoices_updated_at_id "
+                "ON invoices (updated_at, id)"
+            )
+        )
 
         conn.execute(
             text(
