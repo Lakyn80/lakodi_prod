@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any
@@ -136,35 +137,82 @@ def attach_trace_context(carrier: Mapping[str, Any] | None) -> Iterator[None]:
 
 @contextmanager
 def business_span(name: str, **attributes: Any) -> Iterator[None]:
+    """OpenTelemetry business span with safe no-op fallback.
+
+    Tracing setup failures are handled before the managed body starts.
+    Exceptions raised inside the ``with`` block are never caught here, so
+    callers (including FastAPI ``HTTPException``) propagate unchanged.
+    Exactly one ``yield`` runs per invocation.
+    """
+
+    attrs = dict(attributes)
+    try:
+        from backend.app.modules.ai_accounting.correlation import (
+            get_correlation_context,
+        )
+
+        ctx = get_correlation_context()
+        if ctx is not None:
+            attrs.setdefault("correlation_id", ctx.correlation_id)
+            if ctx.trace_id:
+                attrs.setdefault("trace_id", ctx.trace_id)
+    except Exception:
+        pass
+
+    otel_cm: Any | None
     try:
         from opentelemetry import trace  # type: ignore
 
-        try:
-            from backend.app.modules.ai_accounting.correlation import (
-                get_correlation_context,
-            )
-
-            ctx = get_correlation_context()
-            if ctx is not None:
-                attributes.setdefault("correlation_id", ctx.correlation_id)
-                if ctx.trace_id:
-                    attributes.setdefault("trace_id", ctx.trace_id)
-        except Exception:
-            pass
-
         tracer = trace.get_tracer("lakodi.ai_accounting")
-        with tracer.start_as_current_span(name) as span:
-            for key, value in attributes.items():
-                if value is None:
-                    continue
-                span.set_attribute(key, value)
-            yield
+        otel_cm = tracer.start_as_current_span(name)
+    except Exception:
+        otel_cm = None
+
+    if otel_cm is None:
+        log_event(
+            "observability.span.local",
+            f"local span {name}",
+            span_name=name,
+            **{k: v for k, v in attrs.items() if v is not None},
+        )
+        yield
         return
+
+    try:
+        span = otel_cm.__enter__()
     except Exception:
         log_event(
             "observability.span.local",
             f"local span {name}",
             span_name=name,
-            **{k: v for k, v in attributes.items() if v is not None},
+            **{k: v for k, v in attrs.items() if v is not None},
         )
         yield
+        return
+
+    try:
+        if span is not None:
+            for key, value in attrs.items():
+                if value is None:
+                    continue
+                try:
+                    span.set_attribute(key, value)
+                except Exception:
+                    logger.debug(
+                        "business_span attribute set failed name=%s key=%s",
+                        name,
+                        key,
+                        exc_info=True,
+                    )
+        yield
+    except BaseException:
+        try:
+            otel_cm.__exit__(*sys.exc_info())
+        except Exception:
+            logger.debug("business_span exit failed name=%s", name, exc_info=True)
+        raise
+    else:
+        try:
+            otel_cm.__exit__(None, None, None)
+        except Exception:
+            logger.debug("business_span exit failed name=%s", name, exc_info=True)
