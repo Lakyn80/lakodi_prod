@@ -35,6 +35,15 @@ from backend.app.modules.invoices.email_service import (
     deliver_invoice_reminder_email,
 )
 from backend.app.modules.invoices.exporters import build_invoice_export
+from backend.app.modules.invoices.search_normalize import (
+    is_hybrid_search_enabled,
+    normalize_customer_name_search_key,
+    normalize_dic_search_key,
+    normalize_email_search_key,
+    normalize_ico_search_key,
+    normalize_invoice_number_search_key,
+    normalize_variable_symbol_search_key,
+)
 from backend.app.modules.invoices.models import (
     RELATION_TYPE_CORRECTION_FOR_INVOICE,
     RELATION_TYPE_FINAL_INVOICE_FOR_PROFORMA,
@@ -568,14 +577,34 @@ def list_invoice_subjects(db: Session, search: str | None = None) -> list[Invoic
         cleaned = search.strip()
         if cleaned:
             pattern = f"%{cleaned}%"
-            query = query.filter(
-                or_(
-                    InvoiceSubject.name.ilike(pattern),
-                    InvoiceSubject.email.ilike(pattern),
-                    InvoiceSubject.ico.ilike(pattern),
-                    InvoiceSubject.dic.ilike(pattern),
-                )
+            legacy_filter = or_(
+                InvoiceSubject.name.ilike(pattern),
+                InvoiceSubject.email.ilike(pattern),
+                InvoiceSubject.ico.ilike(pattern),
+                InvoiceSubject.dic.ilike(pattern),
             )
+            if is_hybrid_search_enabled():
+                name_key = normalize_customer_name_search_key(cleaned)
+                ico_key = normalize_ico_search_key(cleaned)
+                dic_key = normalize_dic_search_key(cleaned)
+                email_key = normalize_email_search_key(cleaned)
+                exact_clauses = [
+                    InvoiceSubject.name == cleaned,
+                    InvoiceSubject.email == cleaned,
+                    InvoiceSubject.ico == cleaned,
+                    InvoiceSubject.dic == cleaned,
+                ]
+                if name_key:
+                    exact_clauses.append(InvoiceSubject.name_search_norm == name_key)
+                if ico_key:
+                    exact_clauses.append(InvoiceSubject.ico_norm == ico_key)
+                if dic_key:
+                    exact_clauses.append(InvoiceSubject.dic_norm == dic_key)
+                if email_key:
+                    exact_clauses.append(InvoiceSubject.email_norm == email_key)
+                query = query.filter(or_(*exact_clauses, legacy_filter))
+            else:
+                query = query.filter(legacy_filter)
     return query.order_by(InvoiceSubject.id.desc()).all()
 
 
@@ -4249,30 +4278,62 @@ def _load_filtered_outgoing_invoices(
     invoice_number = _normalize_optional_search_text(filters.invoice_number)
     status_filter = _normalize_optional_search_text(filters.status)
     currency_filter = _normalize_optional_search_text(filters.currency)
+    hybrid = is_hybrid_search_enabled()
 
     if query_text:
         pattern = f"%{query_text}%"
-        query = query.filter(
-            or_(
-                Invoice.invoice_number.ilike(pattern),
-                Invoice.variable_symbol.ilike(pattern),
-                Invoice.customer_name.ilike(pattern),
-                Invoice.customer_ico.ilike(pattern),
-                Invoice.customer_dic.ilike(pattern),
-            )
+        legacy_filter = or_(
+            Invoice.invoice_number.ilike(pattern),
+            Invoice.variable_symbol.ilike(pattern),
+            Invoice.customer_name.ilike(pattern),
+            Invoice.customer_ico.ilike(pattern),
+            Invoice.customer_dic.ilike(pattern),
         )
+        if hybrid:
+            query = query.filter(
+                or_(
+                    *_outgoing_exact_and_norm_clauses(query_text),
+                    legacy_filter,
+                )
+            )
+        else:
+            query = query.filter(legacy_filter)
     if customer_text:
         pattern = f"%{customer_text}%"
-        query = query.filter(
-            or_(
-                Invoice.customer_name.ilike(pattern),
-                Invoice.customer_ico.ilike(pattern),
-                Invoice.customer_dic.ilike(pattern),
-            )
+        legacy_customer = or_(
+            Invoice.customer_name.ilike(pattern),
+            Invoice.customer_ico.ilike(pattern),
+            Invoice.customer_dic.ilike(pattern),
         )
+        if hybrid:
+            name_key = normalize_customer_name_search_key(customer_text)
+            ico_key = normalize_ico_search_key(customer_text)
+            dic_key = normalize_dic_search_key(customer_text)
+            exact_clauses = [
+                Invoice.customer_name == customer_text,
+                Invoice.customer_ico == customer_text,
+                Invoice.customer_dic == customer_text,
+            ]
+            if name_key:
+                exact_clauses.append(Invoice.customer_name_search_norm == name_key)
+            if ico_key:
+                exact_clauses.append(Invoice.customer_ico_norm == ico_key)
+            if dic_key:
+                exact_clauses.append(Invoice.customer_dic_norm == dic_key)
+            query = query.filter(or_(*exact_clauses, legacy_customer))
+        else:
+            query = query.filter(legacy_customer)
     if invoice_number:
         pattern = f"%{invoice_number}%"
-        query = query.filter(Invoice.invoice_number.ilike(pattern))
+        legacy_number = Invoice.invoice_number.ilike(pattern)
+        if hybrid:
+            number_key = normalize_invoice_number_search_key(invoice_number)
+            number_clauses = [Invoice.invoice_number == invoice_number, legacy_number]
+            if number_key:
+                number_clauses.insert(1, Invoice.invoice_number_norm == number_key)
+            query = query.filter(or_(*number_clauses))
+        else:
+            query = query.filter(legacy_number)
     if status_filter:
         query = query.filter(Invoice.status == status_filter)
     if currency_filter:
@@ -4305,6 +4366,34 @@ def _load_filtered_outgoing_invoices(
             )
         ]
     return invoices
+
+
+def _outgoing_exact_and_norm_clauses(query_text: str) -> list:
+    """Exact canonical + exact normalized match clauses for free-text invoice search."""
+
+    clauses = [
+        Invoice.invoice_number == query_text,
+        Invoice.variable_symbol == query_text,
+        Invoice.customer_name == query_text,
+        Invoice.customer_ico == query_text,
+        Invoice.customer_dic == query_text,
+    ]
+    number_key = normalize_invoice_number_search_key(query_text)
+    vs_key = normalize_variable_symbol_search_key(query_text)
+    name_key = normalize_customer_name_search_key(query_text)
+    ico_key = normalize_ico_search_key(query_text)
+    dic_key = normalize_dic_search_key(query_text)
+    if number_key:
+        clauses.append(Invoice.invoice_number_norm == number_key)
+    if vs_key:
+        clauses.append(Invoice.variable_symbol_norm == vs_key)
+    if name_key:
+        clauses.append(Invoice.customer_name_search_norm == name_key)
+    if ico_key:
+        clauses.append(Invoice.customer_ico_norm == ico_key)
+    if dic_key:
+        clauses.append(Invoice.customer_dic_norm == dic_key)
+    return clauses
 
 
 def _invoice_has_payment_in_interval(

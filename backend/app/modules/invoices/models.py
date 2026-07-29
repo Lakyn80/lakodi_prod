@@ -35,6 +35,12 @@ class Invoice(Base):
     customer_address = Column(String(256), nullable=True)
     customer_ico = Column(String(32), nullable=True)
     customer_dic = Column(String(32), nullable=True)
+    # Phase 1 hybrid search keys (nullable for upgrade; display columns stay source of truth)
+    customer_name_search_norm = Column(String(256), nullable=True, index=True)
+    invoice_number_norm = Column(String(64), nullable=True, index=True)
+    variable_symbol_norm = Column(String(9), nullable=True, index=True)
+    customer_ico_norm = Column(String(32), nullable=True, index=True)
+    customer_dic_norm = Column(String(32), nullable=True, index=True)
     subject_id = Column(Integer, ForeignKey("invoice_subjects.id", ondelete="SET NULL"), nullable=True, index=True)
 
     note = Column(Text, nullable=True)
@@ -168,6 +174,11 @@ class InvoiceSubject(Base):
     address = Column(String(256), nullable=False)
     ico = Column(String(32), nullable=True, index=True)
     dic = Column(String(32), nullable=True, index=True)
+    # Phase 1 hybrid search keys
+    name_search_norm = Column(String(256), nullable=True, index=True)
+    ico_norm = Column(String(32), nullable=True, index=True)
+    dic_norm = Column(String(32), nullable=True, index=True)
+    email_norm = Column(String(256), nullable=True, index=True)
     data_box = Column(String(64), nullable=True)
     country = Column(String(128), nullable=True)
     note = Column(Text, nullable=True)
@@ -522,3 +533,23 @@ class AiAccountingExecution(Base):
     error_code = Column(String(80), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+from sqlalchemy import event
+
+from backend.app.modules.invoices.search_normalize import (
+    apply_invoice_search_norms,
+    apply_subject_search_norms,
+)
+
+
+@event.listens_for(Invoice, "before_insert")
+@event.listens_for(Invoice, "before_update")
+def _populate_invoice_search_norms(_mapper, _connection, target: Invoice) -> None:
+    apply_invoice_search_norms(target)
+
+
+@event.listens_for(InvoiceSubject, "before_insert")
+@event.listens_for(InvoiceSubject, "before_update")
+def _populate_subject_search_norms(_mapper, _connection, target: InvoiceSubject) -> None:
+    apply_subject_search_norms(target)
