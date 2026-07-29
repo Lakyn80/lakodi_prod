@@ -1,5 +1,73 @@
 # Project Progress — Lakodi
 
+## 2026-07-29 — Remove Phase 1–3 hybrid search usage (ILIKE restore)
+
+- **Status:** implemented locally (not committed)
+- **Goal:** Remove Lakodi hybrid-search *usage* (exact/norm filters, fuzzy RapidFuzz,
+  Phase 3 `retrieval_mode` / match metadata). Keep unused SQLite `*_norm` ORM columns
+  physically present but inactive (no DROP, no ORM hooks, no init_db ensure/backfill).
+- **Kept:** `business_span` HTTPException fix (already committed at `1647b60`).
+- **Search behavior:** `list_invoice_subjects` and outgoing invoice text filters restored
+  to legacy ILIKE-only (pre-Phase-1). Structured filters (status/dates/currency) unchanged.
+- **Rearchitecture:** Retrieval / fuzzy / planner work moves to standalone
+  `AI_Agent_Accounting` (see that repo’s `HYBRID_SEMANTIC_SEARCH_IMPLEMENTATION_PLAN.md`).
+- **Deleted:** `search_normalize.py`, `search_fuzzy.py`, related unit/acceptance tests.
+- **Also removed:** `HYBRID_*` env flags, RapidFuzz from Dockerfiles/requirements-test,
+  Phase 3 additive API params/fields, `init_db` norm ensure/backfill functions.
+- **Not committed / not pushed.**
+
+## 2026-07-29 — Fix business_span HTTPException propagation
+
+- **Status:** implemented locally (not committed in this task)
+- **Root cause:** `business_span()` wrapped OTEL setup **and** the managed `yield`
+  in one broad `try/except Exception`. When the managed body raised
+  `HTTPException` (409/422), the exception was thrown into the generator at
+  `yield`, caught by that handler, and a **second fallback `yield`** ran —
+  violating the context-manager protocol (`RuntimeError: generator didn't stop
+  after throw()`). Application 409/422 behavior was correct; tracing swallowed it.
+- **Exact fix:** separate tracing setup from body propagation; exactly one
+  `yield` per invocation; setup/enter failures fall back to local `log_event`
+  then yield once; attribute-set failures are logged and ignored; body
+  exceptions are re-raised after OTEL `__exit__` and never converted.
+- **Files changed:**
+  - `backend/app/modules/ai_accounting/tracing.py` (`business_span` only)
+  - `backend/tests/test_business_span.py` (new focused unit tests)
+- **Tests:**
+  - focused `test_business_span.py` + two previously failing API tests → **11 passed**
+  - full `test_ai_accounting_internal.py` → **25 passed**
+  - Phase 1–3 retrieval + business_span → **58 passed**
+  - broader `backend/tests` → **300 passed, 2 skipped** (302 collected)
+- **Unchanged:** invoice validation, idempotency rules, draft status checks,
+  Phase 0–3 hybrid search, Approve, BFF auth, no commit/push
+
+## 2026-07-21 — Hybrid search Phase 3 (additive retrieval_mode / match metadata)
+
+- **Status:** implemented locally (not committed in this task)
+- **AI-side orchestration:** full-utterance planner lives in AI `app/retrieval/`
+- **Lakodi additive API:**
+  - optional `retrieval_mode` query param on `/internal/ai/v1/accounting/invoices` and
+    `/invoices/search` (accepted; ranking remains server-side cascade)
+  - optional list-item fields `match_tier` / `match_score` / `match_reasons` (nullable;
+    wire population may remain null in Phase 3 while schemas stay backward compatible)
+- **Tests:** `backend/tests/test_ai_accounting_phase3_retrieval.py` (new)
+- **Not implemented:** FTS5, embeddings, Qdrant, pgvector, RAG, speech recognition
+- **Approve / BFF auth:** unchanged
+
+## 2026-07-29 — Hybrid search Phase 2 (fuzzy customer names)
+
+- **Status:** implemented locally (not committed in this task)
+- **Mechanism:** RapidFuzz `WRatio` (`rapidfuzz==3.13.0`)
+- **Eligible fields only:** `InvoiceSubject.name_search_norm`, `Invoice.customer_name_search_norm`
+- **Thresholds:** strong ≥92, possible 80–91, weak 70–79, reject <70; ambiguity gap 5.0
+- **Candidate cap:** `FUZZY_CANDIDATE_CAP = 500` (prefix-pruned pool, then broaden)
+- **Flags:** `HYBRID_SEARCH_ENABLED` + `HYBRID_FUZZY_ENABLED` (both default `false`);
+  fuzzy requires both true
+- **Precedence:** exact raw/norm identifiers & names → bounded fuzzy names → legacy ILIKE
+- **Files:** `search_fuzzy.py` (new), `service.py`, Dockerfiles, `requirements-test.txt`,
+  `.env.example`, `tests/test_invoice_search_fuzzy.py` (new)
+- **Tests:** Phase1+Phase2 search → 46 passed; AI-internal still 2 pre-existing business_span fails
+- **Not implemented:** FTS5, embeddings, Qdrant, pgvector, RAG, Phase 3 relevance API fields
+
 ## 2026-07-29 — Hybrid search Phase 1 (exact / normalized columns)
 
 - **Status:** implemented locally (not committed in this task)

@@ -534,22 +534,3 @@ class AiAccountingExecution(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
-
-from sqlalchemy import event
-
-from backend.app.modules.invoices.search_normalize import (
-    apply_invoice_search_norms,
-    apply_subject_search_norms,
-)
-
-
-@event.listens_for(Invoice, "before_insert")
-@event.listens_for(Invoice, "before_update")
-def _populate_invoice_search_norms(_mapper, _connection, target: Invoice) -> None:
-    apply_invoice_search_norms(target)
-
-
-@event.listens_for(InvoiceSubject, "before_insert")
-@event.listens_for(InvoiceSubject, "before_update")
-def _populate_subject_search_norms(_mapper, _connection, target: InvoiceSubject) -> None:
-    apply_subject_search_norms(target)
