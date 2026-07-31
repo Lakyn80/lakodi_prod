@@ -85,18 +85,20 @@ describe("AccountingNewAiChatPanel", () => {
   });
 
   it("sends a message, renders the AI response, and continues the conversation", async () => {
+    let chatCall = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/admin/ai/health")) {
         return jsonResponse({ status: "ok", app_name: "ai", environment: "test", version: "0" });
       }
       if (url.endsWith("/api/admin/ai/chat/messages") && init?.method === "POST") {
+        chatCall += 1;
         const body = JSON.parse(String(init.body)) as { text: string; conversation_id?: string };
         return jsonResponse({
           conversation_id: CONVERSATION_ID,
-          user_message_id: "user-1",
-          assistant_message_id: "assistant-1",
-          agent_run_id: "run-1",
+          user_message_id: `user-${chatCall}`,
+          assistant_message_id: `assistant-${chatCall}`,
+          agent_run_id: `run-${chatCall}`,
           status: "completed",
           final_text: body.conversation_id
             ? `Continued reply for ${body.text}`

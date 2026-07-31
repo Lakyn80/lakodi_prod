@@ -77,6 +77,24 @@ function mapApiError(error: unknown, fallbackMessage: string, resource: string):
   };
 }
 
+function allocateUniqueMessageId(preferredId: string | null | undefined, existingIds: Set<string>, prefix: string): string {
+  const trimmed = preferredId?.trim() ?? "";
+  if (trimmed && !existingIds.has(trimmed)) {
+    return trimmed;
+  }
+
+  let suffix = 0;
+  while (true) {
+    const candidate = trimmed
+      ? `${trimmed}__${prefix}-${suffix}`
+      : `${prefix}-${Date.now()}-${suffix}`;
+    if (!existingIds.has(candidate)) {
+      return candidate;
+    }
+    suffix += 1;
+  }
+}
+
 export function AccountingNewAiChatPanel() {
   const { language } = useLanguage();
   const t = translations[language].accountingNew.aiChat;
@@ -154,9 +172,20 @@ export function AccountingNewAiChatPanel() {
             };
           });
 
+        const seenIds = new Set<string>();
+        const dedupedMessages = uiMessages.map((message, index) => {
+          if (!seenIds.has(message.id)) {
+            seenIds.add(message.id);
+            return message;
+          }
+          const uniqueId = allocateUniqueMessageId(message.id, seenIds, `history-${index}`);
+          seenIds.add(uniqueId);
+          return { ...message, id: uniqueId };
+        });
+
         setConversationId(storedId);
-        setMessages(uiMessages);
-        await loadActionsForMessages(uiMessages, controller.signal);
+        setMessages(dedupedMessages);
+        await loadActionsForMessages(dedupedMessages, controller.signal);
       } catch (historyError) {
         if (cancelled) {
           return;
@@ -258,15 +287,28 @@ export function AccountingNewAiChatPanel() {
 
       setMessages((current) => {
         const withoutOptimistic = current.filter((message) => message.id !== optimisticId);
+        const existingIds = new Set(withoutOptimistic.map((message) => message.id));
+        const userMessageId = allocateUniqueMessageId(
+          response.user_message_id,
+          existingIds,
+          "user",
+        );
+        existingIds.add(userMessageId);
+        const assistantMessageId = allocateUniqueMessageId(
+          response.assistant_message_id,
+          existingIds,
+          "assistant",
+        );
+
         return [
           ...withoutOptimistic,
           {
-            id: response.user_message_id || optimisticId,
+            id: userMessageId,
             role: "user",
             content: text,
           },
           {
-            id: response.assistant_message_id || `assistant-${Date.now()}`,
+            id: assistantMessageId,
             role: "assistant",
             content: response.final_text,
             actionIds,
