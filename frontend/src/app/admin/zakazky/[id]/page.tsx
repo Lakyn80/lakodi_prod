@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { zakazkyUrl, uploadsUrl, apiFetchOptions } from "@/lib/api";
+import { downloadZakazkovyListPdfForZakazka } from "@/lib/zakazkovyListPdf";
 import { Button } from "@/components/ui/button";
 
 interface Zakazka {
@@ -61,6 +62,7 @@ export default function ZakazkaDetailPage() {
   const [preferredTime, setPreferredTime] = useState("");
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -164,6 +166,20 @@ export default function ZakazkaDetailPage() {
       setMessage("Chyba připojení.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDownloadZakazkovyList = async () => {
+    if (!id) return;
+    setDownloadingPdf(true);
+    setMessage("");
+    try {
+      await downloadZakazkovyListPdfForZakazka(id);
+      setMessage("Zakázkový list PDF byl stažen.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "PDF se nepodařilo stáhnout.");
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -309,6 +325,12 @@ export default function ZakazkaDetailPage() {
           </Button>
           <Button variant="secondary" onClick={handleSendEmail} disabled={sending || !zakazka.email}>
             {sending ? "Odesílám…" : "Odeslat email zákazníkovi"}
+          </Button>
+          <Button variant="outline" onClick={() => void handleDownloadZakazkovyList()} disabled={downloadingPdf}>
+            {downloadingPdf ? "Stahuji PDF…" : "Stáhnout zakázkový list"}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/zakazkovy-list">Otevřít dokument</Link>
           </Button>
           {whatsappUrl && (
             <a href={whatsappUrl} target="_blank" rel="noreferrer">

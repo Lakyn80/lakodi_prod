@@ -129,3 +129,50 @@ def test_booking_owner_notification_defaults_to_lakodi_email(monkeypatch):
     assert sent is True
     assert captured["to_email"] == "lakodi@seznam.cz"
     assert "Nová poptávka #123" in str(captured["subject"])
+
+
+def _login_admin() -> None:
+    login_resp = client.post(
+        "/api/admin/login",
+        json={"email": "lakodi@seznam.cz", "password": "admin123"},
+    )
+    assert login_resp.status_code == 200
+
+
+def test_download_blank_zakazkovy_list_pdf():
+    _login_admin()
+    response = client.get("/api/zakazky/zakazkovy-list/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.content[:4] == b"%PDF"
+    assert "zakazkovy-list.pdf" in response.headers.get("content-disposition", "")
+
+
+def test_download_zakazkovy_list_pdf_for_zakazka_prefills_customer():
+    create = client.post(
+        "/api/zakazky",
+        data={
+            "category": "motor",
+            "name": "Jan Novák",
+            "email": "jan@example.com",
+            "phone": "+420111222333",
+            "description": "Nefunguje startér",
+            "answers": '{"značka": "Škoda", "model": "Octavia", "RZ": "1AB2345"}',
+            "callback_requested": "false",
+        },
+    )
+    assert create.status_code == 200
+    zakazka_id = create.json()["id"]
+
+    _login_admin()
+    response = client.get(f"/api/zakazky/{zakazka_id}/zakazkovy-list/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.content[:4] == b"%PDF"
+    assert f"zakazkovy-list-{zakazka_id}.pdf" in response.headers.get("content-disposition", "")
+
+
+def test_download_zakazkovy_list_pdf_requires_admin():
+    anonymous = TestClient(app)
+    response = anonymous.get("/api/zakazky/zakazkovy-list/pdf")
+    assert response.status_code in {401, 403}

@@ -253,6 +253,7 @@ export default function AdminLayoutClient({
 
   const navItems = [
     { href: "/admin/", label: "Zakázky" },
+    { href: "/admin/zakazkovy-list", label: "Zakázkový list" },
     { href: accountingRoute, label: accountingLabel },
     { href: "/admin/kalendar", label: "Kalendář" },
   ];
@@ -272,6 +273,7 @@ export default function AdminLayoutClient({
             const active =
               pathname === item.href ||
               (item.href === "/admin/" && pathname === "/admin") ||
+              (item.href === "/admin/zakazkovy-list" && pathname.startsWith("/admin/zakazkovy-list")) ||
               (item.href === getAccountingNewModuleRoute("documents") &&
                 pathname.startsWith("/admin/ucetnictvi-new"));
             return (

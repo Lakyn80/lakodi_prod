@@ -9,6 +9,7 @@ from urllib.parse import quote
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from PIL import Image, UnidentifiedImageError
 import pillow_heif
 from pydantic import BaseModel
@@ -22,6 +23,7 @@ from backend.app.modules.admin.email_service import (
 )
 from backend.app.modules.admin.router import require_admin
 from backend.app.modules.zakazky.models import Zakazka
+from backend.app.modules.zakazky.pdf_service import ZakazkovyListPdfError, build_zakazkovy_list_pdf
 from backend.app.modules.zakazky.schemas import ZakazkaResponse
 
 pillow_heif.register_heif_opener()
@@ -270,6 +272,37 @@ def zakazky_stats(db: Session = Depends(get_db), _: None = Depends(require_admin
         "yearly_revenue": yearly,
         "completed_count": completed_count,
     }
+
+
+@router.get("/zakazkovy-list/pdf")
+def download_blank_zakazkovy_list(_: None = Depends(require_admin)):
+    try:
+        pdf_document = build_zakazkovy_list_pdf(zakazka=None)
+    except ZakazkovyListPdfError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return Response(
+        content=pdf_document.content,
+        media_type=pdf_document.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{pdf_document.filename}"'},
+    )
+
+
+@router.get("/{zakazka_id}/zakazkovy-list/pdf")
+def download_zakazkovy_list_for_zakazka(
+    zakazka_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    z = _get_zakazka_or_404(db, zakazka_id)
+    try:
+        pdf_document = build_zakazkovy_list_pdf(zakazka=z)
+    except ZakazkovyListPdfError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return Response(
+        content=pdf_document.content,
+        media_type=pdf_document.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{pdf_document.filename}"'},
+    )
 
 
 @router.get("/{zakazka_id}")
