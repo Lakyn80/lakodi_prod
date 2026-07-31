@@ -41,7 +41,8 @@ export default function ZakazkovyListDocumentPage() {
             <div>
               <CardTitle className="text-2xl">Zakázkový list</CardTitle>
               <CardDescription>
-                Samostatný tiskopis příjmu vozidla (A4). Stáhněte PDF a vyplňte / vytiskněte kdykoliv.
+                Oficiální tiskopis Lakodi (A4) — přesně stejné PDF jako papírový zakázkový list. Stáhněte a
+                vytiskněte kdykoliv.
               </CardDescription>
             </div>
           </div>

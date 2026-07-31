@@ -147,6 +147,11 @@ def test_download_blank_zakazkovy_list_pdf():
     assert response.content[:4] == b"%PDF"
     assert "zakazkovy-list.pdf" in response.headers.get("content-disposition", "")
 
+    from backend.app.modules.zakazky.pdf_service import ASSET_PATH
+
+    assert ASSET_PATH.is_file()
+    assert response.content == ASSET_PATH.read_bytes()
+
 
 def test_download_zakazkovy_list_pdf_for_zakazka_prefills_customer():
     create = client.post(
@@ -170,6 +175,11 @@ def test_download_zakazkovy_list_pdf_for_zakazka_prefills_customer():
     assert response.headers["content-type"].startswith("application/pdf")
     assert response.content[:4] == b"%PDF"
     assert f"zakazkovy-list-{zakazka_id}.pdf" in response.headers.get("content-disposition", "")
+
+    from backend.app.modules.zakazky.pdf_service import ASSET_PATH
+
+    # Exact original printable form (no AcroForm overlay).
+    assert response.content == ASSET_PATH.read_bytes()
 
 
 def test_download_zakazkovy_list_pdf_requires_admin():
