@@ -253,7 +253,7 @@ export default function AdminLayoutClient({
 
   const navItems = [
     { href: "/admin/", label: "Zakázky" },
-    { href: "/admin/zakazkovy-list", label: "Zakázkový list" },
+    { href: "/admin/zakazkovy-list", label: "Tiskopisy" },
     { href: accountingRoute, label: accountingLabel },
     { href: "/admin/kalendar", label: "Kalendář" },
   ];

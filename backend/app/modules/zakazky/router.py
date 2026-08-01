@@ -23,7 +23,11 @@ from backend.app.modules.admin.email_service import (
 )
 from backend.app.modules.admin.router import require_admin
 from backend.app.modules.zakazky.models import Zakazka
-from backend.app.modules.zakazky.pdf_service import ZakazkovyListPdfError, build_zakazkovy_list_pdf
+from backend.app.modules.zakazky.pdf_service import (
+    ZakazkovyListPdfError,
+    build_servisni_zakazka_pdf,
+    build_zakazkovy_list_pdf,
+)
 from backend.app.modules.zakazky.schemas import ZakazkaResponse
 
 pillow_heif.register_heif_opener()
@@ -287,6 +291,19 @@ def download_blank_zakazkovy_list(_: None = Depends(require_admin)):
     )
 
 
+@router.get("/servisni-zakazka/pdf")
+def download_blank_servisni_zakazka(_: None = Depends(require_admin)):
+    try:
+        pdf_document = build_servisni_zakazka_pdf(zakazka=None)
+    except ZakazkovyListPdfError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return Response(
+        content=pdf_document.content,
+        media_type=pdf_document.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{pdf_document.filename}"'},
+    )
+
+
 @router.get("/{zakazka_id}/zakazkovy-list/pdf")
 def download_zakazkovy_list_for_zakazka(
     zakazka_id: int,
@@ -296,6 +313,24 @@ def download_zakazkovy_list_for_zakazka(
     z = _get_zakazka_or_404(db, zakazka_id)
     try:
         pdf_document = build_zakazkovy_list_pdf(zakazka=z)
+    except ZakazkovyListPdfError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return Response(
+        content=pdf_document.content,
+        media_type=pdf_document.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{pdf_document.filename}"'},
+    )
+
+
+@router.get("/{zakazka_id}/servisni-zakazka/pdf")
+def download_servisni_zakazka_for_zakazka(
+    zakazka_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    z = _get_zakazka_or_404(db, zakazka_id)
+    try:
+        pdf_document = build_servisni_zakazka_pdf(zakazka=z)
     except ZakazkovyListPdfError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return Response(

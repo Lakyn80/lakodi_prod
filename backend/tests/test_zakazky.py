@@ -186,3 +186,51 @@ def test_download_zakazkovy_list_pdf_requires_admin():
     anonymous = TestClient(app)
     response = anonymous.get("/api/zakazky/zakazkovy-list/pdf")
     assert response.status_code in {401, 403}
+
+
+def test_download_blank_servisni_zakazka_pdf():
+    _login_admin()
+    response = client.get("/api/zakazky/servisni-zakazka/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.content[:4] == b"%PDF"
+    assert "servisni-zakazka.pdf" in response.headers.get("content-disposition", "")
+
+    from backend.app.modules.zakazky.pdf_service import SERVISNI_ZAKAZKA_ASSET_PATH
+
+    assert SERVISNI_ZAKAZKA_ASSET_PATH.is_file()
+    assert response.content == SERVISNI_ZAKAZKA_ASSET_PATH.read_bytes()
+
+
+def test_download_servisni_zakazka_pdf_for_zakazka_is_exact_original():
+    create = client.post(
+        "/api/zakazky",
+        data={
+            "category": "motor",
+            "name": "Jan Novák",
+            "email": "jan@example.com",
+            "phone": "+420111222333",
+            "description": "Nefunguje startér",
+            "answers": '{"značka": "Škoda", "model": "Octavia", "RZ": "1AB2345"}',
+            "callback_requested": "false",
+        },
+    )
+    assert create.status_code == 200
+    zakazka_id = create.json()["id"]
+
+    _login_admin()
+    response = client.get(f"/api/zakazky/{zakazka_id}/servisni-zakazka/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.content[:4] == b"%PDF"
+    assert f"servisni-zakazka-{zakazka_id}.pdf" in response.headers.get("content-disposition", "")
+
+    from backend.app.modules.zakazky.pdf_service import SERVISNI_ZAKAZKA_ASSET_PATH
+
+    assert response.content == SERVISNI_ZAKAZKA_ASSET_PATH.read_bytes()
+
+
+def test_download_servisni_zakazka_pdf_requires_admin():
+    anonymous = TestClient(app)
+    response = anonymous.get("/api/zakazky/servisni-zakazka/pdf")
+    assert response.status_code in {401, 403}

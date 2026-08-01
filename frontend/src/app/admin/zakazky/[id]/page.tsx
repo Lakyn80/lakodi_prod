@@ -5,7 +5,10 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { zakazkyUrl, uploadsUrl, apiFetchOptions } from "@/lib/api";
-import { downloadZakazkovyListPdfForZakazka } from "@/lib/zakazkovyListPdf";
+import {
+  downloadServisniZakazkaPdfForZakazka,
+  downloadZakazkovyListPdfForZakazka,
+} from "@/lib/zakazkovyListPdf";
 import { Button } from "@/components/ui/button";
 
 interface Zakazka {
@@ -62,7 +65,7 @@ export default function ZakazkaDetailPage() {
   const [preferredTime, setPreferredTime] = useState("");
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [message, setMessage] = useState("");
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<"zakazkovy-list" | "servisni-zakazka" | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -171,7 +174,7 @@ export default function ZakazkaDetailPage() {
 
   const handleDownloadZakazkovyList = async () => {
     if (!id) return;
-    setDownloadingPdf(true);
+    setDownloadingPdf("zakazkovy-list");
     setMessage("");
     try {
       await downloadZakazkovyListPdfForZakazka(id);
@@ -179,7 +182,21 @@ export default function ZakazkaDetailPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "PDF se nepodařilo stáhnout.");
     } finally {
-      setDownloadingPdf(false);
+      setDownloadingPdf(null);
+    }
+  };
+
+  const handleDownloadServisniZakazka = async () => {
+    if (!id) return;
+    setDownloadingPdf("servisni-zakazka");
+    setMessage("");
+    try {
+      await downloadServisniZakazkaPdfForZakazka(id);
+      setMessage("Servisní zakázka PDF byla stažena.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "PDF se nepodařilo stáhnout.");
+    } finally {
+      setDownloadingPdf(null);
     }
   };
 
@@ -326,11 +343,22 @@ export default function ZakazkaDetailPage() {
           <Button variant="secondary" onClick={handleSendEmail} disabled={sending || !zakazka.email}>
             {sending ? "Odesílám…" : "Odeslat email zákazníkovi"}
           </Button>
-          <Button variant="outline" onClick={() => void handleDownloadZakazkovyList()} disabled={downloadingPdf}>
-            {downloadingPdf ? "Stahuji PDF…" : "Stáhnout zakázkový list"}
+          <Button
+            variant="outline"
+            onClick={() => void handleDownloadZakazkovyList()}
+            disabled={downloadingPdf !== null}
+          >
+            {downloadingPdf === "zakazkovy-list" ? "Stahuji PDF…" : "Stáhnout zakázkový list"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => void handleDownloadServisniZakazka()}
+            disabled={downloadingPdf !== null}
+          >
+            {downloadingPdf === "servisni-zakazka" ? "Stahuji PDF…" : "Stáhnout servisní zakázku"}
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/admin/zakazkovy-list">Otevřít dokument</Link>
+            <Link href="/admin/zakazkovy-list">Otevřít tiskopisy</Link>
           </Button>
           {whatsappUrl && (
             <a href={whatsappUrl} target="_blank" rel="noreferrer">

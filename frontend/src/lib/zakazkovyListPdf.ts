@@ -53,3 +53,12 @@ export async function downloadZakazkovyListPdfForZakazka(zakazkaId: number | str
   const id = String(zakazkaId).trim();
   await downloadPdfBlob(`/${id}/zakazkovy-list/pdf`, `zakazkovy-list-${id}.pdf`);
 }
+
+export async function downloadBlankServisniZakazkaPdf(): Promise<void> {
+  await downloadPdfBlob("/servisni-zakazka/pdf", "servisni-zakazka.pdf");
+}
+
+export async function downloadServisniZakazkaPdfForZakazka(zakazkaId: number | string): Promise<void> {
+  const id = String(zakazkaId).trim();
+  await downloadPdfBlob(`/${id}/servisni-zakazka/pdf`, `servisni-zakazka-${id}.pdf`);
+}
